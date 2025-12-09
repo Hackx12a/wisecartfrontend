@@ -1,0 +1,80 @@
+/* delivery-print.css */
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm 15mm 15mm 15mm !important;
+  }
+
+  body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide everything except the receipt */
+  body > *:not(#delivery-receipt),
+  .print-text-hidden {
+    display: none !important;
+  }
+
+  #delivery-receipt {
+    display: block !important;
+    width: 100%;
+    min-height: 100vh;
+    padding: 20mm 15mm;
+    box-sizing: border-box;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 11pt;
+    line-height: 1.4;
+  }
+
+  /* Force receipt container to take full printable height */
+  #delivery-receipt > div {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Table should expand to fill space */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    flex: 1;
+    margin: 10px 0;
+  }
+
+  thead th {
+    border-bottom: 2px solid black;
+    padding: 6px 4px;
+    font-weight: bold;
+    font-size: 10pt;
+  }
+
+  tbody td {
+    padding: 8px 4px;
+    vertical-align: top;
+    border-bottom: 1px dotted #ccc;
+    font-size: 10.5pt;
+  }
+
+  /* Make empty rows take equal space */
+  tbody tr.empty-row {
+    height: calc((100% - 300px) / 16); /* Adjust based on expected rows */
+  }
+
+  /* Signature section at bottom */
+  .signature-section {
+    margin-top: auto;
+    padding-top: 30px;
+  }
+
+  /* Footer fixed at bottom */
+  .receipt-footer {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 9pt;
+  }
+}
