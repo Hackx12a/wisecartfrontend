@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Plus, Edit2, Trash2, Eye, Check, Filter, X, ChevronDown, ChevronLeft, ChevronRight, Truck, Package, Printer, FileText } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Eye, Check, Filter, X, ChevronDown, ChevronLeft, ChevronRight, Truck, Package, Printer, Warehouse } from 'lucide-react';
 import { api } from '../services/api';
 import './deliveryReceipt.css';
 
@@ -1148,6 +1148,241 @@ const handleUpdateStatus = async (id, status) => {
           </div>
         )}
 
+
+
+
+{/* View Modal */}
+{/* View Modal */}
+{showModal && modalMode === 'view' && selectedDelivery && (
+  <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-6">
+    <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
+      <div className="p-8 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white rounded-t-2xl z-10">
+        <h2 className="text-2xl font-bold text-gray-900">Delivery Details</h2>
+        <button 
+          onClick={handleCloseModal} 
+          className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
+        >
+          <X size={24} />
+        </button>
+      </div>
+      
+      <div className="p-8">
+        {/* Delivery Information */}
+        <div className="space-y-6">
+          {/* Header Info */}
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Delivery Receipt #</label>
+              <p className="text-lg font-semibold text-gray-900">{selectedDelivery.deliveryReceiptNumber}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Date</label>
+              <p className="text-lg font-semibold text-gray-900">
+                {new Date(selectedDelivery.date).toLocaleDateString('en-US', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
+              </p>
+            </div>
+          </div>
+
+          {/* Branch and Client Info */}
+          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-blue-700 mb-1">Delivered To (Branch)</label>
+                <p className="text-base font-semibold text-blue-900">{selectedDelivery.branch?.branchName}</p>
+                <p className="text-sm text-blue-700">Code: {selectedDelivery.branch?.branchCode || 'N/A'}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-blue-700 mb-1">Client</label>
+                <p className="text-base font-semibold text-blue-900">{selectedDelivery.client?.clientName}</p>
+                <p className="text-sm text-blue-700">TIN: {selectedDelivery.client?.tin || 'N/A'}</p>
+              </div>
+            </div>
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-blue-700 mb-1">Delivery Address</label>
+              <p className="text-sm text-blue-800">
+                {selectedDelivery.branch?.address && 
+                  `${selectedDelivery.branch.address}, ${selectedDelivery.branch.city || ''}, ${selectedDelivery.branch.province || ''}`.trim()}
+                {!selectedDelivery.branch?.address && 'No address specified'}
+              </p>
+            </div>
+            {/* Add contact information if available */}
+            {selectedDelivery.branch?.contactNumber && (
+              <div className="mt-2">
+                <label className="block text-sm font-medium text-blue-700 mb-1">Contact Number</label>
+                <p className="text-sm text-blue-800">{selectedDelivery.branch.contactNumber}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Delivery Info */}
+          <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-green-700 mb-1">Delivery Prepared By</label>
+                <p className="text-base font-semibold text-green-900">{selectedDelivery.preparedBy || 'Not specified'}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-green-700 mb-1">Transmittal</label>
+                <p className="text-base text-green-900">{selectedDelivery.transmittal || 'Not specified'}</p>
+              </div>
+            </div>
+            {selectedDelivery.remarks && (
+              <div className="mt-3">
+                <label className="block text-sm font-medium text-green-700 mb-1">Delivery Remarks</label>
+                <p className="text-sm text-green-800 p-2 bg-white rounded">{selectedDelivery.remarks}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Additional Details */}
+          <div className="grid grid-cols-2 gap-6">
+            {selectedDelivery.purchaseOrderNumber && (
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">Purchase Order #</label>
+                <p className="text-base text-gray-900">{selectedDelivery.purchaseOrderNumber}</p>
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
+              <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(selectedDelivery.status)}`}>
+                {selectedDelivery.customStatus || selectedDelivery.status}
+              </span>
+            </div>
+          </div>
+
+          {/* Items Table */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">Delivery Items ({selectedDelivery.items?.length || 0} items)</label>
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU/UPC</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Source Warehouse</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Quantity</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {selectedDelivery.items && selectedDelivery.items.length > 0 ? (
+                    selectedDelivery.items.map((item, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                          {item.product?.productName || 'Unknown Product'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {item.product?.sku || item.product?.upc || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          <div className="flex items-center gap-2">
+                            <Package size={14} className="text-gray-400" />
+                            <span>{item.warehouse?.warehouseName || 'N/A'}</span>
+                          </div>
+                          {item.warehouse?.warehouseCode && (
+                            <span className="text-xs text-gray-500">({item.warehouse.warehouseCode})</span>
+                          )}
+                          {item.warehouse?.location && (
+                            <span className="text-xs text-gray-500 block">{item.warehouse.location}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
+                          {item.quantity}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {item.unit || 'pcs'}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="5" className="px-4 py-8 text-center text-gray-500 italic">
+                        No items found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Status Update Section - Only show if not DELIVERED */}
+          {selectedDelivery.status !== 'DELIVERED' && (
+            <div className="border-t border-gray-200 pt-6 mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Update Status</label>
+              <div className="flex gap-3 flex-wrap">
+                {deliveryStatuses.map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => handleUpdateStatus(selectedDelivery.id, status)}
+                    disabled={selectedDelivery.status === status}
+                    className={`px-4 py-2 rounded-lg font-medium transition ${
+                      selectedDelivery.status === status
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                    }`}
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* If delivered, show delivery completion info */}
+          {selectedDelivery.status === 'DELIVERED' && (
+            <div className="p-4 bg-green-50 rounded-lg border border-green-200 mt-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Check className="text-green-600" size={20} />
+                <h3 className="text-sm font-medium text-green-800">Delivery Completed</h3>
+              </div>
+              <p className="text-sm text-green-700">
+                This delivery has been marked as delivered. All items have been successfully transferred to the branch.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="mt-8 flex justify-end gap-4 pt-6 border-t border-gray-200">
+          <button 
+            onClick={() => handleGenerateReceiptFull(selectedDelivery)} 
+            className="flex items-center gap-3 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium shadow-md"
+          >
+            <Printer size={20} />
+            <span>Print Receipt</span>
+          </button>
+          {selectedDelivery.status !== 'DELIVERED' && (
+            <button 
+              onClick={() => {
+                handleCloseModal();
+                setTimeout(() => handleOpenModal('edit', selectedDelivery), 100);
+              }} 
+              className="flex items-center gap-3 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium shadow-md"
+            >
+              <Edit2 size={20} />
+              <span>Edit Delivery</span>
+            </button>
+          )}
+          <button 
+            onClick={handleCloseModal} 
+            className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
+
+
+
 {showReceiptModal && receiptData && (
   <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-6">
     <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[95vh] overflow-y-auto shadow-2xl print:shadow-none print:max-h-none print:rounded-none">
@@ -1211,15 +1446,12 @@ const handleUpdateStatus = async (id, status) => {
             </div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-gray-900 text-lg">No.:</span>
-              {/* JUST SHOW UNDERLINE - NO INPUT */}
               <div className="text-black-900 text-lg w-48 border-b-2 border-gray-900 print:border-b-2 print:border-gray-900">
-                &nbsp; {/* Non-breaking space to maintain height */}
+                &nbsp;
               </div>
             </div>
           </div>
         </div>
-
-        {/* Delivered To & Details Section */}
         <div className="grid grid-cols-2 gap-8 mb-4 -mt-4">
           <div>
             <div className="mb-3">
@@ -1284,37 +1516,43 @@ const handleUpdateStatus = async (id, status) => {
                 />
               </div>
             </div>
-<div className="flex items-center gap-8 mb-3">
-  <div className="flex items-center flex-1">
-    <span className="font-bold text-gray-900 text-sm whitespace-nowrap mr-3">
-      TERMS OF PAYMENT:
-    </span>
-    <input
-      type="text"
-      value={receiptData.termsOfPayment || ''}
-      onChange={(e) => setReceiptData({
-        ...receiptData,
-        termsOfPayment: e.target.value
-      })}
-      className="w-full border-b border-gray-300 text-sm text-gray-900 px-2 focus:outline-none focus:border-blue-500 bg-transparent print:border-0 print:p-0"
-    />
-  </div>
+              <div className="flex items-center gap-4 mb-3">
+                <div className="flex items-center flex-1 min-w-0">
+                  <span className="font-bold text-gray-900 text-sm whitespace-nowrap mr-2">
+                    TERMS OF PAYMENT:
+                  </span>
+                  <input
+                    type="text"
+                    value={receiptData.termsOfPayment || ''}
+                    onChange={(e) => setReceiptData({
+                      ...receiptData,
+                      termsOfPayment: e.target.value
+                    })}
+                    className="flex-1 min-w-0 border-b border-gray-300 text-sm text-gray-900 px-2 focus:outline-none focus:border-blue-500 bg-transparent print:border-0 print:p-0 print-hidden"
+                  />
+                  <span className="print-only flex-1 min-w-0 text-sm text-gray-900 px-2">
+                    {receiptData.termsOfPayment || ''}
+                  </span>
+                </div>
 
-  <div className="flex items-center flex-1">
-    <span className="font-bold text-gray-900 text-sm whitespace-nowrap mr-3">
-      P.O. NUMBER:
-    </span>
-    <input 
-      type="text"
-      value={receiptData.purchaseOrderNumber || ''}
-      onChange={(e) => setReceiptData({
-        ...receiptData,
-        purchaseOrderNumber: e.target.value
-      })}
-      className="w-full border-b border-gray-300 text-sm text-gray-900 px-2 focus:outline-none focus:border-blue-500 bg-transparent print:border-0 print:p-0"
-    />
-  </div>
-</div>
+                <div className="flex items-center flex-shrink-0">
+                  <span className="font-bold text-gray-900 text-sm whitespace-nowrap mr-2">
+                    P.O. NUMBER:
+                  </span>
+                  <input 
+                    type="text"
+                    value={receiptData.purchaseOrderNumber || ''}
+                    onChange={(e) => setReceiptData({
+                      ...receiptData,
+                      purchaseOrderNumber: e.target.value
+                    })}
+                    className="w-32 border-b border-gray-300 text-sm text-gray-900 px-2 focus:outline-none focus:border-blue-500 bg-transparent print:border-0 print:p-0 print-hidden"
+                  />
+                  <span className="print-only w-32 text-sm text-gray-900 px-2">
+                    {receiptData.purchaseOrderNumber || ''}
+                  </span>
+                </div>
+              </div>
           </div>
         </div>
 

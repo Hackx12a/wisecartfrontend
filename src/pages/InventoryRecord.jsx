@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Plus, Edit2, Trash2, Eye, Check, X, ChevronDown, ChevronLeft, ChevronRight, Package, Calendar, User, MessageSquare, Warehouse, Store } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Eye, Check, X, ChevronDown, ChevronLeft, ChevronRight, Package, Calendar, User, MessageSquare, Warehouse, Store, AlertCircle } from 'lucide-react';
 import { api } from '../services/api';
 
 // Searchable Dropdown Component
@@ -188,6 +188,7 @@ const InventoryRecordsManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [warehouseStocks, setWarehouseStocks] = useState({});
+  const [branchStocks, setBranchStocks] = useState({});
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
@@ -226,7 +227,6 @@ const InventoryRecordsManagement = () => {
         api.get('/branches')
       ]);
       
-      // Filter only actual inventory records (exclude deliveries and sales)
       const actualInventories = inventoriesData.filter(inv => 
         inv.inventoryType && 
         ['STOCK_IN', 'TRANSFER', 'RETURN', 'DAMAGE'].includes(inv.inventoryType)
@@ -244,18 +244,82 @@ const InventoryRecordsManagement = () => {
     }
   };
 
-  const loadWarehouseStock = async (warehouseId, productId, itemIndex) => {
+  const loadLocationStock = async (productId, itemIndex) => {
     try {
-      if (warehouseId && productId) {
-        const stock = await api.get(`/stocks/warehouses/${warehouseId}/products/${productId}`);
-        setWarehouseStocks(prev => ({
-          ...prev,
-          [`${itemIndex}_${productId}_${warehouseId}`]: stock
-        }));
+      let locationId = null;
+      let locationType = null;
+      
+      if (formData.fromWarehouseId) {
+        locationId = formData.fromWarehouseId;
+        locationType = 'warehouse';
+      } else if (formData.fromBranchId) {
+        locationId = formData.fromBranchId;
+        locationType = 'branch';
+      } else if (formData.toWarehouseId) {
+        locationId = formData.toWarehouseId;
+        locationType = 'warehouse';
+      } else if (formData.toBranchId) {
+        locationId = formData.toBranchId;
+        locationType = 'branch';
+      }
+      
+      if (locationId && productId && locationType) {
+        let stock = null;
+        
+        if (locationType === 'warehouse') {
+          stock = await api.get(`/stocks/warehouses/${locationId}/products/${productId}`);
+          setWarehouseStocks(prev => ({
+            ...prev,
+            [`${itemIndex}_${productId}_${locationId}`]: stock
+          }));
+        } else if (locationType === 'branch') {
+          try {
+            stock = await api.get(`/stocks/branches/${locationId}/products/${productId}`);
+            setBranchStocks(prev => ({
+              ...prev,
+              [`${itemIndex}_${productId}_${locationId}`]: stock
+            }));
+          } catch (error) {
+            console.log('Branch stock endpoint not available, using default');
+            stock = { availableQuantity: 0, quantity: 0, reservedQuantity: 0 };
+            setBranchStocks(prev => ({
+              ...prev,
+              [`${itemIndex}_${productId}_${locationId}`]: stock
+            }));
+          }
+        }
+        
+        return stock;
       }
     } catch (error) {
       console.error('Failed to load stock:', error);
+      return { availableQuantity: 0, quantity: 0, reservedQuantity: 0 };
     }
+    return null;
+  };
+
+  const getItemStockInfo = (itemIndex, productId) => {
+    let locationId = null;
+    
+    if (formData.fromWarehouseId) {
+      locationId = formData.fromWarehouseId;
+      const warehouseKey = `${itemIndex}_${productId}_${locationId}`;
+      return warehouseStocks[warehouseKey];
+    } else if (formData.fromBranchId) {
+      locationId = formData.fromBranchId;
+      const branchKey = `${itemIndex}_${productId}_${locationId}`;
+      return branchStocks[branchKey];
+    } else if (formData.toWarehouseId) {
+      locationId = formData.toWarehouseId;
+      const warehouseKey = `${itemIndex}_${productId}_${locationId}`;
+      return warehouseStocks[warehouseKey];
+    } else if (formData.toBranchId) {
+      locationId = formData.toBranchId;
+      const branchKey = `${itemIndex}_${productId}_${locationId}`;
+      return branchStocks[branchKey];
+    }
+    
+    return null;
   };
 
   const handleOpenModal = async (mode, inventory = null) => {
@@ -276,6 +340,7 @@ const InventoryRecordsManagement = () => {
         items: []
       });
       setWarehouseStocks({});
+      setBranchStocks({});
     } else if (mode === 'edit' && inventory) {
       if (inventory.status === 'CONFIRMED') {
         alert('Cannot edit a confirmed inventory record.');
@@ -307,12 +372,20 @@ const InventoryRecordsManagement = () => {
           }))
         });
         
-        fullInventory.items.forEach(async (item, index) => {
+        setWarehouseStocks({});
+        setBranchStocks({});
+        
+        for (let i = 0; i < fullInventory.items.length; i++) {
+          const item = fullInventory.items[i];
           const warehouseId = fullInventory.fromWarehouse?.id || fullInventory.toWarehouse?.id;
+          const branchId = fullInventory.fromBranch?.id || fullInventory.toBranch?.id;
+          
           if (warehouseId && item.product?.id) {
-            await loadWarehouseStock(warehouseId, item.product.id, index);
+            await loadLocationStock(item.product.id, i);
+          } else if (branchId && item.product?.id) {
+            await loadLocationStock(item.product.id, i);
           }
-        });
+        }
       } catch (error) {
         console.error('Failed to load inventory details');
         alert('Failed to load inventory details: ' + error.message);
@@ -328,10 +401,11 @@ const InventoryRecordsManagement = () => {
     setShowModal(true);
   };
 
-
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedInventory(null);
+    setWarehouseStocks({});
+    setBranchStocks({});
   };
 
   const handleItemChange = async (index, field, value) => {
@@ -339,11 +413,8 @@ const InventoryRecordsManagement = () => {
     newItems[index][field] = field === 'quantity' ? parseInt(value) || 1 : value;
     setFormData({ ...formData, items: newItems });
 
-    if (field === 'productId') {
-      const warehouseId = formData.fromWarehouseId || formData.toWarehouseId;
-      if (warehouseId && value) {
-        await loadWarehouseStock(warehouseId, value, index);
-      }
+    if (field === 'productId' && value) {
+      await loadLocationStock(value, index);
     }
   };
 
@@ -355,116 +426,112 @@ const InventoryRecordsManagement = () => {
   };
 
   const handleRemoveItem = (index) => {
-    setFormData({ ...formData, items: formData.items.filter((_, i) => i !== index) });
+    const newItems = formData.items.filter((_, i) => i !== index);
+    setFormData({ ...formData, items: newItems });
+    
+    const newWarehouseStocks = { ...warehouseStocks };
+    const newBranchStocks = { ...branchStocks };
+    
+    Object.keys(warehouseStocks).forEach(key => {
+      if (key.startsWith(`${index}_`)) {
+        delete newWarehouseStocks[key];
+      }
+    });
+    
+    Object.keys(branchStocks).forEach(key => {
+      if (key.startsWith(`${index}_`)) {
+        delete newBranchStocks[key];
+      }
+    });
+    
+    setWarehouseStocks(newWarehouseStocks);
+    setBranchStocks(newBranchStocks);
   };
 
-  
-
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  if (!formData.verifiedBy) {
-    alert('Please enter verified by name');
-    return;
-  }
-  
-  if (formData.items.length === 0) {
-    alert('Please add at least one item');
-    return;
-  }
+    e.preventDefault();
+    
+    if (!formData.verifiedBy) {
+      alert('Please enter verified by name');
+      return;
+    }
+    
+    if (formData.items.length === 0) {
+      alert('Please add at least one item');
+      return;
+    }
 
-  // ✅ Log the data being sent
-  console.log('=== SUBMITTING INVENTORY ===');
-  console.log('Form Data:', formData);
-  console.log('Inventory Type:', formData.inventoryType);
-  console.log('From Warehouse ID:', formData.fromWarehouseId);
-  console.log('To Warehouse ID:', formData.toWarehouseId);
-  console.log('From Branch ID:', formData.fromBranchId);
-  console.log('To Branch ID:', formData.toBranchId);
-  console.log('Items:', formData.items);
-
-  try {
-    if (modalMode === 'create') {
+    try {
       const payload = {
         ...formData,
         status: 'PENDING'
       };
       
-      console.log('Payload being sent:', payload);
+      if (modalMode === 'create') {
+        const response = await api.post('/inventories', payload);
+        console.log('Response received:', response);
+        alert('Inventory record created successfully as PENDING!');
+      } else {
+        await api.put(`/inventories/${selectedInventory.id}`, payload);
+        alert('Inventory record updated successfully!');
+      }
       
-      const response = await api.post('/inventories', payload);
-      
-      console.log('Response received:', response);
-      
-      alert('Inventory record created successfully as PENDING!');
-    } else {
-      await api.put(`/inventories/${selectedInventory.id}`, formData);
-      alert('Inventory record updated successfully!');
+      handleCloseModal();
+      loadData();
+      setCurrentPage(1);
+    } catch (error) {
+      console.error('=== ERROR SUBMITTING ===');
+      console.error('Error:', error);
+      console.error('Error response:', error.response);
+      alert('Failed to save inventory: ' + error.message);
+    }
+  };
+
+  const handleConfirmInventory = async (inventory) => {
+    let locationInfo = '';
+    if (inventory.inventoryType === 'STOCK_IN') {
+      locationInfo = `\n📦 Adding stock to: ${inventory.toWarehouse?.warehouseName || inventory.toBranch?.branchName}`;
+    } else if (inventory.inventoryType === 'TRANSFER') {
+      const from = inventory.fromWarehouse?.warehouseName || inventory.fromBranch?.branchName;
+      const to = inventory.toWarehouse?.warehouseName || inventory.toBranch?.branchName;
+      locationInfo = `\n📦 Transfer from: ${from}\n📍 Transfer to: ${to}`;
+    } else if (inventory.inventoryType === 'RETURN') {
+      const from = inventory.fromBranch?.branchName;
+      const to = inventory.toWarehouse?.warehouseName;
+      locationInfo = `\n📦 Return from: ${from}\n📍 Return to: ${to}`;
+    } else if (inventory.inventoryType === 'DAMAGE') {
+      locationInfo = `\n📦 Mark damaged at: ${inventory.toWarehouse?.warehouseName || inventory.toBranch?.branchName}`;
     }
     
-    handleCloseModal();
-    loadData();
-    setCurrentPage(1);
-  } catch (error) {
-    console.error('=== ERROR SUBMITTING ===');
-    console.error('Error:', error);
-    console.error('Error response:', error.response);
-    alert('Failed to save inventory: ' + error.message);
-  }
-};
-
-
-const handleConfirmInventory = async (inventory) => {
-  // Build detailed confirmation message
-  let locationInfo = '';
-  if (inventory.inventoryType === 'STOCK_IN') {
-    locationInfo = `\n📦 Adding stock to: ${inventory.toWarehouse?.warehouseName || inventory.toBranch?.branchName}`;
-  } else if (inventory.inventoryType === 'TRANSFER') {
-    const from = inventory.fromWarehouse?.warehouseName || inventory.fromBranch?.branchName;
-    const to = inventory.toWarehouse?.warehouseName || inventory.toBranch?.branchName;
-    locationInfo = `\n📦 Transfer from: ${from}\n📍 Transfer to: ${to}`;
-  } else if (inventory.inventoryType === 'RETURN') {
-    const from = inventory.fromBranch?.branchName;
-    const to = inventory.toWarehouse?.warehouseName;
-    locationInfo = `\n📦 Return from: ${from}\n📍 Return to: ${to}`;
-  } else if (inventory.inventoryType === 'DAMAGE') {
-    locationInfo = `\n📦 Mark damaged at: ${inventory.toWarehouse?.warehouseName || inventory.toBranch?.branchName}`;
-  }
-  
-  const itemCount = inventory.items?.length || 0;
-  const totalQty = inventory.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
-  
-  const confirmMessage = `Are you sure you want to confirm this ${inventory.inventoryType} record?${locationInfo}\n\n📊 Items: ${itemCount}\n📦 Total Quantity: ${totalQty}\n\n⚠️ This will update stock levels and cannot be undone.`;
-  
-  if (!window.confirm(confirmMessage)) {
-    return;
-  }
-  
-  try {
-    // Show loading state
-    const loadingToast = document.createElement('div');
-    loadingToast.className = 'fixed top-4 right-4 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg z-50';
-    loadingToast.textContent = '⏳ Confirming inventory...';
-    document.body.appendChild(loadingToast);
+    const itemCount = inventory.items?.length || 0;
+    const totalQty = inventory.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
     
-    await api.patch(`/inventories/${inventory.id}/confirm`);
+    const confirmMessage = `Are you sure you want to confirm this ${inventory.inventoryType} record?${locationInfo}\n\n📊 Items: ${itemCount}\n📦 Total Quantity: ${totalQty}\n\n⚠️ This will update stock levels and cannot be undone.`;
     
-    // Remove loading toast
-    document.body.removeChild(loadingToast);
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
     
-    // Show success message
-    alert(`✅ Inventory confirmed successfully!\n\n${inventory.inventoryType} record has been processed and stock levels have been updated.`);
-    
-    await loadData();
-    
-  } catch (error) {
-    console.error('Failed to confirm inventory:', error);
-    const errorMsg = error.response?.data?.error || error.message || 'Unknown error';
-    alert(`❌ Failed to confirm inventory:\n\n${errorMsg}\n\nPlease check stock availability and try again.`);
-  }
-};
-
-
+    try {
+      const loadingToast = document.createElement('div');
+      loadingToast.className = 'fixed top-4 right-4 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+      loadingToast.textContent = '⏳ Confirming inventory...';
+      document.body.appendChild(loadingToast);
+      
+      await api.patch(`/inventories/${inventory.id}/confirm`);
+      
+      document.body.removeChild(loadingToast);
+      
+      alert(`✅ Inventory confirmed successfully!\n\n${inventory.inventoryType} record has been processed and stock levels have been updated.`);
+      
+      await loadData();
+      
+    } catch (error) {
+      console.error('Failed to confirm inventory:', error);
+      const errorMsg = error.response?.data?.error || error.message || 'Unknown error';
+      alert(`❌ Failed to confirm inventory:\n\n${errorMsg}\n\nPlease check stock availability and try again.`);
+    }
+  };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this inventory record?')) return;
@@ -543,17 +610,8 @@ const handleConfirmInventory = async (inventory) => {
     return opts;
   };
 
- const handleLocationChange = (type, val) => {
-    console.log('=== LOCATION CHANGE ===');
-    console.log('Type:', type);
-    console.log('Value:', val);
-    
+  const handleLocationChange = async (type, val) => {
     const [locationType, locationId] = val ? val.split('|') : [null, null];
-    
-    console.log('Parsed Location Type:', locationType);
-    console.log('Parsed Location ID:', locationId);
-    
-    // ✅ FIX: Convert string to number or null
     const warehouseId = locationType === 'warehouse' ? (locationId ? parseInt(locationId, 10) : null) : null;
     const branchId = locationType === 'branch' ? (locationId ? parseInt(locationId, 10) : null) : null;
     
@@ -563,12 +621,32 @@ const handleConfirmInventory = async (inventory) => {
       [`${type}BranchId`]: branchId
     };
     
-    console.log('New Form Data:', newFormData);
-    console.log('Warehouse ID type:', typeof warehouseId, 'value:', warehouseId);
-    console.log('Branch ID type:', typeof branchId, 'value:', branchId);
-    
     setFormData(newFormData);
-};
+    
+    setWarehouseStocks({});
+    setBranchStocks({});
+    
+    if (newFormData.items.length > 0) {
+      for (let i = 0; i < newFormData.items.length; i++) {
+        const item = newFormData.items[i];
+        if (item.productId) {
+          await loadLocationStock(item.productId, i);
+        }
+      }
+    }
+  };
+
+  const handleInventoryTypeChange = (type) => {
+    setFormData(prev => ({
+      ...prev,
+      inventoryType: type,
+      fromWarehouseId: (type === 'STOCK_IN' || type === 'DAMAGE') ? '' : prev.fromWarehouseId,
+      fromBranchId: (type === 'STOCK_IN' || type === 'DAMAGE') ? '' : prev.fromBranchId,
+      items: []
+    }));
+    setWarehouseStocks({});
+    setBranchStocks({});
+  };
 
   const getStatusColor = (status) => {
     const colors = {
@@ -699,19 +777,13 @@ const handleConfirmInventory = async (inventory) => {
                 ) : (
                   currentInventories.map((inventory) => (
                     <tr key={inventory.id} className="hover:bg-gray-50 transition">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <span className={`px-3 py-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(inventory.status)}`}>
-                              {inventory.status || 'PENDING'}
-                            </span>
-                            {inventory.status === 'CONFIRMED' && (
-                              <Check size={16} className="text-green-600" />
-                            )}
-                          </div>
-                        </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-3 py-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getTypeColor(inventory.inventoryType)}`}>
+                          {inventory.inventoryType?.replace('_', ' ') || 'UNKNOWN'}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         <div className="flex items-center gap-2">
-                          {/* FROM Location */}
                           {(inventory.fromWarehouse || inventory.fromBranch) && (
                             <>
                               {inventory.fromWarehouse && (
@@ -730,7 +802,6 @@ const handleConfirmInventory = async (inventory) => {
                             </>
                           )}
                           
-                          {/* TO Location */}
                           {inventory.toWarehouse && (
                             <div className="flex items-center gap-1">
                               <Warehouse size={14} className="text-blue-600" />
@@ -742,14 +813,6 @@ const handleConfirmInventory = async (inventory) => {
                               <Store size={14} className="text-green-600" />
                               <span className="font-medium">{inventory.toBranch.branchName}</span>
                             </div>
-                          )}
-                          
-                          {/* Special labels */}
-                          {inventory.inventoryType === 'STOCK_IN' && (
-                            <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded">Stock In</span>
-                          )}
-                          {inventory.inventoryType === 'DAMAGE' && (
-                            <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded">Damaged</span>
                           )}
                         </div>
                       </td>
@@ -763,60 +826,62 @@ const handleConfirmInventory = async (inventory) => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(inventory.status)}`}>
-                          {inventory.status || 'PENDING'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-3 py-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(inventory.status)}`}>
+                            {inventory.status || 'PENDING'}
+                          </span>
+                          {inventory.status === 'CONFIRMED' && (
+                            <Check size={16} className="text-green-600" />
+                          )}
+                        </div>
                       </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center gap-3">
-                            <button 
+                          <button 
                             onClick={() => handleOpenModal('view', inventory)} 
                             className="flex items-center gap-2 px-3 py-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition"
                             title="View"
-                            >
+                          >
                             <Eye size={18} />
-                            </button>
-                            <button 
+                          </button>
+                          <button 
                             onClick={() => handleOpenModal('edit', inventory)} 
                             disabled={inventory.status === 'CONFIRMED'}
                             className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
-                                inventory.status === 'CONFIRMED'
-                                ? 'text-gray-400 cursor-not-allowed bg-gray-100'
-                                : 'text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50'
+                              inventory.status === 'CONFIRMED'
+                              ? 'text-gray-400 cursor-not-allowed bg-gray-100'
+                              : 'text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50'
                             }`}
                             title={inventory.status === 'CONFIRMED' ? 'Cannot edit confirmed records' : 'Edit'}
-                            >
+                          >
                             <Edit2 size={18} />
-                            </button>
-                            
-                            {/* ✅ CONFIRM BUTTON - Only show for PENDING records */}
-                            {inventory.status === 'PENDING' && (
-                              <button 
-                                onClick={() => handleConfirmInventory(inventory)}
-                                className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition shadow-sm group"
-                                title="Confirm & Update Stock"
-                              >
-                                <Check size={18} />
-                                <span className="text-sm font-medium">Confirm</span>
-                                {/* Tooltip on hover */}
-                                <div className="hidden group-hover:block absolute bottom-full mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-50">
-                                  This will update warehouse/branch stock levels
-                                </div>
-                              </button>
-                            )}
-                            
-                            {/* DELETE BUTTON - Only show for PENDING records */}
-                            {inventory.status === 'PENDING' && (
+                          </button>
+                          
+                          {inventory.status === 'PENDING' && (
                             <button 
-                                onClick={() => handleDelete(inventory.id)} 
-                                className="flex items-center gap-2 px-3 py-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-lg transition"
-                                title="Delete"
+                              onClick={() => handleConfirmInventory(inventory)}
+                              className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition shadow-sm group relative"
+                              title="Confirm & Update Stock"
                             >
-                                <Trash2 size={18} />
+                              <Check size={18} />
+                              <span className="text-sm font-medium">Confirm</span>
+                              <div className="hidden group-hover:block absolute bottom-full mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-50">
+                                This will update warehouse/branch stock levels
+                              </div>
                             </button>
-                            )}
+                          )}
+                          
+                          {inventory.status === 'PENDING' && (
+                            <button 
+                              onClick={() => handleDelete(inventory.id)} 
+                              className="flex items-center gap-2 px-3 py-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-lg transition"
+                              title="Delete"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          )}
                         </div>
-                        </td>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -902,12 +967,7 @@ const handleConfirmInventory = async (inventory) => {
                         <button 
                           type="button" 
                           key={t.value}
-                          onClick={() => setFormData(prev => ({
-                            ...prev,
-                            inventoryType: t.value,
-                            fromWarehouseId: (t.value === 'STOCK_IN' || t.value === 'DAMAGE') ? '' : prev.fromWarehouseId,
-                            fromBranchId: (t.value === 'STOCK_IN' || t.value === 'DAMAGE') ? '' : prev.fromBranchId
-                          }))}
+                          onClick={() => handleInventoryTypeChange(t.value)}
                           className={`p-4 rounded-lg border-2 text-left transition ${
                             formData.inventoryType === t.value 
                               ? `border-${t.color}-500 bg-${t.color}-50 text-${t.color}-700` 
@@ -995,6 +1055,16 @@ const handleConfirmInventory = async (inventory) => {
                       <label className="block text-lg font-semibold">
                         <Package className="inline mr-2" size={20}/>
                         Items *
+                        {(formData.toWarehouseId || formData.toBranchId || formData.fromWarehouseId || formData.fromBranchId) && (
+                          <span className="ml-2 text-sm font-normal text-blue-600">
+                            (
+                            {formData.fromWarehouseId && `From: ${warehouses.find(w => w.id === formData.fromWarehouseId)?.warehouseName}`}
+                            {formData.fromBranchId && `From: ${branches.find(b => b.id === formData.fromBranchId)?.branchName}`}
+                            {formData.toWarehouseId && `To: ${warehouses.find(w => w.id === formData.toWarehouseId)?.warehouseName}`}
+                            {formData.toBranchId && `To: ${branches.find(b => b.id === formData.toBranchId)?.branchName}`}
+                            )
+                          </span>
+                        )}
                       </label>
                       <button 
                         type="button" 
@@ -1004,6 +1074,20 @@ const handleConfirmInventory = async (inventory) => {
                         <Plus size={16}/> Add Item
                       </button>
                     </div>
+                    
+                    {/* Location Required Warning */}
+                    {!formData.toWarehouseId && !formData.toBranchId && !(formData.fromWarehouseId || formData.fromBranchId) && (
+                      <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="text-yellow-600 mt-0.5" size={18} />
+                          <div>
+                            <p className="text-sm text-yellow-800 font-medium">Select a location first</p>
+                            <p className="text-xs text-yellow-700">Please select a source or destination location to see available stock levels</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
                     {formData.items.length === 0 ? (
                       <div className="text-center py-10 bg-gray-50 rounded-lg text-gray-500">
                         No items yet. Click "Add Item" to start.
@@ -1011,8 +1095,8 @@ const handleConfirmInventory = async (inventory) => {
                     ) : (
                       <div className="space-y-4">
                         {formData.items.map((item, i) => {
-                          const stockKey = `${i}_${item.productId}_${formData.fromWarehouseId || formData.toWarehouseId}`;
-                          const stockInfo = warehouseStocks[stockKey];
+                          const stockInfo = getItemStockInfo(i, item.productId);
+                          const selectedLocation = formData.fromWarehouseId || formData.fromBranchId || formData.toWarehouseId || formData.toBranchId;
                           
                           return (
                             <div key={i} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
@@ -1028,12 +1112,56 @@ const handleConfirmInventory = async (inventory) => {
                                     valueKey="id"
                                     required
                                   />
-                                  {stockInfo && (
-                                    <div className="mt-2 text-xs text-blue-600">
-                                      Available: {stockInfo.availableQuantity} units
+                                  
+                                  {/* Stock Information Display */}
+                                  {selectedLocation && item.productId && stockInfo && (
+                                    <div className="mt-2 p-2 bg-white rounded border border-blue-100">
+                                      <div className="text-xs text-gray-700">
+                                        <div className="flex items-center justify-between mb-1">
+                                          <span className="font-medium">Available Stock:</span>
+                                          <span className={`font-bold ${item.quantity > stockInfo.availableQuantity ? 'text-red-600' : 'text-green-600'}`}>
+                                            {stockInfo.availableQuantity || 0} units
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs text-gray-500">
+                                          <span>Total:</span>
+                                          <span>{stockInfo.quantity || 0}</span>
+                                        </div>
+                                        {stockInfo.reservedQuantity > 0 && (
+                                          <div className="flex items-center justify-between text-xs text-gray-500">
+                                            <span>Reserved:</span>
+                                            <span>{stockInfo.reservedQuantity || 0}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                      
+                                      {/* Warning if quantity exceeds available */}
+                                      {item.quantity > stockInfo.availableQuantity && formData.inventoryType !== 'STOCK_IN' && (
+                                        <div className="mt-1 flex items-center gap-1 text-red-600 text-xs font-medium">
+                                          <AlertCircle size={12} />
+                                          Quantity exceeds available stock!
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Stock not loaded yet */}
+                                  {selectedLocation && item.productId && !stockInfo && (
+                                    <div className="mt-2">
+                                      <div className="text-xs text-gray-500 italic">Loading stock information...</div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* No location selected */}
+                                  {!selectedLocation && item.productId && (
+                                    <div className="mt-2">
+                                      <div className="text-xs text-yellow-600 italic">
+                                        Select a location to see stock availability
+                                      </div>
                                     </div>
                                   )}
                                 </div>
+                                
                                 <div className="md:col-span-3">
                                   <label className="block text-xs font-medium text-gray-700 mb-2">Quantity *</label>
                                   <input 
@@ -1042,9 +1170,19 @@ const handleConfirmInventory = async (inventory) => {
                                     value={item.quantity || ''} 
                                     onChange={e => handleItemChange(i, 'quantity', e.target.value)} 
                                     required 
-                                    className="w-full px-4 py-3 border rounded-lg"
+                                    className={`w-full px-4 py-3 border rounded-lg ${
+                                      stockInfo && item.quantity > stockInfo.availableQuantity && formData.inventoryType !== 'STOCK_IN'
+                                        ? 'border-red-300 bg-red-50'
+                                        : ''
+                                    }`}
                                   />
+                                  {stockInfo && item.quantity > stockInfo.availableQuantity && formData.inventoryType !== 'STOCK_IN' && (
+                                    <div className="text-xs text-red-500 mt-1">
+                                      Max available: {stockInfo.availableQuantity}
+                                    </div>
+                                  )}
                                 </div>
+                                
                                 <div className="md:col-span-1 flex items-end">
                                   <button 
                                     type="button" 
@@ -1145,32 +1283,32 @@ const handleConfirmInventory = async (inventory) => {
                   </div>
 
                   {selectedInventory.status === 'CONFIRMED' && (
-            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-              <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
-                <Check size={18} />
-                Stock Update Applied
-              </h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-green-700 font-medium">Total Items Updated:</p>
-                  <p className="text-green-900 text-lg font-bold">
-                    {selectedInventory.items?.length || 0} products
-                  </p>
-                </div>
-                <div>
-                  <p className="text-green-700 font-medium">Total Quantity:</p>
-                  <p className="text-green-900 text-lg font-bold">
-                    {selectedInventory.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0} units
-                  </p>
-                </div>
-              </div>
-              {selectedInventory.confirmedAt && (
-                <p className="text-xs text-green-600 mt-2">
-                  Confirmed on: {new Date(selectedInventory.confirmedAt).toLocaleString()}
-                </p>
-              )}
-            </div>
-          )}
+                    <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                      <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
+                        <Check size={18} />
+                        Stock Update Applied
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-green-700 font-medium">Total Items Updated:</p>
+                          <p className="text-green-900 text-lg font-bold">
+                            {selectedInventory.items?.length || 0} products
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-green-700 font-medium">Total Quantity:</p>
+                          <p className="text-green-900 text-lg font-bold">
+                            {selectedInventory.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0} units
+                          </p>
+                        </div>
+                      </div>
+                      {selectedInventory.confirmedAt && (
+                        <p className="text-xs text-green-600 mt-2">
+                          Confirmed on: {new Date(selectedInventory.confirmedAt).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {selectedInventory.remarks && (

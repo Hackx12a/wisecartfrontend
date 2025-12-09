@@ -123,13 +123,10 @@
     const [branchInfo, setBranchInfo] = useState(null);
     const [productPrices, setProductPrices] = useState({});
     const [branchStocks, setBranchStocks] = useState({});
-    const [inventories, setInventories] = useState([]);           // ADD THIS
-    const [warehouses, setWarehouses] = useState([]);             // ADD THIS
-    const [warehouseStocks, setWarehouseStocks] = useState([]);   // ADD THIS
+    const [inventories, setInventories] = useState([]);
+    const [warehouses, setWarehouses] = useState([]);
+    const [warehouseStocks, setWarehouseStocks] = useState([]);
     const [productSummaries, setProductSummaries] = useState([]);
-
-
-    // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
 
@@ -174,7 +171,7 @@
         api.get('/stocks/warehouses'),
         api.get('/stocks/branches'),
         api.get('/sales'),
-        api.get('/clients') // This was missing!
+        api.get('/clients')
       ]);
 
       setInventories(invRes);
@@ -185,9 +182,6 @@
       setBranchStocks(branchStocksRes);
       setSales(salesRes);
       setClients(clientsRes);
-
-      // Optional: Log to confirm
-      console.log('Clients loaded:', clientsRes);
 
       try {
         const summaryRes = await api.get('/inventories/products/summary');

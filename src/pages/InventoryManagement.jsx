@@ -1206,12 +1206,10 @@ const ProductTransactionsModal = ({ product, transactions, isOpen, onClose, show
     
     for (const inv of invRes) {
       if (inv.inventoryType === 'SALE') {
-        // Get the real sale ID from reference number or ID
         const saleId = inv.referenceNumber ? 
           parseInt(inv.referenceNumber.replace('SALE-', '')) : 
           inv.id;
         
-        // Skip if we've seen this sale already OR if ID is invalid
         if (seenSaleIds.has(saleId) || saleId <= 0 || isNaN(saleId)) {
           continue;
         }
@@ -1223,13 +1221,10 @@ const ProductTransactionsModal = ({ product, transactions, isOpen, onClose, show
       }
     }
     
-    // Update with cleaned list if we removed duplicates
     if (cleanedInventories.length !== invRes.length) {
-      console.log(`Removed ${invRes.length - cleanedInventories.length} duplicate sale entries`);
       setInventories(cleanedInventories);
     }
 
-    // ✅ Step 4: Load product summaries for Product Summary tab
     try {
       const summaryRes = await api.get('/inventories/products/summary');
       setProductSummaries(summaryRes);
@@ -1237,22 +1232,6 @@ const ProductTransactionsModal = ({ product, transactions, isOpen, onClose, show
       console.warn('Could not load product summaries:', summaryErr);
       setProductSummaries([]);
     }
-
-    // ✅ Step 5: Debug log to check what we got
-    console.log('Loaded data:', {
-      totalTransactions: invRes.length,
-      salesInTransactions: invRes.filter(t => t.inventoryType === 'SALE').length,
-      inventoriesInTransactions: invRes.filter(t => 
-        t.inventoryType === 'STOCK_IN' || 
-        t.inventoryType === 'TRANSFER' || 
-        t.inventoryType === 'RETURN' || 
-        t.inventoryType === 'DAMAGE'
-      ).length,
-      deliveriesInTransactions: invRes.filter(t => t.inventoryType === 'DELIVERY').length,
-      totalProducts: prodRes.length,
-      totalSales: salesRes.length,
-      totalClients: clientsRes.length
-    });
 
   } catch (err) {
     console.error('Failed to load data:', err);
@@ -1342,15 +1321,12 @@ const ProductTransactionsModal = ({ product, transactions, isOpen, onClose, show
       
       if (transaction.id > 2000000) {
         saleId = transaction.id - 2000000;
-        console.log('Extracted sale ID from fake ID:', transaction.id, '->', saleId);
       } 
       else if (transaction.referenceNumber && transaction.referenceNumber.includes('SALE-')) {
         saleId = parseInt(transaction.referenceNumber.replace('SALE-', ''));
-        console.log('Extracted sale ID from reference number:', saleId);
       } 
       else if (transaction.id) {
         saleId = transaction.id;
-        console.log('Using transaction ID as sale ID:', saleId);
       } 
       else {
         toast.error('Cannot find valid sale ID');
@@ -1362,7 +1338,6 @@ const ProductTransactionsModal = ({ product, transactions, isOpen, onClose, show
         return;
       }
 
-      console.log('Fetching sale details for ID:', saleId);
       
       try {
         const fullSale = await api.get(`/sales/${saleId}`);
@@ -1441,7 +1416,6 @@ const ProductTransactionsModal = ({ product, transactions, isOpen, onClose, show
             return;
           }
 
-          console.log('Fetching delivery details for ID:', deliveryId);
           const fullDelivery = await api.get(`/deliveries/${deliveryId}`);
           
           const allTransactionPromises = fullDelivery.items.map(item => 
@@ -1511,7 +1485,6 @@ const ProductTransactionsModal = ({ product, transactions, isOpen, onClose, show
           return;
         }
         
-        console.log('Fetching inventory details for ID:', inventoryId);
         const freshInventory = await api.get(`/inventories/${inventoryId}`);
         
         setSelectedProduct({
