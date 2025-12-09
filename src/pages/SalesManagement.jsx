@@ -1,78 +1,9 @@
   import React, { useState, useEffect, useRef } from 'react';
   import './invoice-print.css';
+  import { api } from '../services/api';
   import { Search, Plus, Edit2, Trash2, Eye, FileText, Check, Filter, X, Printer, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
-  // Real API service
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
-  const getToken = () => localStorage.getItem('authToken');
 
-  const handleResponse = async (response) => {
-    if (response.status === 401) {
-      localStorage.clear();
-      window.location.href = '/login';
-      return;
-    }
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error || err.message || 'Request failed');
-    }
-    return response.json();
-  };
-
-  const api = {
-    get: (endpoint) =>
-      fetch(`${API_BASE_URL}${endpoint}`, {
-        headers: {
-          'Authorization': `Bearer ${getToken()}`,
-          'Content-Type': 'application/json',
-        },
-      }).then(handleResponse),
-
-    post: (endpoint, data) =>
-      fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${getToken()}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      }).then(handleResponse),
-
-    put: (endpoint, data) =>
-      fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${getToken()}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      }).then(handleResponse),
-
-      delete: (endpoint) =>
-    fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${getToken()}`,
-      },
-    }).then(async (response) => {
-      if (response.status === 401) {
-        localStorage.clear();
-        window.location.href = '/login';
-        return;
-      }
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.error || err.message || 'Request failed');
-      }
-      // Try to parse as JSON, if it fails return text
-      const text = await response.text();
-      try {
-        return JSON.parse(text);
-      } catch {
-        return { message: text };
-      }
-    }),
-  };
 
   const formatCurrency = (amount) => {
     if (amount === null || amount === undefined) return '0.00';

@@ -1,6 +1,6 @@
 // components/layout/Sidebar.jsx
 import React from 'react';
-import { Package, Truck, Warehouse, ShoppingCart, Users, Home, FileText, UserPlus } from 'lucide-react';
+import { Package, Truck, Warehouse, ShoppingCart, Users, Home, UserPlus, PackageSearch, PackageOpen } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -8,10 +8,10 @@ const menuItems = [
   { to: '/dashboard', label: 'Dashboard', icon: Home },
   { to: '/sales', label: 'Sales', icon: ShoppingCart },
   { to: '/deliveries', label: 'Deliveries', icon: Truck },
-  { to: '/inventory', label: 'Inventory', icon: Package },
+  { to: '/warehouseinventory', label: 'Warehouse Inventory', icon: PackageOpen  },
+  { to: '/inventory', label: 'Inventory', icon: PackageSearch },
   { to: '/warehouse', label: 'Warehouse', icon: Warehouse },
   { to: '/branches', label: 'Branches & Clients', icon: Users },
-  { to: '/warehouseinventory', label: 'Warehouse Inventory', icon: Package },
   { to: '/products', label: 'Products', icon: Package },
 ];
 
