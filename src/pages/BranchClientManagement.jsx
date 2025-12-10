@@ -330,21 +330,35 @@ if (result.success) {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this branch and its associated client?')) return;
+  if (!window.confirm('Are you sure you want to delete this branch and its associated client?')) return;
+  
+  try {
+    const result = await api.delete(`/branches/${id}`);
     
-    try {
-      await api.delete(`/branches/${id}`);
+    if (result.success) {
       toast.success('Branch and Client deleted successfully');
       loadData();
       // If the last item on the current page is deleted, go to previous page
-      if (currentItems.length % itemsPerPage === 1 && currentPage > 1) {
+      if (currentItems.length === 1 && currentPage > 1) {
         setCurrentPage(currentPage - 1);
       }
-    } catch (error) {
-      toast.error('Failed to delete');
-      console.error(error);
+    } else {
+      // Handle specific error message from backend
+      toast.error(result.message || 'Cannot delete branch. It may have associated sales records.');
     }
-  };
+  } catch (error) {
+    console.error('Delete error:', error);
+    
+    // Show appropriate error message
+    if (error.message.includes('has associated sales')) {
+      toast.error('Cannot delete branch: It has associated sales records');
+    } else if (error.message.includes('constraint')) {
+      toast.error('Cannot delete branch: It has associated data (sales, deliveries, etc.)');
+    } else {
+      toast.error(error.message || 'Failed to delete branch');
+    }
+  }
+};
 
   const resetForm = () => {
   setFormData({

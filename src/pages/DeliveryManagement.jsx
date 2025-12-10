@@ -129,7 +129,7 @@ const DeliveryManagement = () => {
     customStatus: '',
     remarks: '',
     items: []
-});
+  });
 
   const [filterData, setFilterData] = useState({
     clientId: '',
@@ -139,120 +139,110 @@ const DeliveryManagement = () => {
     endDate: ''
   });
 
-
-
   const handleGenerateReceipt = (delivery) => {
-  try {
-    // Format the data for receipt
-    const receipt = {
-      id: delivery.id,
-      deliveryReceiptNumber: delivery.deliveryReceiptNumber,
-      date: new Date(delivery.date).toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      }),
-      branchName: delivery.branchName,
-      clientName: delivery.clientName,
-      clientTin: delivery.client?.tin || 'N/A',
-      branchAddress: `${delivery.branch?.address || ''}, ${delivery.branch?.city || ''}, ${delivery.branch?.province || ''}`.trim(),
-      preparedBy: delivery.preparedBy || 'N/A',
-      purchaseOrderNumber: delivery.purchaseOrderNumber || '',
-      remarks: delivery.remarks || '',
-      items: delivery.items || [],
-      generatedDate: new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }),
-      // For full details, you might want to fetch the complete delivery
-    };
-    
-    setReceiptData(receipt);
-    setShowReceiptModal(true);
-  } catch (error) {
-    console.error('Error generating receipt:', error);
-    alert('Failed to generate receipt: ' + error.message);
-  }
-};
-
-
-const handleGenerateReceiptFull = async (delivery) => {
-  try {
-    const fullDeliveryRes = await api.get(`/deliveries/${delivery.id}`);
-    
-    if (!fullDeliveryRes.success) {
-      throw new Error(fullDeliveryRes.error || 'Failed to load delivery');
-    }
-    
-    const fullDelivery = fullDeliveryRes.data;
-    
-    const receipt = {
-      id: fullDelivery.id,
-      deliveryReceiptNumber: fullDelivery.deliveryReceiptNumber || '', // Actual DB value
-      deliveryReceiptNumberDisplay: '', // Empty for display - user can fill manually
-      date: new Date(fullDelivery.date).toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      }),
-      branchName: fullDelivery.branch?.branchName || delivery.branchName,
-      clientName: fullDelivery.client?.clientName || delivery.clientName,
-      clientTin: fullDelivery.client?.tin || 'N/A',
-      branchAddress: `${fullDelivery.branch?.address || ''}, ${fullDelivery.branch?.city || ''}, ${fullDelivery.branch?.province || ''}`.trim(),
-      preparedBy: fullDelivery.preparedBy || localStorage.getItem('fullName') || '', 
-      purchaseOrderNumber: fullDelivery.purchaseOrderNumber || '',
-      termsOfPayment: fullDelivery.termsOfPayment || '',
-      businessStyle: fullDelivery.businessStyle || '',
-      remarks: fullDelivery.remarks || '',
-      items: fullDelivery.items || [],
-      extraHeader: fullDelivery.extraHeader || 'EXTRA',
-      generatedDate: new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }),
-    };
-    
-    setReceiptData(receipt);
-    setShowReceiptModal(true);
-  } catch (error) {
-    console.error('Error generating receipt:', error);
-    alert('Failed to generate receipt: ' + error.message);
-  }
-};
-
-
-const formatCurrency = (amount) => {
-  if (amount === null || amount === undefined) return '0.00';
-  return Number(amount).toLocaleString('en-PH', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-};
-
-
-
- const loadWarehouseStock = async (warehouseId, productId, itemIndex) => {
-  try {
-    if (warehouseId && productId) {
-      const stock = await api.get(`/stocks/warehouses/${warehouseId}/products/${productId}`);
+    try {
+      const receipt = {
+        id: delivery.id,
+        deliveryReceiptNumber: delivery.deliveryReceiptNumber,
+        date: new Date(delivery.date).toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        }),
+        branchName: delivery.branchName,
+        clientName: delivery.clientName,
+        clientTin: delivery.client?.tin || 'N/A',
+        branchAddress: `${delivery.branch?.address || ''}, ${delivery.branch?.city || ''}, ${delivery.branch?.province || ''}`.trim(),
+        preparedBy: delivery.preparedBy || 'N/A',
+        purchaseOrderNumber: delivery.purchaseOrderNumber || '',
+        remarks: delivery.remarks || '',
+        items: delivery.items || [],
+        generatedDate: new Date().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        }),
+      };
       
-      if (stock.success) {
-        setWarehouseStocks(prev => ({
-          ...prev,
-          [`${itemIndex}_${productId}_${warehouseId}`]: stock.data
-        }));
-      }
+      setReceiptData(receipt);
+      setShowReceiptModal(true);
+    } catch (error) {
+      console.error('Error generating receipt:', error);
+      alert('Failed to generate receipt: ' + error.message);
     }
-  } catch (error) {
-    console.error('Failed to load stock information:', error);
-  }
-};
+  };
 
-  // Enhanced validation function
+  const handleGenerateReceiptFull = async (delivery) => {
+    try {
+      const fullDeliveryRes = await api.get(`/deliveries/${delivery.id}`);
+      
+      if (!fullDeliveryRes.success) {
+        throw new Error(fullDeliveryRes.error || 'Failed to load delivery');
+      }
+      
+      const fullDelivery = fullDeliveryRes.data;
+      
+      const receipt = {
+        id: fullDelivery.id,
+        deliveryReceiptNumber: fullDelivery.deliveryReceiptNumber || '',
+        deliveryReceiptNumberDisplay: '',
+        date: new Date(fullDelivery.date).toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        }),
+        branchName: fullDelivery.branch?.branchName || delivery.branchName,
+        clientName: fullDelivery.client?.clientName || delivery.clientName,
+        clientTin: fullDelivery.client?.tin || 'N/A',
+        branchAddress: `${fullDelivery.branch?.address || ''}, ${fullDelivery.branch?.city || ''}, ${fullDelivery.branch?.province || ''}`.trim(),
+        preparedBy: fullDelivery.preparedBy || localStorage.getItem('fullName') || '', 
+        purchaseOrderNumber: fullDelivery.purchaseOrderNumber || '',
+        termsOfPayment: fullDelivery.termsOfPayment || '',
+        businessStyle: fullDelivery.businessStyle || '',
+        remarks: fullDelivery.remarks || '',
+        items: fullDelivery.items || [],
+        extraHeader: fullDelivery.extraHeader || 'EXTRA',
+        generatedDate: new Date().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        }),
+      };
+      
+      setReceiptData(receipt);
+      setShowReceiptModal(true);
+    } catch (error) {
+      console.error('Error generating receipt:', error);
+      alert('Failed to generate receipt: ' + error.message);
+    }
+  };
+
+  const formatCurrency = (amount) => {
+    if (amount === null || amount === undefined) return '0.00';
+    return Number(amount).toLocaleString('en-PH', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const loadWarehouseStock = async (warehouseId, productId, itemIndex) => {
+    try {
+      if (warehouseId && productId) {
+        const stock = await api.get(`/stocks/warehouses/${warehouseId}/products/${productId}`);
+        
+        if (stock.success) {
+          setWarehouseStocks(prev => ({
+            ...prev,
+            [`${itemIndex}_${productId}_${warehouseId}`]: stock.data
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load stock information:', error);
+    }
+  };
+
   const validateDeliveryForm = () => {
-    // Basic validations
     if (!formData.branchId) {
       alert('Please select a branch');
       return false;
@@ -268,21 +258,18 @@ const formatCurrency = (amount) => {
       return false;
     }
 
-    // Warehouse validation
     const itemsWithoutWarehouse = formData.items.filter(item => !item.warehouseId);
     if (itemsWithoutWarehouse.length > 0) {
       alert('Please select a warehouse for all items');
       return false;
     }
 
-    // Product validation
     const itemsWithoutProduct = formData.items.filter(item => !item.productId);
     if (itemsWithoutProduct.length > 0) {
       alert('Please select a product for all items');
       return false;
     }
 
-    // Quantity validation
     const invalidQuantities = formData.items.filter(item => !item.quantity || item.quantity < 1);
     if (invalidQuantities.length > 0) {
       alert('Please enter valid quantities (minimum 1) for all items');
@@ -292,13 +279,11 @@ const formatCurrency = (amount) => {
     return true;
   };
 
-  // Update handleItemChange to load stock info
   const handleItemChange = async (index, field, value) => {
     const newItems = [...formData.items];
     newItems[index][field] = field === 'quantity' ? parseInt(value) || 1 : value;
     setFormData({ ...formData, items: newItems });
 
-    // If warehouse or product changes, load stock information
     if (field === 'warehouseId' || field === 'productId') {
       const item = newItems[index];
       if (item.warehouseId && item.productId) {
@@ -312,142 +297,139 @@ const formatCurrency = (amount) => {
   }, [statusFilter]);
 
   const loadData = async () => {
-  try {
-    setLoading(true);
-    const [deliveriesRes, branchesRes, productsRes, warehousesRes, clientsRes] = await Promise.all([
-      api.get('/deliveries/list'),
-      api.get('/branches'),
-      api.get('/products'),
-      api.get('/warehouse'),
-      api.get('/clients')
-    ]);
+    try {
+      setLoading(true);
+      const [deliveriesRes, branchesRes, productsRes, warehousesRes, clientsRes] = await Promise.all([
+        api.get('/deliveries/list'),
+        api.get('/branches'),
+        api.get('/products'),
+        api.get('/warehouse'),
+        api.get('/clients')
+      ]);
 
-    // Access the data property from each response
-    if (deliveriesRes.success) setDeliveries(deliveriesRes.data || []);
-    if (branchesRes.success) setBranches(branchesRes.data || []);
-    if (productsRes.success) setProducts(productsRes.data || []);
-    if (warehousesRes.success) setWarehouses(warehousesRes.data || []);
-    if (clientsRes.success) setClients(clientsRes.data || []);
-  } catch (error) {
-    console.error('Failed to load data', error);
-    alert('Failed to load data: ' + error.message);
-  } finally {
-    setLoading(false);
-  }
-};
+      if (deliveriesRes.success) setDeliveries(deliveriesRes.data || []);
+      if (branchesRes.success) setBranches(branchesRes.data || []);
+      if (productsRes.success) setProducts(productsRes.data || []);
+      if (warehousesRes.success) setWarehouses(warehousesRes.data || []);
+      if (clientsRes.success) setClients(clientsRes.data || []);
+    } catch (error) {
+      console.error('Failed to load data', error);
+      alert('Failed to load data: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleOpenModal = async (mode, delivery = null) => {
-  setModalMode(mode);
-  
-  if (mode === 'create') {
-    setSelectedDelivery(null);
-    setFormData({
-      branchId: '',
-      date: new Date().toISOString().split('T')[0],
-      deliveryReceiptNumber: '',
-      purchaseOrderNumber: '',
-      transmittal: '',
-      preparedBy: localStorage.getItem('fullName') || localStorage.getItem('username') || '',
-      status: 'PENDING',
-      customStatus: '',
-      remarks: '',
-      items: []
-    });
-    setBranchInfo(null);
-    setWarehouseStocks({});
-  } else if (mode === 'edit' && delivery) {
-  // PREVENT EDITING IF DELIVERED
-  if (delivery.status === 'DELIVERED') {
-    alert('Cannot edit a delivery that has already been DELIVERED.');
-    return;
-  }
-  
-  try {
-    const fullDeliveryRes = await api.get(`/deliveries/${delivery.id}`);
+    setModalMode(mode);
     
-    if (!fullDeliveryRes.success) {
-      throw new Error(fullDeliveryRes.error || 'Failed to load delivery');
-    }
-    
-    const fullDelivery = fullDeliveryRes.data;
-    
-    // Double check status from fresh data
-    if (fullDelivery.status === 'DELIVERED') {
-      alert('Cannot edit a delivery that has already been DELIVERED.');
-      return;
-    }
-    
-    setSelectedDelivery(fullDelivery);
-    setFormData({
-      branchId: fullDelivery.branch.id,
-      date: fullDelivery.date,
-      deliveryReceiptNumber: fullDelivery.deliveryReceiptNumber,
-      purchaseOrderNumber: fullDelivery.purchaseOrderNumber || '',
-      transmittal: fullDelivery.transmittal || '',
-      preparedBy: fullDelivery.preparedBy,
-      status: fullDelivery.status,
-      customStatus: fullDelivery.customStatus || '',
-      remarks: fullDelivery.remarks || '',
-      items: fullDelivery.items.map(item => ({
-        productId: item.product.id,
-        quantity: item.quantity,
-        unit: item.unit || '',
-        warehouseId: item.warehouse?.id || ''
-      }))
-    });
-    setBranchInfo({
-      clientName: fullDelivery.client.clientName,
-      tin: fullDelivery.client.tin,
-      fullAddress: `${fullDelivery.client.address || ''}, ${fullDelivery.client.city || ''}, ${fullDelivery.client.province || ''}`.trim()
-    });
-    
-    fullDelivery.items.forEach(async (item, index) => {
-      if (item.warehouse?.id && item.product?.id) {
-        await loadWarehouseStock(item.warehouse.id, item.product.id, index);
-      }
-    });
-  } catch (error) {
-    console.error('Failed to load delivery details');
-    alert('Failed to load delivery details: ' + error.message);
-  }
-} else if (mode === 'view' && delivery) {
-  try {
-    const fullDeliveryRes = await api.get(`/deliveries/${delivery.id}`);
-    if (fullDeliveryRes.success) {
-      setSelectedDelivery(fullDeliveryRes.data);
-    }
-  } catch (error) {
-    console.error('Failed to load delivery details:', error);
-  }
-}
-
-
-const handleUpdateStatus = async (id, status) => {
-  try {
-    // Use the correct endpoint format that matches your backend
-    const response = await api.patch(`/deliveries/${id}/status`, null, {
-      params: { status: status }
-    });
-    
-    if (response.success) {
-      if (selectedDelivery && selectedDelivery.id === id) {
-        const updatedDeliveryRes = await api.get(`/deliveries/${id}`);
-        if (updatedDeliveryRes.success) {
-          setSelectedDelivery(updatedDeliveryRes.data);
-        }
+    if (mode === 'create') {
+      setSelectedDelivery(null);
+      setFormData({
+        branchId: '',
+        date: new Date().toISOString().split('T')[0],
+        deliveryReceiptNumber: '',
+        purchaseOrderNumber: '',
+        transmittal: '',
+        preparedBy: localStorage.getItem('fullName') || localStorage.getItem('username') || '',
+        status: 'PENDING',
+        customStatus: '',
+        remarks: '',
+        items: []
+      });
+      setBranchInfo(null);
+      setWarehouseStocks({});
+    } else if (mode === 'edit' && delivery) {
+      if (delivery.status === 'DELIVERED') {
+        alert('Cannot edit a delivery that has already been DELIVERED.');
+        return;
       }
       
-      await loadData();
-      alert(`Status updated to ${status} successfully`);
-    } else {
-      alert(response.error || 'Failed to update status');
+      try {
+        const fullDeliveryRes = await api.get(`/deliveries/${delivery.id}`);
+        
+        if (!fullDeliveryRes.success) {
+          throw new Error(fullDeliveryRes.error || 'Failed to load delivery');
+        }
+        
+        const fullDelivery = fullDeliveryRes.data;
+        
+        if (fullDelivery.status === 'DELIVERED') {
+          alert('Cannot edit a delivery that has already been DELIVERED.');
+          return;
+        }
+        
+        setSelectedDelivery(fullDelivery);
+        setFormData({
+          branchId: fullDelivery.branch.id,
+          date: fullDelivery.date,
+          deliveryReceiptNumber: fullDelivery.deliveryReceiptNumber,
+          purchaseOrderNumber: fullDelivery.purchaseOrderNumber || '',
+          transmittal: fullDelivery.transmittal || '',
+          preparedBy: fullDelivery.preparedBy,
+          status: fullDelivery.status,
+          customStatus: fullDelivery.customStatus || '',
+          remarks: fullDelivery.remarks || '',
+          items: fullDelivery.items.map(item => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+            unit: item.unit || '',
+            warehouseId: item.warehouse?.id || ''
+          }))
+        });
+        setBranchInfo({
+          clientName: fullDelivery.client.clientName,
+          tin: fullDelivery.client.tin,
+          fullAddress: `${fullDelivery.client.address || ''}, ${fullDelivery.client.city || ''}, ${fullDelivery.client.province || ''}`.trim()
+        });
+        
+        fullDelivery.items.forEach(async (item, index) => {
+          if (item.warehouse?.id && item.product?.id) {
+            await loadWarehouseStock(item.warehouse.id, item.product.id, index);
+          }
+        });
+      } catch (error) {
+        console.error('Failed to load delivery details');
+        alert('Failed to load delivery details: ' + error.message);
+      }
+    } else if (mode === 'view' && delivery) {
+      try {
+        const fullDeliveryRes = await api.get(`/deliveries/${delivery.id}`);
+        if (fullDeliveryRes.success) {
+          setSelectedDelivery(fullDeliveryRes.data);
+        }
+      } catch (error) {
+        console.error('Failed to load delivery details:', error);
+      }
     }
-  } catch (error) {
-    console.error('Failed to update status:', error);
-    alert('Failed to update status: ' + (error.response?.data?.message || error.message));
-  }
-};
-   
+    
+    setShowModal(true);
+  };
+
+  const handleUpdateStatus = async (id, status) => {
+    try {
+      const response = await api.patch(`/deliveries/${id}/status`, null, {
+        params: { status: status }
+      });
+      
+      if (response.success) {
+        if (selectedDelivery && selectedDelivery.id === id) {
+          const updatedDeliveryRes = await api.get(`/deliveries/${id}`);
+          if (updatedDeliveryRes.success) {
+            setSelectedDelivery(updatedDeliveryRes.data);
+          }
+        }
+        
+        await loadData();
+        alert(`Status updated to ${status} successfully`);
+      } else {
+        alert(response.error || 'Failed to update status');
+      }
+    } catch (error) {
+      console.error('Failed to update status:', error);
+      alert('Failed to update status: ' + (error.response?.data?.message || error.message));
+    }
+  };
 
   const handleCloseModal = () => {
     setShowModal(false);
@@ -490,11 +472,9 @@ const handleUpdateStatus = async (id, status) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-
     if (!validateDeliveryForm()) {
       return;
     }
-
 
     try {
       for (const item of formData.items) {
@@ -509,8 +489,6 @@ const handleUpdateStatus = async (id, status) => {
         }
       }
 
-
-      // If all validations pass, proceed with creating/updating delivery
       if (modalMode === 'create') {
         await api.post('/deliveries', formData);
         alert('Delivery created successfully!');
@@ -541,7 +519,6 @@ const handleUpdateStatus = async (id, status) => {
     }
   };
 
-
   const handleResetFilter = () => {
     setFilterData({
       clientId: '',
@@ -555,19 +532,36 @@ const handleUpdateStatus = async (id, status) => {
     setCurrentPage(1);
   };
 
-  const filteredDeliveries = sortByStatus(deliveries.filter(delivery => {
-  const searchLower = searchTerm.toLowerCase();
-  const matchesSearch = 
-    delivery.branchName?.toLowerCase().includes(searchLower) ||
-    delivery.clientName?.toLowerCase().includes(searchLower) ||
-    delivery.deliveryReceiptNumber?.toLowerCase().includes(searchLower);
-  
-  const matchesStatus = statusFilter === 'ALL' || delivery.status === statusFilter;
-  
-  return matchesSearch && matchesStatus;
-}));
+  const sortByStatus = (deliveries) => {
+    const statusOrder = {
+      'PENDING': 1,
+      'PREPARING': 2,
+      'CONFIRMED': 3,
+      'IN_TRANSIT': 4,
+      'DELIVERED': 5,
+      'RETURNED': 6,
+      'CANCELLED': 7
+    };
+    
+    return [...deliveries].sort((a, b) => {
+      const orderA = statusOrder[a.status] || 999;
+      const orderB = statusOrder[b.status] || 999;
+      return orderA - orderB;
+    });
+  };
 
-  // Pagination calculations
+  const filteredDeliveries = sortByStatus(deliveries.filter(delivery => {
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch = 
+      delivery.branchName?.toLowerCase().includes(searchLower) ||
+      delivery.clientName?.toLowerCase().includes(searchLower) ||
+      delivery.deliveryReceiptNumber?.toLowerCase().includes(searchLower);
+    
+    const matchesStatus = statusFilter === 'ALL' || delivery.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  }));
+
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentDeliveries = filteredDeliveries.slice(indexOfFirstItem, indexOfLastItem);
@@ -598,52 +592,48 @@ const handleUpdateStatus = async (id, status) => {
   };
 
   const handleSaveReceiptDetails = async () => {
-  try {
-    // Prepare items with extra field
-    const itemsToUpdate = receiptData.items.map(item => ({
-      itemId: item.id,
-      extra: item.extra || ''
-    }));
+    try {
+      const itemsToUpdate = receiptData.items.map(item => ({
+        itemId: item.id,
+        extra: item.extra || ''
+      }));
 
-    // Use the display value if filled, otherwise use the original
-    const receiptNumberToSave = receiptData.deliveryReceiptNumberDisplay?.trim() || 
-                               receiptData.deliveryReceiptNumber;
+      const receiptNumberToSave = receiptData.deliveryReceiptNumberDisplay?.trim() || 
+                                 receiptData.deliveryReceiptNumber;
 
-    const response = await api.patch(`/deliveries/${receiptData.id}/receipt-details`, {
-      deliveryReceiptNumber: receiptNumberToSave,
-      termsOfPayment: receiptData.termsOfPayment || '',
-      businessStyle: receiptData.businessStyle || '',
-      preparedBy: receiptData.preparedBy || '',
-      extraHeader: receiptData.extraHeader || 'EXTRA',
-      items: itemsToUpdate
-    });
-    
-    if (response.success) {
-      alert('Receipt details saved successfully!');
-      await loadData();
+      const response = await api.patch(`/deliveries/${receiptData.id}/receipt-details`, {
+        deliveryReceiptNumber: receiptNumberToSave,
+        termsOfPayment: receiptData.termsOfPayment || '',
+        businessStyle: receiptData.businessStyle || '',
+        preparedBy: receiptData.preparedBy || '',
+        extraHeader: receiptData.extraHeader || 'EXTRA',
+        items: itemsToUpdate
+      });
       
-      // Update the receipt data with saved values
-      const updatedDeliveryRes = await api.get(`/deliveries/${receiptData.id}`);
-      if (updatedDeliveryRes.success) {
-        const updatedDelivery = updatedDeliveryRes.data;
-        setReceiptData(prev => ({
-          ...prev,
-          deliveryReceiptNumber: updatedDelivery.deliveryReceiptNumber,
-          deliveryReceiptNumberDisplay: receiptNumberToSave,
-          termsOfPayment: updatedDelivery.termsOfPayment,
-          businessStyle: updatedDelivery.businessStyle,
-          extraHeader: updatedDelivery.extraHeader || 'EXTRA'
-        }));
+      if (response.success) {
+        alert('Receipt details saved successfully!');
+        await loadData();
+        
+        const updatedDeliveryRes = await api.get(`/deliveries/${receiptData.id}`);
+        if (updatedDeliveryRes.success) {
+          const updatedDelivery = updatedDeliveryRes.data;
+          setReceiptData(prev => ({
+            ...prev,
+            deliveryReceiptNumber: updatedDelivery.deliveryReceiptNumber,
+            deliveryReceiptNumberDisplay: receiptNumberToSave,
+            termsOfPayment: updatedDelivery.termsOfPayment,
+            businessStyle: updatedDelivery.businessStyle,
+            extraHeader: updatedDelivery.extraHeader || 'EXTRA'
+          }));
+        }
+      } else {
+        alert(response.error || 'Failed to save receipt details');
       }
-    } else {
-      alert(response.error || 'Failed to save receipt details');
+    } catch (error) {
+      console.error('Failed to save receipt details:', error);
+      alert('Failed to save receipt details: ' + error.message);
     }
-  } catch (error) {
-    console.error('Failed to save receipt details:', error);
-    alert('Failed to save receipt details: ' + error.message);
-  }
-};
-
+  };
 
   const deliveryStatuses = [
     'PENDING', 'PREPARING', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED', 'CONFIRMED', 'RETURNED'
@@ -663,8 +653,6 @@ const handleUpdateStatus = async (id, status) => {
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
-
-  // Prepare dropdown data
   const branchOptions = branches.map(b => ({ id: b.id, name: `${b.branchName} (${b.branchCode})` }));
   const clientOptions = clients.map(c => ({ id: c.id, name: c.clientName }));
   const productOptions = products.map(p => ({ id: p.id, name: `${p.productName} (${p.sku || p.upc})` }));
@@ -686,7 +674,6 @@ const handleUpdateStatus = async (id, status) => {
           <p className="text-gray-600">Track and manage product deliveries to branches</p>
         </div>
 
-        {/* Action Bar */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
           <div className="flex flex-wrap gap-4 items-center justify-between">
             <div className="flex gap-3 flex-wrap">
@@ -697,8 +684,6 @@ const handleUpdateStatus = async (id, status) => {
                 <Plus size={20} />
                 <span>New Delivery</span>
               </button>
-
-              
             </div>
 
             <div className="flex gap-3 items-center">
@@ -726,7 +711,6 @@ const handleUpdateStatus = async (id, status) => {
           </div>
         </div>
 
-        {/* Deliveries Table */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -1772,7 +1756,6 @@ const handleUpdateStatus = async (id, status) => {
       </div>
     </div>
   );
-}
 };
 
 export default DeliveryManagement;

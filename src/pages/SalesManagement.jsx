@@ -1,143 +1,477 @@
-  import React, { useState, useEffect, useRef } from 'react';
-  import './invoice-print.css';
-  import { api } from '../services/api';
-  import { Search, Plus, Edit2, Trash2, Eye, FileText, Check, Filter, X, Printer, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import './invoice-print.css';
+import { api } from '../services/api';
+import { Search, Plus, Edit2, Trash2, Eye, FileText, Check, Filter, X, Printer, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
+const formatCurrency = (amount) => {
+  if (amount === null || amount === undefined) return '0.00';
+  return Number(amount).toLocaleString('en-PH', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
 
+// Searchable Dropdown Component
+const SearchableDropdown = ({ options, value, onChange, placeholder, displayKey, valueKey, required = false }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const dropdownRef = useRef(null);
 
-  const formatCurrency = (amount) => {
-    if (amount === null || amount === undefined) return '0.00';
-    return Number(amount).toLocaleString('en-PH', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  };
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-  // Searchable Dropdown Component
-  const SearchableDropdown = ({ options, value, onChange, placeholder, displayKey, valueKey, required = false }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
-    const dropdownRef = useRef(null);
+  const filteredOptions = options.filter(option =>
+    option[displayKey]?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-    useEffect(() => {
-      const handleClickOutside = (event) => {
-        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-          setIsOpen(false);
-        }
-      };
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+  const selectedOption = options.find(opt => opt[valueKey] === value);
 
-    const filteredOptions = options.filter(option =>
-      option[displayKey]?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  return (
+    <div ref={dropdownRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-left flex items-center justify-between bg-white"
+      >
+        <span className={selectedOption ? 'text-gray-900' : 'text-gray-500'}>
+          {selectedOption ? selectedOption[displayKey] : placeholder}
+        </span>
+        <ChevronDown size={20} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
 
-    const selectedOption = options.find(opt => opt[valueKey] === value);
-
-    return (
-      <div ref={dropdownRef} className="relative">
-        <button
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-left flex items-center justify-between bg-white"
-        >
-          <span className={selectedOption ? 'text-gray-900' : 'text-gray-500'}>
-            {selectedOption ? selectedOption[displayKey] : placeholder}
-          </span>
-          <ChevronDown size={20} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-        </button>
-
-        {isOpen && (
-          <div className="absolute z-50 w-full mt-2 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-hidden">
-            <div className="p-3 border-b border-gray-200">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  autoFocus
-                />
-              </div>
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-2 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-hidden">
+          <div className="p-3 border-b border-gray-200">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                autoFocus
+              />
             </div>
-            <div className="overflow-y-auto max-h-60">
-              {!required && (
+          </div>
+          <div className="overflow-y-auto max-h-60">
+            {!required && (
+              <button
+                type="button"
+                onClick={() => {
+                  onChange('');
+                  setIsOpen(false);
+                  setSearchTerm('');
+                }}
+                className="w-full px-4 py-2 text-left hover:bg-gray-50 transition text-gray-500 italic text-sm"
+              >
+                -- None --
+              </button>
+            )}
+            {filteredOptions.length === 0 ? (
+              <div className="px-4 py-6 text-center text-gray-500 text-sm">
+                No results found
+              </div>
+            ) : (
+              filteredOptions.map((option) => (
                 <button
+                  key={option[valueKey]}
                   type="button"
                   onClick={() => {
-                    onChange('');
+                    onChange(option[valueKey]);
                     setIsOpen(false);
                     setSearchTerm('');
                   }}
-                  className="w-full px-4 py-2 text-left hover:bg-gray-50 transition text-gray-500 italic text-sm"
+                  className={`w-full px-4 py-2 text-left hover:bg-blue-50 transition text-sm ${
+                    value === option[valueKey] ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-900'
+                  }`}
                 >
-                  -- None --
+                  {option[displayKey]}
                 </button>
-              )}
-              {filteredOptions.length === 0 ? (
-                <div className="px-4 py-6 text-center text-gray-500 text-sm">
-                  No results found
-                </div>
-              ) : (
-                filteredOptions.map((option) => (
-                  <button
-                    key={option[valueKey]}
-                    type="button"
-                    onClick={() => {
-                      onChange(option[valueKey]);
-                      setIsOpen(false);
-                      setSearchTerm('');
-                    }}
-                    className={`w-full px-4 py-2 text-left hover:bg-blue-50 transition text-sm ${
-                      value === option[valueKey] ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-900'
-                    }`}
-                  >
-                    {option[displayKey]}
-                  </button>
-                ))
-              )}
-            </div>
+              ))
+            )}
           </div>
-        )}
-      </div>
-    );
+        </div>
+      )}
+    </div>
+  );
+};
+
+const SalesManagement = () => {
+  const [sales, setSales] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [modalMode, setModalMode] = useState('create');
+  const [selectedSale, setSelectedSale] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [invoiceReport, setInvoiceReport] = useState(null);
+  const [branchInfo, setBranchInfo] = useState(null);
+  const [productPrices, setProductPrices] = useState({});
+  const [branchStocks, setBranchStocks] = useState({});
+  const [inventories, setInventories] = useState([]);
+  const [warehouses, setWarehouses] = useState([]);
+  const [warehouseStocks, setWarehouseStocks] = useState([]);
+  const [productSummaries, setProductSummaries] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+
+  const [formData, setFormData] = useState({
+    branchId: '',
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
+    items: []
+  });
+
+  const [filterData, setFilterData] = useState({
+    clientId: '',
+    branchId: '',
+    status: '',
+    startMonth: 1,
+    endMonth: 12,
+    startYear: new Date().getFullYear(),
+    endYear: new Date().getFullYear()
+  });
+
+  useEffect(() => {
+    loadData();
+  }, [statusFilter]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [
+        invRes,
+        prodRes,
+        warehousesRes,
+        branchesRes,
+        warehouseStocksRes,
+        branchStocksRes,
+        salesRes,
+        clientsRes
+      ] = await Promise.all([
+        api.get('/inventories'),
+        api.get('/products'),
+        api.get('/warehouse'),
+        api.get('/branches'),
+        api.get('/stocks/warehouses'),
+        api.get('/stocks/branches'),
+        api.get('/sales'),
+        api.get('/clients')
+      ]);
+
+      if (invRes.success) setInventories(invRes.data || []);
+      if (prodRes.success) setProducts(prodRes.data || []);
+      if (warehousesRes.success) setWarehouses(warehousesRes.data || []);
+      if (branchesRes.success) setBranches(branchesRes.data || []);
+      if (warehouseStocksRes.success) setWarehouseStocks(warehouseStocksRes.data || []);
+      if (branchStocksRes.success) setBranchStocks(branchStocksRes.data || []);
+      if (salesRes.success) setSales(salesRes.data || []);
+      if (clientsRes.success) setClients(clientsRes.data || []);
+
+      try {
+        const summaryRes = await api.get('/inventories/products/summary');
+        if (summaryRes.success) {
+          setProductSummaries(summaryRes.data || []);
+        }
+      } catch (summaryErr) {
+        console.warn('Could not load product summaries:', summaryErr);
+        setProductSummaries([]);
+      }
+    } catch (err) {
+      console.error('Failed to load data:', err);
+      alert('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const SalesManagement = () => {
-    const [sales, setSales] = useState([]);
-    const [branches, setBranches] = useState([]);
-    const [products, setProducts] = useState([]);
-    const [clients, setClients] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [showModal, setShowModal] = useState(false);
-    const [showFilterModal, setShowFilterModal] = useState(false);
-    const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-    const [modalMode, setModalMode] = useState('create');
-    const [selectedSale, setSelectedSale] = useState(null);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('ALL');
-    const [invoiceReport, setInvoiceReport] = useState(null);
-    const [branchInfo, setBranchInfo] = useState(null);
-    const [productPrices, setProductPrices] = useState({});
-    const [branchStocks, setBranchStocks] = useState({});
-    const [inventories, setInventories] = useState([]);
-    const [warehouses, setWarehouses] = useState([]);
-    const [warehouseStocks, setWarehouseStocks] = useState([]);
-    const [productSummaries, setProductSummaries] = useState([]);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage] = useState(10);
+  const getProductPriceForClient = async (productId, clientId) => {
+    try {
+      const response = await api.get(`/sales/product-price?productId=${productId}&clientId=${clientId}`);
+      if (response.success) {
+        return response.data?.price || 0;
+      }
+      const product = products.find(p => p.id === productId);
+      return product?.price || 0;
+    } catch (error) {
+      console.error('Failed to get price:', error);
+      const product = products.find(p => p.id === productId);
+      return product?.price || 0;
+    }
+  };
 
-    const [formData, setFormData] = useState({
-      branchId: '',
-      month: new Date().getMonth() + 1,
-      year: new Date().getFullYear(),
-      items: []
-    });
+  const loadProductPricesForClient = async (clientId) => {
+    if (!clientId) {
+      setProductPrices({});
+      return;
+    }
 
-    const [filterData, setFilterData] = useState({
+    const priceMap = {};
+    for (const product of products) {
+      try {
+        const price = await getProductPriceForClient(product.id, clientId);
+        priceMap[product.id] = price;
+      } catch (error) {
+        priceMap[product.id] = product.price;
+      }
+    }
+    setProductPrices(priceMap);
+  };
+
+  const handleOpenModal = async (mode, sale = null) => {
+    setModalMode(mode);
+
+    if (mode === 'edit' && sale && sale.status === 'INVOICED') {
+      alert('Cannot edit sale that has already been INVOICED. Please revert status first.');
+      return;
+    }
+    
+    if (mode === 'create') {
+      setSelectedSale(null);
+      setFormData({ branchId: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), items: [] });
+      setBranchInfo(null);
+    } else if (mode === 'edit' && sale) {
+      setSelectedSale(sale);
+      setFormData({
+        branchId: sale.branch.id,
+        month: sale.month,
+        year: sale.year,
+        items: sale.items.map(item => ({ productId: item.product.id, quantity: item.quantity || 1 }))
+      });
+      try {
+        const info = await api.get(`/sales/branch-info/${sale.branch.id}`);
+        if (info.success) {
+          setBranchInfo(info.data);
+          await loadProductPricesForClient(info.data?.clientId);
+        }
+      } catch (error) {
+        console.error('Failed to load branch info');
+      }
+    } else if (mode === 'view' && sale) {
+      try {
+        const freshSale = await api.get(`/sales/${sale.id}`);
+        if (freshSale.success) {
+          setSelectedSale(freshSale.data);
+        }
+      } catch (error) {
+        console.error('Failed to load fresh sale data:', error);
+        setSelectedSale(sale);
+      }
+    }
+    
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setSelectedSale(null);
+    setBranchInfo(null);
+  };
+
+  // FIXED: Removed extra closing brace
+  const handleBranchChange = async (branchId) => {
+    setFormData({ ...formData, branchId });
+    if (branchId) {
+      try {
+        const info = await api.get(`/sales/branch-info/${branchId}`);
+        if (info.success) {
+          setBranchInfo(info.data);
+          await loadProductPricesForClient(info.data?.clientId);
+          
+          // Load branch stock information for all products
+          const stockMap = {};
+          for (const product of products) {
+            try {
+              const stock = await api.get(`/stocks/branches/${branchId}/products/${product.id}`);
+              if (stock.success) {
+                stockMap[product.id] = stock.data;
+              }
+            } catch (error) {
+              stockMap[product.id] = { quantity: 0, availableQuantity: 0 };
+            }
+          }
+          setBranchStocks(stockMap);
+        }
+      } catch (error) {
+        console.error('Failed to load branch info');
+        setBranchInfo(null);
+        setProductPrices({});
+        setBranchStocks({});
+      }
+    }
+  };
+
+  const handleAddItem = () => {
+    setFormData({ ...formData, items: [...formData.items, { productId: '', quantity: 1 }] });
+  };
+
+  const handleRemoveItem = (index) => {
+    setFormData({ ...formData, items: formData.items.filter((_, i) => i !== index) });
+  };
+
+  const handleItemChange = (index, field, value) => {
+    const newItems = [...formData.items];
+    newItems[index][field] = field === 'quantity' ? parseInt(value) || 1 : value;
+    setFormData({ ...formData, items: newItems });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.branchId || formData.items.length === 0) {
+      alert('Please select a branch and add items');
+      return;
+    }
+    try {
+      if (modalMode === 'create') {
+        await api.post('/sales', formData);
+        alert('Sale created successfully!');
+      } else {
+        await api.put(`/sales/${selectedSale.id}`, formData);
+        alert('Sale updated successfully!');
+      }
+      handleCloseModal();
+      loadData();
+      setCurrentPage(1);
+    } catch (error) {
+      alert('Failed to save sale: ' + error.message);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    const sale = sales.find(s => s.id === id);
+    
+    if (!sale) {
+      alert('Sale not found');
+      return;
+    }
+
+    let confirmMessage = 'Are you sure you want to delete this sale?';
+    if (sale.status === 'CONFIRMED') {
+      confirmMessage = 'This sale is CONFIRMED. Deleting it will return the stock to the branch. Are you sure?';
+    } else if (sale.status === 'INVOICED') {
+      confirmMessage = 'This sale is INVOICED. Deleting it will return the stock to the branch. Are you sure?';
+    } else if (sale.status === 'PENDING') {
+      confirmMessage = 'This sale is PENDING. Deleting it will release the reserved stock. Are you sure?';
+    }
+
+    if (!window.confirm(confirmMessage)) return;
+    
+    try {
+      await api.delete(`/sales/${id}`);
+      alert('Sale deleted successfully. Inventory has been adjusted.');
+      loadData();
+      if (filteredSales.length % itemsPerPage === 1 && currentPage > 1) {
+        setCurrentPage(currentPage - 1);
+      }
+    } catch (error) {
+      alert('Failed to delete: ' + error.message);
+    }
+  };
+
+  const handleUpdateStatus = async (id, status) => {
+    try {
+      const generatedBy = localStorage.getItem('fullName') || 'System';
+      const url = `/sales/${id}/status?status=${status}&generatedBy=${encodeURIComponent(generatedBy)}`;
+
+      await api.put(url, null);
+      await loadData();
+      
+      if (status === 'CONFIRMED') {
+        alert('Sale confirmed! Stock has been deducted from branch inventory.');
+      } else if (status === 'INVOICED') {
+        alert('Sale marked as INVOICED! Ready for invoice generation.');
+      } else {
+        alert(`Sale status updated to ${status}!`);
+      }
+    } catch (err) {
+      alert('Error updating status: ' + (err.message || 'Unknown error'));
+      console.error('Status update error:', err);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    if (status === 'INVOICED') return 'bg-green-100 text-green-800';
+    if (status === 'CONFIRMED') return 'bg-blue-100 text-blue-800';
+    return 'bg-yellow-100 text-yellow-800';
+  };
+
+  const handleFilterSales = async () => {
+    try {
+      const filtered = await api.post('/sales/filter', filterData);
+      if (filtered.success) {
+        setSales(filtered.data || []);
+        setShowFilterModal(false);
+        setCurrentPage(1);
+        alert(`Found ${filtered.data?.length || 0} sales`);
+      }
+    } catch (error) {
+      alert('Filter failed: ' + error.message);
+    }
+  };
+
+  const handleGenerateInvoice = async () => {
+    if (!filterData.clientId) {
+      alert('Please select a client first');
+      return;
+    }
+    
+    try {
+      const generatedBy = localStorage.getItem('fullName') || 'System';
+      
+      const response = await api.post('/sales/invoice/generate', {
+        ...filterData,
+        generatedBy: generatedBy
+      });
+      
+      if (response.success) {
+        response.data.adjustments = response.data.adjustments || [];
+        setInvoiceReport(response.data);
+        setShowInvoiceModal(false);
+        
+        let successMessage = `✅ Invoice generated successfully!\n\n`;
+        successMessage += `Generated by: ${generatedBy}\n`;
+        successMessage += `Total Sales in Report: ${response.data.totalSalesCount || 0}\n`;
+        
+        if (response.data.newlyInvoicedCount > 0) {
+          successMessage += `Newly Marked as INVOICED: ${response.data.newlyInvoicedCount}\n`;
+        }
+        
+        successMessage += `Total Amount: ₱${formatCurrency(response.data.totalSalesVatInclusive || 0)}\n\n`;
+        successMessage += `Note: Only CONFIRMED and INVOICED sales are included in invoice generation.`;
+        
+        alert(successMessage);
+        await loadData();
+      } else {
+        alert('Failed to generate invoice: ' + (response.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Invoice generation error:', error);
+      
+      if (error.message.includes('No sales found')) {
+        alert('Cannot generate invoice:\n\n' + 
+              'No CONFIRMED or INVOICED sales found for the selected criteria.\n' +
+              'Please confirm sales first before generating invoices.');
+      } else {
+        alert('Failed to generate invoice: ' + error.message);
+      }
+    }
+  };
+
+  const handleResetFilter = () => {
+    setFilterData({
       clientId: '',
       branchId: '',
       status: '',
@@ -146,371 +480,26 @@
       startYear: new Date().getFullYear(),
       endYear: new Date().getFullYear()
     });
-
-    useEffect(() => {
-      loadData();
-    }, [statusFilter]);
-
-    const loadData = async () => {
-  setLoading(true);
-  try {
-    const [
-      invRes,
-      prodRes,
-      warehousesRes,
-      branchesRes,
-      warehouseStocksRes,
-      branchStocksRes,
-      salesRes,
-      clientsRes
-    ] = await Promise.all([
-      api.get('/inventories'),
-      api.get('/products'),
-      api.get('/warehouse'),
-      api.get('/branches'),
-      api.get('/stocks/warehouses'),
-      api.get('/stocks/branches'),
-      api.get('/sales'),
-      api.get('/clients')
-    ]);
-
-    if (invRes.success) setInventories(invRes.data || []);
-    if (prodRes.success) setProducts(prodRes.data || []);
-    if (warehousesRes.success) setWarehouses(warehousesRes.data || []);
-    if (branchesRes.success) setBranches(branchesRes.data || []);
-    if (warehouseStocksRes.success) setWarehouseStocks(warehouseStocksRes.data || []);
-    if (branchStocksRes.success) setBranchStocks(branchStocksRes.data || []);
-    if (salesRes.success) setSales(salesRes.data || []);
-    if (clientsRes.success) setClients(clientsRes.data || []);
-
-    try {
-      const summaryRes = await api.get('/inventories/products/summary');
-      if (summaryRes.success) {
-        setProductSummaries(summaryRes.data || []);
-      }
-    } catch (summaryErr) {
-      console.warn('Could not load product summaries:', summaryErr);
-      setProductSummaries([]);
-    }
-  } catch (err) {
-    console.error('Failed to load data:', err);
-    alert('Failed to load data');
-  } finally {
-    setLoading(false);
-  }
-};
-
-const getProductPriceForClient = async (productId, clientId) => {
-  try {
-    const response = await api.get(`/sales/product-price?productId=${productId}&clientId=${clientId}`);
-    if (response.success) {
-      return response.data?.price || 0;
-    }
-    const product = products.find(p => p.id === productId);
-    return product?.price || 0;
-  } catch (error) {
-    console.error('Failed to get price:', error);
-    const product = products.find(p => p.id === productId);
-    return product?.price || 0;
-  }
-};
-
-    const loadProductPricesForClient = async (clientId) => {
-      if (!clientId) {
-        setProductPrices({});
-        return;
-      }
-
-      const priceMap = {};
-      for (const product of products) {
-        try {
-          const price = await getProductPriceForClient(product.id, clientId);
-          priceMap[product.id] = price;
-        } catch (error) {
-          priceMap[product.id] = product.price;
-        }
-      }
-      setProductPrices(priceMap);
-    };
-
-    const handleOpenModal = async (mode, sale = null) => {
-  setModalMode(mode);
-
-  if (mode === 'edit' && sale && sale.status === 'INVOICED') {
-    alert('Cannot edit sale that has already been INVOICED. Please revert status first.');
-    return;
-  }
-  
-  if (mode === 'create') {
-    setSelectedSale(null);
-    setFormData({ branchId: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), items: [] });
-    setBranchInfo(null);
-  } else if (mode === 'edit' && sale) {
-    setSelectedSale(sale);
-    setFormData({
-      branchId: sale.branch.id,
-      month: sale.month,
-      year: sale.year,
-      items: sale.items.map(item => ({ productId: item.product.id, quantity: item.quantity || 1 }))
-    });
-    try {
-      const info = await api.get(`/sales/branch-info/${sale.branch.id}`);
-      if (info.success) {
-        setBranchInfo(info.data);
-        await loadProductPricesForClient(info.data?.clientId);
-      }
-    } catch (error) {
-      console.error('Failed to load branch info');
-    }
-  } else if (mode === 'view' && sale) {
-    try {
-      const freshSale = await api.get(`/sales/${sale.id}`);
-      if (freshSale.success) {
-        setSelectedSale(freshSale.data);
-      }
-    } catch (error) {
-      console.error('Failed to load fresh sale data:', error);
-      setSelectedSale(sale);
-    }
-  }
-  
-  // MOVE THIS INSIDE THE FUNCTION, NOT IN A SEPARATE BLOCK
-  setShowModal(true);
-};
-    
-
-    const handleCloseModal = () => {
-      setShowModal(false);
-      setSelectedSale(null);
-      setBranchInfo(null);
-    };
-
-    const handleBranchChange = async (branchId) => {
-      setFormData({ ...formData, branchId });
-      if (branchId) {
-  try {
-    const info = await api.get(`/sales/branch-info/${branchId}`);
-    if (info.success) {
-      setBranchInfo(info.data);
-      await loadProductPricesForClient(info.data?.clientId);
-      
-      // Load branch stock information for all products
-      const stockMap = {};
-      for (const product of products) {
-        try {
-          const stock = await api.get(`/stocks/branches/${branchId}/products/${product.id}`);
-          if (stock.success) {
-            stockMap[product.id] = stock.data;
-          }
-        } catch (error) {
-          stockMap[product.id] = { quantity: 0, availableQuantity: 0 };
-        }
-      }
-      setBranchStocks(stockMap);
-    }
-  } catch (error) {
-    console.error('Failed to load branch info');
-    setBranchInfo(null);
-    setProductPrices({});
-    setBranchStocks({});
-  }
-}
-
-    const handleAddItem = () => {
-      setFormData({ ...formData, items: [...formData.items, { productId: '', quantity: 1 }] });
-    };
-
-    const handleRemoveItem = (index) => {
-      setFormData({ ...formData, items: formData.items.filter((_, i) => i !== index) });
-    };
-
-    const handleItemChange = (index, field, value) => {
-      const newItems = [...formData.items];
-      newItems[index][field] = field === 'quantity' ? parseInt(value) || 1 : value;
-      setFormData({ ...formData, items: newItems });
-    };
-
-    const handleSubmit = async (e) => {
-      e.preventDefault();
-      if (!formData.branchId || formData.items.length === 0) {
-        alert('Please select a branch and add items');
-        return;
-      }
-      try {
-        if (modalMode === 'create') {
-          await api.post('/sales', formData);
-          alert('Sale created successfully!');
-        } else {
-          await api.put(`/sales/${selectedSale.id}`, formData);
-          alert('Sale updated successfully!');
-        }
-        handleCloseModal();
-        loadData();
-        setCurrentPage(1); // Reset to first page after adding/editing
-      } catch (error) {
-        alert('Failed to save sale: ' + error.message);
-      }
-    };
-
-    const handleDelete = async (id) => {
-  const sale = sales.find(s => s.id === id);
-  
-  if (!sale) {
-    alert('Sale not found');
-    return;
-  }
-
-  // Show appropriate warning based on status
-  let confirmMessage = 'Are you sure you want to delete this sale?';
-  if (sale.status === 'CONFIRMED') {
-    confirmMessage = 'This sale is CONFIRMED. Deleting it will return the stock to the branch. Are you sure?';
-  } else if (sale.status === 'INVOICED') {
-    confirmMessage = 'This sale is INVOICED. Deleting it will return the stock to the branch. Are you sure?';
-  } else if (sale.status === 'PENDING') {
-    confirmMessage = 'This sale is PENDING. Deleting it will release the reserved stock. Are you sure?';
-  }
-
-  if (!window.confirm(confirmMessage)) return;
-  
-  try {
-    await api.delete(`/sales/${id}`);
-    alert('Sale deleted successfully. Inventory has been adjusted.');
+    setStatusFilter('ALL');
     loadData();
-    // If the last item on the current page is deleted, go to previous page
-    if (filteredSales.length % itemsPerPage === 1 && currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  } catch (error) {
-    alert('Failed to delete: ' + error.message);
-  }
-};
-
-   const handleUpdateStatus = async (id, status) => {
-  try {
-    // Get the admin's name from localStorage
-    const generatedBy = localStorage.getItem('fullName') || 'System';
-    const url = `/sales/${id}/status?status=${status}&generatedBy=${encodeURIComponent(generatedBy)}`;
-
-    await api.put(url, null);
-    
-    // Reload data to get fresh status from backend
-    await loadData();
-    
-    // Show appropriate message based on status
-    if (status === 'CONFIRMED') {
-      alert('Sale confirmed! Stock has been deducted from branch inventory.');
-    } else if (status === 'INVOICED') {
-      alert('Sale marked as INVOICED! Ready for invoice generation.');
-    } else {
-      alert(`Sale status updated to ${status}!`);
-    }
-  } catch (err) {
-    alert('Error updating status: ' + (err.message || 'Unknown error'));
-    console.error('Status update error:', err);
-  }
-};
-
-  const getStatusColor = (status) => {
-    if (status === 'INVOICED') return 'bg-green-100 text-green-800';
-    if (status === 'CONFIRMED') return 'bg-blue-100 text-blue-800';
-    return 'bg-yellow-100 text-yellow-800';
+    setCurrentPage(1);
   };
 
-    const handleFilterSales = async () => {
-  try {
-    const filtered = await api.post('/sales/filter', filterData);
-    if (filtered.success) {
-      setSales(filtered.data || []);
-      setShowFilterModal(false);
-      setCurrentPage(1);
-      alert(`Found ${filtered.data?.length || 0} sales`);
-    }
-  } catch (error) {
-    alert('Filter failed: ' + error.message);
-  }
-};
-
-  const handleGenerateInvoice = async () => {
-  if (!filterData.clientId) {
-    alert('Please select a client first');
-    return;
-  }
-  
-  try {
-    const generatedBy = localStorage.getItem('fullName') || 'System';
-    
-    const response = await api.post('/sales/invoice/generate', {
-      ...filterData,
-      generatedBy: generatedBy
-    });
-    
-    if (response.success) {
-      // Initialize adjustments array
-      response.data.adjustments = response.data.adjustments || [];
-      setInvoiceReport(response.data);
-      setShowInvoiceModal(false);
-      
-      let successMessage = `✅ Invoice generated successfully!\n\n`;
-      successMessage += `Generated by: ${generatedBy}\n`;
-      successMessage += `Total Sales in Report: ${response.data.totalSalesCount || 0}\n`;
-      
-      if (response.data.newlyInvoicedCount > 0) {
-        successMessage += `Newly Marked as INVOICED: ${response.data.newlyInvoicedCount}\n`;
-      }
-      
-      successMessage += `Total Amount: ₱${formatCurrency(response.data.totalSalesVatInclusive || 0)}\n\n`;
-      successMessage += `Note: Only CONFIRMED and INVOICED sales are included in invoice generation.`;
-      
-      alert(successMessage);
-      
-      await loadData(); // Reload to show updated statuses
-    } else {
-      alert('Failed to generate invoice: ' + (response.message || 'Unknown error'));
-    }
-  } catch (error) {
-    console.error('Invoice generation error:', error);
-    
-    // Better error handling
-    if (error.message.includes('No sales found')) {
-      alert('Cannot generate invoice:\n\n' + 
-            'No CONFIRMED or INVOICED sales found for the selected criteria.\n' +
-            'Please confirm sales first before generating invoices.');
-    } else {
-      alert('Failed to generate invoice: ' + error.message);
-    }
-  }
-};
-
-    const handleResetFilter = () => {
-      setFilterData({
-        clientId: '',
-        branchId: '',
-        status: '',
-        startMonth: 1,
-        endMonth: 12,
-        startYear: new Date().getFullYear(),
-        endYear: new Date().getFullYear()
-      });
-      setStatusFilter('ALL');
-      loadData();
-      setCurrentPage(1); // Reset to first page
+  const sortByStatus = (sales) => {
+    const statusOrder = {
+      'PENDING': 1,
+      'CONFIRMED': 2,
+      'INVOICED': 3
     };
-
-    const sortByStatus = (sales) => {
-  const statusOrder = {
-    'PENDING': 1,
-    'CONFIRMED': 2,
-    'INVOICED': 3
+    
+    return [...sales].sort((a, b) => {
+      const orderA = statusOrder[a.status] || 999;
+      const orderB = statusOrder[b.status] || 999;
+      return orderA - orderB;
+    });
   };
-  
-  return [...sales].sort((a, b) => {
-    const orderA = statusOrder[a.status] || 999;
-    const orderB = statusOrder[b.status] || 999;
-    return orderA - orderB;
-  });
-};
 
-    const filteredSales = sortByStatus(sales.filter(sale => {
+  const filteredSales = sortByStatus(sales.filter(sale => {
     const searchLower = searchTerm.toLowerCase();
     return (
       sale.branch?.branchName?.toLowerCase().includes(searchLower) ||
@@ -519,49 +508,44 @@ const getProductPriceForClient = async (productId, clientId) => {
     );
   }));
 
-    // Pagination calculations
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentSales = filteredSales.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(filteredSales.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentSales = filteredSales.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredSales.length / itemsPerPage);
 
-    // Pagination controls
-    const paginate = (pageNumber) => setCurrentPage(pageNumber);
-    const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
-    const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
 
-    // Generate page numbers to display
-    const getPageNumbers = () => {
-      const pageNumbers = [];
-      const maxVisiblePages = 5;
-      
-      if (totalPages <= maxVisiblePages) {
-        for (let i = 1; i <= totalPages; i++) {
-          pageNumbers.push(i);
-        }
-      } else {
-        const startPage = Math.max(1, currentPage - 2);
-        const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-        
-        for (let i = startPage; i <= endPage; i++) {
-          pageNumbers.push(i);
-        }
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
       }
+    } else {
+      const startPage = Math.max(1, currentPage - 2);
+      const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
       
-      return pageNumbers;
-    };
+      for (let i = startPage; i <= endPage; i++) {
+        pageNumbers.push(i);
+      }
+    }
+    
+    return pageNumbers;
+  };
 
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthsFull = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const monthsFull = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
-    // Prepare dropdown data
-    const branchOptions = branches.map(b => ({ id: b.id, name: `${b.branchName} (${b.branchCode})` }));
-    const clientOptions = clients.map(c => ({
+  const branchOptions = branches.map(b => ({ id: b.id, name: `${b.branchName} (${b.branchCode})` }));
+  const clientOptions = clients.map(c => ({
     id: c.id,
-    name: c.clientName || c.companyName || c.name // common variations
-    }));
-    const productOptions = products.map(p => {
+    name: c.clientName || c.companyName || c.name
+  }));
+  const productOptions = products.map(p => {
     const clientPrice = productPrices[p.id];
     const displayPrice = clientPrice !== undefined ? clientPrice : p.price;
     const stockInfo = branchStocks[p.id];
@@ -573,13 +557,13 @@ const getProductPriceForClient = async (productId, clientId) => {
     };
   });
 
-    if (loading) {
-      return (
-        <div className="flex items-center justify-center h-screen bg-gray-50">
-          <div className="text-xl text-gray-600">Loading Sales...</div>
-        </div>
-      );
-    }
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="text-xl text-gray-600">Loading Sales...</div>
+      </div>
+    );
+  }
 
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -1733,7 +1717,6 @@ const getProductPriceForClient = async (productId, clientId) => {
           </div>
         </div>
       );
-    }
     };
 
     export default SalesManagement;

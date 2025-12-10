@@ -1324,21 +1324,18 @@ const ProductTransactionsModal = ({ product, transactions, isOpen, onClose, show
 
 
     
-    const handleViewTransaction = async (transaction) => {
+const handleViewTransaction = async (transaction) => {
   try {
     if (transaction.inventoryType === 'SALE') {
       let saleId;
       
       if (transaction.id > 2000000) {
         saleId = transaction.id - 2000000;
-      } 
-      else if (transaction.referenceNumber && transaction.referenceNumber.includes('SALE-')) {
+      } else if (transaction.referenceNumber && transaction.referenceNumber.includes('SALE-')) {
         saleId = parseInt(transaction.referenceNumber.replace('SALE-', ''));
-      } 
-      else if (transaction.id) {
+      } else if (transaction.id) {
         saleId = transaction.id;
-      } 
-      else {
+      } else {
         toast.error('Cannot find valid sale ID');
         return;
       }
@@ -1348,19 +1345,44 @@ const ProductTransactionsModal = ({ product, transactions, isOpen, onClose, show
         return;
       }
 
-      
       try {
-        const fullSale = await api.get(`/sales/${saleId}`);
+        const fullSaleRes = await api.get(`/sales/${saleId}`);
         
-        const allTransactionPromises = fullSale.items.map(item => 
-          api.get(`/transactions/product/${item.product.id}`)
-        );
+        // Check if the API call was successful and has data
+        if (!fullSaleRes.success || !fullSaleRes.data) {
+          toast.error('Sale details not found. It may have been deleted.');
+          return;
+        }
         
-        const allProductTransactions = await Promise.all(allTransactionPromises);
+        const fullSale = fullSaleRes.data;
         
+        // Check if items exist and is an array
+        if (!fullSale.items || !Array.isArray(fullSale.items)) {
+          toast.error('Sale items data is missing or invalid.');
+          return;
+        }
+
+        // Create an array of promises for each product transaction
+        const allTransactionPromises = fullSale.items.map(item => {
+          if (item.product && item.product.id) {
+            return api.get(`/transactions/product/${item.product.id}`);
+          }
+          return Promise.resolve({ success: false, data: [] });
+        });
+
+        const allProductTransactionResponses = await Promise.all(allTransactionPromises);
+        
+        // Extract data from successful responses
+        const allProductTransactions = allProductTransactionResponses
+          .filter(res => res.success && Array.isArray(res.data))
+          .flatMap(res => res.data);
+
         const thisSaleTransactions = allProductTransactions
-          .flat()
-          .filter(t => t.referenceNumber === `SALE-${saleId}` || t.referenceId === saleId)
+          .filter(t => 
+            (t.referenceNumber === `SALE-${saleId}`) || 
+            (t.referenceId === saleId) ||
+            (t.remarks && t.remarks.includes(`SALE-${saleId}`))
+          )
           .sort((a, b) => new Date(a.transactionDate) - new Date(b.transactionDate));
         
         setSelectedProduct({
@@ -1376,19 +1398,20 @@ const ProductTransactionsModal = ({ product, transactions, isOpen, onClose, show
           year: fullSale.year,
           fullTransactionHistory: thisSaleTransactions
         });
+
         const transactionItems = fullSale.items.map(item => {
           const itemTransactions = thisSaleTransactions.filter(t => 
-            t.productId === item.product.id
+            t.productId === item.product?.id
           );
           
           return {
-            id: item.id,
-            productId: item.product.id,
-            productName: item.product.productName,
-            sku: item.product.sku,
+            id: item.id || `${saleId}-${item.product?.id || 'unknown'}`,
+            productId: item.product?.id,
+            productName: item.product?.productName || 'Unknown Product',
+            sku: item.product?.sku || 'N/A',
             transactionType: 'SALE',
             inventoryType: 'SALE',
-            quantity: item.quantity,
+            quantity: item.quantity || 0,
             fromBranch: fullSale.branch,
             referenceId: fullSale.id,
             referenceNumber: `SALE-${fullSale.id}`,
@@ -1404,147 +1427,188 @@ const ProductTransactionsModal = ({ product, transactions, isOpen, onClose, show
         setShowTransactionsModal(true);
       } catch (saleErr) {
         console.error('Failed to fetch sale details:', saleErr);
-        toast.error('Sale details not found. It may have been deleted.');
+        toast.error('Failed to load sale details. Please try again.');
       }
       return;
     }
 
-        if (transaction.inventoryType === 'DELIVERY') {
-          let deliveryId;
-          if (transaction.id && transaction.id > 1000000) {
-            deliveryId = transaction.id - 1000000;
-          } else if (transaction.id) {
+    if (transaction.inventoryType === 'DELIVERY') {
+      let deliveryId;
+      if (transaction.id && transaction.id > 1000000) {
+        deliveryId = transaction.id - 1000000;
+      } else if (transaction.id) {
+        deliveryId = transaction.id;
+      } else {
+        toast.error('Cannot find valid delivery ID');
+        return;
+      }
 
-            deliveryId = transaction.id;
-          } else {
-            toast.error('Cannot find valid delivery ID');
-            return;
-          }
+      if (deliveryId <= 0) {
+        toast.error('Invalid delivery ID: ' + deliveryId);
+        return;
+      }
 
-          if (deliveryId <= 0) {
-            toast.error('Invalid delivery ID: ' + deliveryId);
-            return;
-          }
-
-          const fullDelivery = await api.get(`/deliveries/${deliveryId}`);
-          
-          const allTransactionPromises = fullDelivery.items.map(item => 
-            item.product ? api.get(`/transactions/product/${item.product.id}`) : Promise.resolve([])
-          );
-          
-          const allProductTransactions = await Promise.all(allTransactionPromises);
-          
-
-          const thisDeliveryTransactions = allProductTransactions
-            .flat()
-            .filter(t => t.referenceNumber === fullDelivery.deliveryReceiptNumber)
-            .sort((a, b) => new Date(a.transactionDate) - new Date(b.transactionDate));
-          
-          setSelectedProduct({
-            productName: 'Delivery Items',
-            sku: fullDelivery.deliveryReceiptNumber || `DEL-${deliveryId}`,
-            warehouseName: transaction.fromWarehouse?.warehouseName,
-            branchName: transaction.toBranch?.branchName,
-            deliveryStatus: fullDelivery.status,
-            deliveredAt: fullDelivery.deliveredAt,
-            fullTransactionHistory: thisDeliveryTransactions
-          });
-          
-
-          const transactionItems = fullDelivery.items.map((item, idx) => {
-            const fromWarehouse = item.warehouse;
-            const toBranch = fullDelivery.branch;
-            
-            const itemTransactions = thisDeliveryTransactions.filter(t => 
-              item.product && t.productId === item.product.id
-            );
-            
-            return {
-              id: `${deliveryId}-${item.product?.id}-${idx}`,
-              productId: item.product?.id,
-              productName: item.product?.productName || 'Unknown Product',
-              sku: item.product?.sku,
-              transactionType: 'DELIVERY',
-              inventoryType: 'DELIVERY',
-              quantity: item.quantity,
-              fromWarehouse: fromWarehouse,
-              fromBranch: null,
-              toWarehouse: null,
-              toBranch: toBranch,
-              referenceId: deliveryId,
-              referenceNumber: fullDelivery.deliveryReceiptNumber || `DEL-${deliveryId}`,
-              transactionDate: fullDelivery.deliveredAt || fullDelivery.createdAt || fullDelivery.date,
-              action: 'DELIVERY',
-              remarks: `DELIVERY: ${fullDelivery.deliveryReceiptNumber}`,
-              statusHistory: itemTransactions
-            };
-          });
-          
-          setProductTransactions(transactionItems);
-          setShowStockDetails(false);
-          setShowTransactionsModal(true);
-          return;
-        }
-        let inventoryId = transaction.id;
+      try {
+        const fullDeliveryRes = await api.get(`/deliveries/${deliveryId}`);
         
-        if (inventoryId > 1000000 && inventoryId < 2000000) {
-          toast.error('This appears to be a delivery transaction. Please use delivery view.');
-          return;
-        } else if (inventoryId > 2000000) {
-          toast.error('This appears to be a sale transaction. Please use sale view.');
+        // Check if the API call was successful and has data
+        if (!fullDeliveryRes.success || !fullDeliveryRes.data) {
+          toast.error('Delivery details not found. It may have been deleted.');
           return;
         }
         
-        const freshInventory = await api.get(`/inventories/${inventoryId}`);
+        const fullDelivery = fullDeliveryRes.data;
         
-        setSelectedProduct({
-          productName: transaction.inventoryType === 'TRANSFER' ? 'Transfer Transaction' :
-                      transaction.inventoryType === 'RETURN' ? 'Return Transaction' :
-                      transaction.inventoryType === 'STOCK_IN' ? 'Stock In Items' :
-                      transaction.inventoryType === 'DAMAGE' ? 'Damage Report' :
-                      'Transaction Items',
-          sku: `INV-${inventoryId}`,
-          warehouseName: transaction.fromWarehouse?.warehouseName || transaction.toWarehouse?.warehouseName,
-          branchName: transaction.fromBranch?.branchName || transaction.toBranch?.branchName
+        // Check if items exist and is an array
+        if (!fullDelivery.items || !Array.isArray(fullDelivery.items)) {
+          toast.error('Delivery items data is missing or invalid.');
+          return;
+        }
+
+        // Create an array of promises for each product transaction
+        const allTransactionPromises = fullDelivery.items.map(item => {
+          if (item.product && item.product.id) {
+            return api.get(`/transactions/product/${item.product.id}`);
+          }
+          return Promise.resolve({ success: false, data: [] });
         });
         
-        const transactionItems = freshInventory.items.map((item, idx) => ({
-          id: `${inventoryId}-${item.product?.id}-${idx}`,
-          productId: item.product?.id,
-          productName: item.product?.productName || 'Unknown Product',
-          sku: item.product?.sku,
-          transactionType: transaction.inventoryType,
-          inventoryType: transaction.inventoryType,
-          quantity: item.quantity,
-          fromWarehouse: freshInventory.fromWarehouse,
-          fromBranch: freshInventory.fromBranch,
-          toWarehouse: freshInventory.toWarehouse,
-          toBranch: freshInventory.toBranch,
-          referenceId: inventoryId,
-          referenceNumber: `INV-${inventoryId}`,
-          transactionDate: freshInventory.createdAt || freshInventory.verificationDate,
-          action: transaction.inventoryType === 'STOCK_IN' ? 'ADD' :
-                  transaction.inventoryType === 'DAMAGE' ? 'SUBTRACT' : 
-                  'PROCESS',
-          remarks: freshInventory.remarks || `${transaction.inventoryType} transaction`
-        }));
+        const allProductTransactionResponses = await Promise.all(allTransactionPromises);
+        
+        // Extract data from successful responses
+        const allProductTransactions = allProductTransactionResponses
+          .filter(res => res.success && Array.isArray(res.data))
+          .flatMap(res => res.data);
+        
+        const thisDeliveryTransactions = allProductTransactions
+          .filter(t => t.referenceNumber === fullDelivery.deliveryReceiptNumber)
+          .sort((a, b) => new Date(a.transactionDate) - new Date(b.transactionDate));
+        
+        setSelectedProduct({
+          productName: 'Delivery Items',
+          sku: fullDelivery.deliveryReceiptNumber || `DEL-${deliveryId}`,
+          warehouseName: transaction.fromWarehouse?.warehouseName,
+          branchName: transaction.toBranch?.branchName,
+          deliveryStatus: fullDelivery.status,
+          deliveredAt: fullDelivery.deliveredAt,
+          fullTransactionHistory: thisDeliveryTransactions
+        });
+
+        const transactionItems = fullDelivery.items.map((item, idx) => {
+          const fromWarehouse = item.warehouse;
+          const toBranch = fullDelivery.branch;
+          
+          const itemTransactions = thisDeliveryTransactions.filter(t => 
+            item.product && t.productId === item.product.id
+          );
+          
+          return {
+            id: `${deliveryId}-${item.product?.id || 'unknown'}-${idx}`,
+            productId: item.product?.id,
+            productName: item.product?.productName || 'Unknown Product',
+            sku: item.product?.sku || 'N/A',
+            transactionType: 'DELIVERY',
+            inventoryType: 'DELIVERY',
+            quantity: item.quantity || 0,
+            fromWarehouse: fromWarehouse,
+            fromBranch: null,
+            toWarehouse: null,
+            toBranch: toBranch,
+            referenceId: deliveryId,
+            referenceNumber: fullDelivery.deliveryReceiptNumber || `DEL-${deliveryId}`,
+            transactionDate: fullDelivery.deliveredAt || fullDelivery.createdAt || fullDelivery.date,
+            action: 'DELIVERY',
+            remarks: `DELIVERY: ${fullDelivery.deliveryReceiptNumber}`,
+            statusHistory: itemTransactions
+          };
+        });
         
         setProductTransactions(transactionItems);
         setShowStockDetails(false);
         setShowTransactionsModal(true);
-        
-      } catch (err) {
-        console.error('Failed to load transaction details:', err);
-        
-        if (err.message.includes('404') || err.message.includes('not found')) {
-          toast.error('Transaction details not found. The record may have been deleted.');
-        } else if (err.message.includes('401') || err.message.includes('unauthorized')) {
-          toast.error('Session expired. Please log in again.');
-        } else {
-          toast.error('Failed to load transaction details: ' + err.message);
-        }
+        return;
+      } catch (deliveryErr) {
+        console.error('Failed to fetch delivery details:', deliveryErr);
+        toast.error('Failed to load delivery details. Please try again.');
+        return;
       }
-    };
+    }
+
+    // Handle other transaction types
+    let inventoryId = transaction.id;
+    
+    if (inventoryId > 1000000 && inventoryId < 2000000) {
+      toast.error('This appears to be a delivery transaction. Please use delivery view.');
+      return;
+    } else if (inventoryId > 2000000) {
+      toast.error('This appears to be a sale transaction. Please use sale view.');
+      return;
+    }
+    
+    try {
+      const freshInventoryRes = await api.get(`/inventories/${inventoryId}`);
+      
+      if (!freshInventoryRes.success || !freshInventoryRes.data) {
+        toast.error('Inventory details not found. It may have been deleted.');
+        return;
+      }
+      
+      const freshInventory = freshInventoryRes.data;
+      
+      setSelectedProduct({
+        productName: transaction.inventoryType === 'TRANSFER' ? 'Transfer Transaction' :
+                    transaction.inventoryType === 'RETURN' ? 'Return Transaction' :
+                    transaction.inventoryType === 'STOCK_IN' ? 'Stock In Items' :
+                    transaction.inventoryType === 'DAMAGE' ? 'Damage Report' :
+                    'Transaction Items',
+        sku: `INV-${inventoryId}`,
+        warehouseName: transaction.fromWarehouse?.warehouseName || transaction.toWarehouse?.warehouseName,
+        branchName: transaction.fromBranch?.branchName || transaction.toBranch?.branchName
+      });
+      
+      const transactionItems = (freshInventory.items || []).map((item, idx) => ({
+        id: `${inventoryId}-${item.product?.id || 'unknown'}-${idx}`,
+        productId: item.product?.id,
+        productName: item.product?.productName || 'Unknown Product',
+        sku: item.product?.sku || 'N/A',
+        transactionType: transaction.inventoryType,
+        inventoryType: transaction.inventoryType,
+        quantity: item.quantity || 0,
+        fromWarehouse: freshInventory.fromWarehouse,
+        fromBranch: freshInventory.fromBranch,
+        toWarehouse: freshInventory.toWarehouse,
+        toBranch: freshInventory.toBranch,
+        referenceId: inventoryId,
+        referenceNumber: `INV-${inventoryId}`,
+        transactionDate: freshInventory.createdAt || freshInventory.verificationDate,
+        action: transaction.inventoryType === 'STOCK_IN' ? 'ADD' :
+                transaction.inventoryType === 'DAMAGE' ? 'SUBTRACT' : 
+                'PROCESS',
+        remarks: freshInventory.remarks || `${transaction.inventoryType} transaction`
+      }));
+      
+      setProductTransactions(transactionItems);
+      setShowStockDetails(false);
+      setShowTransactionsModal(true);
+      
+    } catch (err) {
+      console.error('Failed to load inventory details:', err);
+      toast.error('Failed to load transaction details: ' + (err.message || 'Unknown error'));
+    }
+    
+  } catch (err) {
+    console.error('Failed to load transaction details:', err);
+    
+    if (err.message.includes('404') || err.message.includes('not found')) {
+      toast.error('Transaction details not found. The record may have been deleted.');
+    } else if (err.message.includes('401') || err.message.includes('unauthorized')) {
+      toast.error('Session expired. Please log in again.');
+    } else {
+      toast.error('Failed to load transaction details: ' + (err.message || 'Unknown error'));
+    }
+  }
+};
+
 
 
   const handleViewTransactions = async (product, showStock = false) => {

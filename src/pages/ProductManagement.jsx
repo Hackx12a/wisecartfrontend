@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Edit2, Trash2, Search, X, Package, DollarSign, Tag, Globe, User, Box, Weight, Ruler, Palette, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+  Plus, Edit2, Trash2, Search, X, Package, DollarSign, Tag, Globe, User, Box, 
+  Weight, Ruler, Palette, ChevronDown, ChevronLeft, ChevronRight, 
+  Check, AlertCircle  // Add these
+} from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
 // Import your actual API from services
@@ -235,6 +239,32 @@ const ProductManagement = () => {
       return;
     }
 
+    const skuValidation = checkSKUAvailability(formData.sku);
+    if (!skuValidation.available) {
+      toast.error(skuValidation.message);
+      return;
+    }
+
+    if (formData.upc && formData.upc.trim() !== '') {
+    const upcValidation = checkUPCAvailability(formData.upc);
+    if (!upcValidation.available) {
+      toast.error(upcValidation.message);
+      return;
+    }
+   }
+
+    if (formData.upc && formData.upc.trim() !== '') {
+      const existingProduct = products.find(p => 
+        p.upc && p.upc.toLowerCase() === formData.upc.toLowerCase() &&
+        (!editingProduct || p.id !== editingProduct.id)
+      );
+      
+      if (existingProduct) {
+        toast.error(`Product with UPC "${formData.upc}" already exists`);
+        return;
+      }
+    }
+
     try {
       // Inside handleSubmit → before payload
       const normalizedVariations = formData.variations
@@ -284,23 +314,87 @@ const ProductManagement = () => {
         payload.clientPrice = parseFloat(formData.clientPrice);
       }
 
+      let response;
       if (editingProduct) {
-        await api.put(`/products/${editingProduct.id}`, payload);
-        toast.success('Product updated successfully');
+        response = await api.put(`/products/${editingProduct.id}`, payload);
       } else {
-        await api.post('/products', payload);
-        toast.success('Product created successfully');
+        response = await api.post('/products', payload);
       }
 
+      // Check if the API call was successful
+      if (!response.success) {
+        // Handle specific error messages from backend
+        const errorMessage = response.error || 'Failed to save product';
+        
+        // Check for UPC duplicate error
+        if (errorMessage.toLowerCase().includes('upc') || 
+            errorMessage.toLowerCase().includes('duplicate') ||
+            errorMessage.toLowerCase().includes('already exists')) {
+          toast.error(`Product with UPC "${formData.upc}" already exists`);
+        } else {
+          toast.error(errorMessage);
+        }
+        return;
+      }
+
+      // Only show success if no error
+      toast.success(editingProduct ? 'Product updated successfully' : 'Product created successfully');
+      
       setShowModal(false);
       resetForm();
       loadData();
       setCurrentPage(1); // Reset to first page after adding/editing
     } catch (error) {
-      toast.error(error.message || 'Failed to save product');
-      console.error(error);
+      // Handle network errors or unexpected errors
+      console.error('Error saving product:', error);
+      
+      // Check for specific error patterns
+      const errorMessage = error.message || 'Failed to save product';
+      
+      if (errorMessage.toLowerCase().includes('upc') || 
+          errorMessage.toLowerCase().includes('duplicate') ||
+          errorMessage.toLowerCase().includes('already exists')) {
+        toast.error(`Product with UPC "${formData.upc}" already exists`);
+      } else if (errorMessage.includes('400') || errorMessage.includes('Bad Request')) {
+        toast.error('Invalid data. Please check all fields and try again.');
+      } else if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+        toast.error('Session expired. Please login again.');
+      } else if (errorMessage.includes('500') || errorMessage.includes('Server Error')) {
+        toast.error('Server error. Please try again later.');
+      } else {
+        toast.error(errorMessage);
+      }
     }
   };
+
+
+  const checkUPCAvailability = (upc) => {
+  if (!upc || upc.trim() === '') return { available: true, message: '' };
+  
+  const existingProduct = products.find(p => 
+    p.upc && p.upc.toLowerCase() === upc.toLowerCase() &&
+    (!editingProduct || p.id !== editingProduct.id)
+  );
+  
+  return {
+    available: !existingProduct,
+    message: existingProduct ? `UPC "${upc}" already exists` : ''
+  };
+};
+
+const checkSKUAvailability = (sku) => {
+  if (!sku || sku.trim() === '') return { available: true, message: '' };
+  
+  const existingProduct = products.find(p => 
+    p.sku && p.sku.toLowerCase() === sku.toLowerCase() &&
+    (!editingProduct || p.id !== editingProduct.id)
+  );
+  
+  return {
+    available: !existingProduct,
+    message: existingProduct ? `SKU "${sku}" already exists` : ''
+  };
+};
 
   const handleEdit = (product) => {
     setEditingProduct(product);
@@ -635,28 +729,100 @@ const ProductManagement = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       SKU <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      name="sku"
-                      value={formData.sku}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter SKU"
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        name="sku"
+                        value={formData.sku}
+                        onChange={(e) => {
+                          handleInputChange(e);
+                          // Real-time validation
+                          if (e.target.value.trim() !== '') {
+                            const skuValidation = checkSKUAvailability(e.target.value);
+                            // Visual feedback is handled by the styling below
+                          }
+                        }}
+                        required
+                        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          formData.sku && formData.sku.trim() !== '' && !checkSKUAvailability(formData.sku).available
+                            ? 'border-red-300 bg-red-50' 
+                            : formData.sku && formData.sku.trim() !== '' && checkSKUAvailability(formData.sku).available
+                            ? 'border-green-300 bg-green-50'
+                            : 'border-gray-300'
+                        }`}
+                        placeholder="Enter SKU"
+                      />
+                      {formData.sku && formData.sku.trim() !== '' && (
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                          {!checkSKUAvailability(formData.sku).available ? (
+                            <X className="h-5 w-5 text-red-500" />
+                          ) : (
+                            <Check className="h-5 w-5 text-green-500" />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {formData.sku && formData.sku.trim() !== '' && !checkSKUAvailability(formData.sku).available && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                        <AlertCircle size={14} />
+                        {checkSKUAvailability(formData.sku).message}
+                      </p>
+                    )}
+                    {formData.sku && formData.sku.trim() !== '' && checkSKUAvailability(formData.sku).available && (
+                      <p className="mt-1 text-sm text-green-600 flex items-center gap-1">
+                        <Check size={14} />
+                        SKU is available
+                      </p>
+                    )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">UPC</label>
-                    <input
-                      type="text"
-                      name="upc"
-                      value={formData.upc}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter UPC"
-                    />
-                  </div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">UPC</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          name="upc"
+                          value={formData.upc}
+                          onChange={(e) => {
+                            handleInputChange(e);
+                            // Real-time validation
+                            if (e.target.value.trim() !== '') {
+                              const upcValidation = checkUPCAvailability(e.target.value);
+                              // Visual feedback is handled by styling
+                            }
+                          }}
+                          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                            formData.upc && formData.upc.trim() !== '' && !checkUPCAvailability(formData.upc).available
+                              ? 'border-red-300 bg-red-50' 
+                              : formData.upc && formData.upc.trim() !== '' && checkUPCAvailability(formData.upc).available
+                              ? 'border-green-300 bg-green-50'
+                              : 'border-gray-300'
+                          }`}
+                          placeholder="Enter UPC"
+                        />
+                        {formData.upc && formData.upc.trim() !== '' && (
+                          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                            {!checkUPCAvailability(formData.upc).available ? (
+                              <X className="h-5 w-5 text-red-500" />
+                            ) : (
+                              <Check className="h-5 w-5 text-green-500" />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      {formData.upc && formData.upc.trim() !== '' && !checkUPCAvailability(formData.upc).available && (
+                        <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                          <AlertCircle size={14} />
+                          {checkUPCAvailability(formData.upc).message}
+                        </p>
+                      )}
+                      {formData.upc && formData.upc.trim() !== '' && checkUPCAvailability(formData.upc).available && (
+                        <p className="mt-1 text-sm text-green-600 flex items-center gap-1">
+                          <Check size={14} />
+                          UPC is available
+                        </p>
+                      )}
+                    </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
