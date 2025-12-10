@@ -179,7 +179,13 @@ const DeliveryManagement = () => {
 
 const handleGenerateReceiptFull = async (delivery) => {
   try {
-    const fullDelivery = await api.get(`/deliveries/${delivery.id}`);
+    const fullDeliveryRes = await api.get(`/deliveries/${delivery.id}`);
+    
+    if (!fullDeliveryRes.success) {
+      throw new Error(fullDeliveryRes.error || 'Failed to load delivery');
+    }
+    
+    const fullDelivery = fullDeliveryRes.data;
     
     const receipt = {
       id: fullDelivery.id,
@@ -227,20 +233,22 @@ const formatCurrency = (amount) => {
 
 
 
-  const loadWarehouseStock = async (warehouseId, productId, itemIndex) => {
-    try {
-      if (warehouseId && productId) {
-        const stock = await api.get(`/stocks/warehouses/${warehouseId}/products/${productId}`);
-        
+ const loadWarehouseStock = async (warehouseId, productId, itemIndex) => {
+  try {
+    if (warehouseId && productId) {
+      const stock = await api.get(`/stocks/warehouses/${warehouseId}/products/${productId}`);
+      
+      if (stock.success) {
         setWarehouseStocks(prev => ({
           ...prev,
-          [`${itemIndex}_${productId}_${warehouseId}`]: stock
+          [`${itemIndex}_${productId}_${warehouseId}`]: stock.data
         }));
       }
-    } catch (error) {
-      console.error('Failed to load stock information:', error);
     }
-  };
+  } catch (error) {
+    console.error('Failed to load stock information:', error);
+  }
+};
 
   // Enhanced validation function
   const validateDeliveryForm = () => {
@@ -304,27 +312,29 @@ const formatCurrency = (amount) => {
   }, [statusFilter]);
 
   const loadData = async () => {
-    try {
-      setLoading(true);
-      const [deliveriesData, branchesData, productsData, warehousesData, clientsData] = await Promise.all([
-        api.get('/deliveries/list'),
-        api.get('/branches'),
-        api.get('/products'),
-        api.get('/warehouse'),
-        api.get('/clients')
-      ]);
-      setDeliveries(deliveriesData);
-      setBranches(branchesData);
-      setProducts(productsData);
-      setWarehouses(warehousesData);
-      setClients(clientsData);
-    } catch (error) {
-      console.error('Failed to load data', error);
-      alert('Failed to load data: ' + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    setLoading(true);
+    const [deliveriesRes, branchesRes, productsRes, warehousesRes, clientsRes] = await Promise.all([
+      api.get('/deliveries/list'),
+      api.get('/branches'),
+      api.get('/products'),
+      api.get('/warehouse'),
+      api.get('/clients')
+    ]);
+
+    // Access the data property from each response
+    if (deliveriesRes.success) setDeliveries(deliveriesRes.data || []);
+    if (branchesRes.success) setBranches(branchesRes.data || []);
+    if (productsRes.success) setProducts(productsRes.data || []);
+    if (warehousesRes.success) setWarehouses(warehousesRes.data || []);
+    if (clientsRes.success) setClients(clientsRes.data || []);
+  } catch (error) {
+    console.error('Failed to load data', error);
+    alert('Failed to load data: ' + error.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleOpenModal = async (mode, delivery = null) => {
   setModalMode(mode);
@@ -346,96 +356,96 @@ const formatCurrency = (amount) => {
     setBranchInfo(null);
     setWarehouseStocks({});
   } else if (mode === 'edit' && delivery) {
-    // PREVENT EDITING IF DELIVERED
-    if (delivery.status === 'DELIVERED') {
+  // PREVENT EDITING IF DELIVERED
+  if (delivery.status === 'DELIVERED') {
+    alert('Cannot edit a delivery that has already been DELIVERED.');
+    return;
+  }
+  
+  try {
+    const fullDeliveryRes = await api.get(`/deliveries/${delivery.id}`);
+    
+    if (!fullDeliveryRes.success) {
+      throw new Error(fullDeliveryRes.error || 'Failed to load delivery');
+    }
+    
+    const fullDelivery = fullDeliveryRes.data;
+    
+    // Double check status from fresh data
+    if (fullDelivery.status === 'DELIVERED') {
       alert('Cannot edit a delivery that has already been DELIVERED.');
       return;
     }
     
-    try {
-      const fullDelivery = await api.get(`/deliveries/${delivery.id}`);
-      
-      // Double check status from fresh data
-      if (fullDelivery.status === 'DELIVERED') {
-        alert('Cannot edit a delivery that has already been DELIVERED.');
-        return;
+    setSelectedDelivery(fullDelivery);
+    setFormData({
+      branchId: fullDelivery.branch.id,
+      date: fullDelivery.date,
+      deliveryReceiptNumber: fullDelivery.deliveryReceiptNumber,
+      purchaseOrderNumber: fullDelivery.purchaseOrderNumber || '',
+      transmittal: fullDelivery.transmittal || '',
+      preparedBy: fullDelivery.preparedBy,
+      status: fullDelivery.status,
+      customStatus: fullDelivery.customStatus || '',
+      remarks: fullDelivery.remarks || '',
+      items: fullDelivery.items.map(item => ({
+        productId: item.product.id,
+        quantity: item.quantity,
+        unit: item.unit || '',
+        warehouseId: item.warehouse?.id || ''
+      }))
+    });
+    setBranchInfo({
+      clientName: fullDelivery.client.clientName,
+      tin: fullDelivery.client.tin,
+      fullAddress: `${fullDelivery.client.address || ''}, ${fullDelivery.client.city || ''}, ${fullDelivery.client.province || ''}`.trim()
+    });
+    
+    fullDelivery.items.forEach(async (item, index) => {
+      if (item.warehouse?.id && item.product?.id) {
+        await loadWarehouseStock(item.warehouse.id, item.product.id, index);
       }
-      
-      setSelectedDelivery(fullDelivery);
-      setFormData({
-        branchId: fullDelivery.branch.id,
-        date: fullDelivery.date,
-        deliveryReceiptNumber: fullDelivery.deliveryReceiptNumber,
-        purchaseOrderNumber: fullDelivery.purchaseOrderNumber || '',
-        transmittal: fullDelivery.transmittal || '',
-        preparedBy: fullDelivery.preparedBy,
-        status: fullDelivery.status,
-        customStatus: fullDelivery.customStatus || '',
-        remarks: fullDelivery.remarks || '',
-        items: fullDelivery.items.map(item => ({
-          productId: item.product.id,
-          quantity: item.quantity,
-          unit: item.unit || '',
-          warehouseId: item.warehouse?.id || ''
-        }))
-      });
-      setBranchInfo({
-        clientName: fullDelivery.client.clientName,
-        tin: fullDelivery.client.tin,
-        fullAddress: `${fullDelivery.client.address || ''}, ${fullDelivery.client.city || ''}, ${fullDelivery.client.province || ''}`.trim()
-      });
-      
-      fullDelivery.items.forEach(async (item, index) => {
-        if (item.warehouse?.id && item.product?.id) {
-          await loadWarehouseStock(item.warehouse.id, item.product.id, index);
-        }
-      });
-    } catch (error) {
-      console.error('Failed to load delivery details');
-      alert('Failed to load delivery details: ' + error.message);
-    }
-  } else if (mode === 'view' && delivery) {
-    try {
-      const fullDelivery = await api.get(`/deliveries/${delivery.id}`);
-      setSelectedDelivery(fullDelivery);
-    } catch (error) {
-      console.error('Failed to load delivery details:', error);
-    }
+    });
+  } catch (error) {
+    console.error('Failed to load delivery details');
+    alert('Failed to load delivery details: ' + error.message);
   }
-  setShowModal(true);
-};
+} else if (mode === 'view' && delivery) {
+  try {
+    const fullDeliveryRes = await api.get(`/deliveries/${delivery.id}`);
+    if (fullDeliveryRes.success) {
+      setSelectedDelivery(fullDeliveryRes.data);
+    }
+  } catch (error) {
+    console.error('Failed to load delivery details:', error);
+  }
+}
 
-// FIX THE PATCH ERROR - Use POST with proper endpoint
+
 const handleUpdateStatus = async (id, status) => {
   try {
     // Use the correct endpoint format that matches your backend
-    await api.patch(`/deliveries/${id}/status`, null, {
+    const response = await api.patch(`/deliveries/${id}/status`, null, {
       params: { status: status }
     });
     
-    if (selectedDelivery && selectedDelivery.id === id) {
-      const updatedDelivery = await api.get(`/deliveries/${id}`);
-      setSelectedDelivery(updatedDelivery);
+    if (response.success) {
+      if (selectedDelivery && selectedDelivery.id === id) {
+        const updatedDeliveryRes = await api.get(`/deliveries/${id}`);
+        if (updatedDeliveryRes.success) {
+          setSelectedDelivery(updatedDeliveryRes.data);
+        }
+      }
+      
+      await loadData();
+      alert(`Status updated to ${status} successfully`);
+    } else {
+      alert(response.error || 'Failed to update status');
     }
-    
-    await loadData();
-    alert(`Status updated to ${status} successfully`);
   } catch (error) {
     console.error('Failed to update status:', error);
     alert('Failed to update status: ' + (error.response?.data?.message || error.message));
   }
-};
-  const sortByStatus = (deliveries) => {
-  return [...deliveries].sort((a, b) => {
-    const isADelivered = a.status === 'DELIVERED' ? 1 : 0;
-    const isBDelivered = b.status === 'DELIVERED' ? 1 : 0;
-    
-    if (isADelivered !== isBDelivered) {
-      return isADelivered - isBDelivered;
-    }
-    
-    return 0;
-  });
 };
    
 
@@ -480,24 +490,25 @@ const handleUpdateStatus = async (id, status) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate form
+
     if (!validateDeliveryForm()) {
       return;
     }
 
-    // Validate stock availability for each item
+
     try {
       for (const item of formData.items) {
         const stockResponse = await api.get(`/stocks/warehouses/${item.warehouseId}/products/${item.productId}`);
         
-        if (!stockResponse || stockResponse.availableQuantity < item.quantity) {
+        if (!stockResponse.success || stockResponse.data?.availableQuantity < item.quantity) {
           const product = products.find(p => p.id === item.productId);
           const warehouse = warehouses.find(w => w.id === item.warehouseId);
           
-          alert(`Insufficient stock for product "${product?.productName}" in warehouse "${warehouse?.warehouseName}". Available: ${stockResponse?.availableQuantity || 0}, Requested: ${item.quantity}`);
+          alert(`Insufficient stock for product "${product?.productName}" in warehouse "${warehouse?.warehouseName}". Available: ${stockResponse.data?.availableQuantity || 0}, Requested: ${item.quantity}`);
           return;
         }
       }
+
 
       // If all validations pass, proceed with creating/updating delivery
       if (modalMode === 'create') {
@@ -598,7 +609,7 @@ const handleUpdateStatus = async (id, status) => {
     const receiptNumberToSave = receiptData.deliveryReceiptNumberDisplay?.trim() || 
                                receiptData.deliveryReceiptNumber;
 
-    await api.patch(`/deliveries/${receiptData.id}/receipt-details`, {
+    const response = await api.patch(`/deliveries/${receiptData.id}/receipt-details`, {
       deliveryReceiptNumber: receiptNumberToSave,
       termsOfPayment: receiptData.termsOfPayment || '',
       businessStyle: receiptData.businessStyle || '',
@@ -607,20 +618,26 @@ const handleUpdateStatus = async (id, status) => {
       items: itemsToUpdate
     });
     
-    alert('Receipt details saved successfully!');
-    await loadData();
-    
-    // Update the receipt data with saved values
-    const updatedDelivery = await api.get(`/deliveries/${receiptData.id}`);
-    setReceiptData(prev => ({
-      ...prev,
-      deliveryReceiptNumber: updatedDelivery.deliveryReceiptNumber,
-      deliveryReceiptNumberDisplay: receiptNumberToSave,
-      termsOfPayment: updatedDelivery.termsOfPayment,
-      businessStyle: updatedDelivery.businessStyle,
-      extraHeader: updatedDelivery.extraHeader || 'EXTRA'
-    }));
-    
+    if (response.success) {
+      alert('Receipt details saved successfully!');
+      await loadData();
+      
+      // Update the receipt data with saved values
+      const updatedDeliveryRes = await api.get(`/deliveries/${receiptData.id}`);
+      if (updatedDeliveryRes.success) {
+        const updatedDelivery = updatedDeliveryRes.data;
+        setReceiptData(prev => ({
+          ...prev,
+          deliveryReceiptNumber: updatedDelivery.deliveryReceiptNumber,
+          deliveryReceiptNumberDisplay: receiptNumberToSave,
+          termsOfPayment: updatedDelivery.termsOfPayment,
+          businessStyle: updatedDelivery.businessStyle,
+          extraHeader: updatedDelivery.extraHeader || 'EXTRA'
+        }));
+      }
+    } else {
+      alert(response.error || 'Failed to save receipt details');
+    }
   } catch (error) {
     console.error('Failed to save receipt details:', error);
     alert('Failed to save receipt details: ' + error.message);
@@ -1755,6 +1772,7 @@ const handleUpdateStatus = async (id, status) => {
       </div>
     </div>
   );
+}
 };
 
 export default DeliveryManagement;

@@ -1190,21 +1190,29 @@ const ProductTransactionsModal = ({ product, transactions, isOpen, onClose, show
       api.get('/clients')
     ]);
 
-    setInventories(invRes);
-  
-    setProducts(prodRes);
-    setWarehouses(warehousesRes);
-    setBranches(branchesRes);
-    setWarehouseStocks(warehouseStocksRes);
-    setBranchStocks(branchStocksRes);
-    setSales(salesRes);
-    setClients(clientsRes);
+    // Access the data property from each response
+    const inventoriesData = invRes.success ? invRes.data || [] : [];
+    const productsData = prodRes.success ? prodRes.data || [] : [];
+    const warehousesData = warehousesRes.success ? warehousesRes.data || [] : [];
+    const branchesData = branchesRes.success ? branchesRes.data || [] : [];
+    const warehouseStocksData = warehouseStocksRes.success ? warehouseStocksRes.data || [] : [];
+    const branchStocksData = branchStocksRes.success ? branchStocksRes.data || [] : [];
+    const salesData = salesRes.success ? salesRes.data || [] : [];
+    const clientsData = clientsRes.success ? clientsRes.data || [] : [];
 
+    setInventories(inventoriesData);
+    setProducts(productsData);
+    setWarehouses(warehousesData);
+    setBranches(branchesData);
+    setWarehouseStocks(warehouseStocksData);
+    setBranchStocks(branchStocksData);
+    setSales(salesData);
+    setClients(clientsData);
 
     const cleanedInventories = [];
     const seenSaleIds = new Set();
     
-    for (const inv of invRes) {
+    for (const inv of inventoriesData) {
       if (inv.inventoryType === 'SALE') {
         const saleId = inv.referenceNumber ? 
           parseInt(inv.referenceNumber.replace('SALE-', '')) : 
@@ -1221,13 +1229,15 @@ const ProductTransactionsModal = ({ product, transactions, isOpen, onClose, show
       }
     }
     
-    if (cleanedInventories.length !== invRes.length) {
+    if (cleanedInventories.length !== inventoriesData.length) {
       setInventories(cleanedInventories);
     }
 
     try {
       const summaryRes = await api.get('/inventories/products/summary');
-      setProductSummaries(summaryRes);
+      if (summaryRes.success) {
+        setProductSummaries(summaryRes.data || []);
+      }
     } catch (summaryErr) {
       console.warn('Could not load product summaries:', summaryErr);
       setProductSummaries([]);
@@ -1551,8 +1561,9 @@ const ProductTransactionsModal = ({ product, transactions, isOpen, onClose, show
     });
     
     // Load transactions for this product
-    const transactions = await api.get(`/transactions/product/${product.productId}`);
-    setProductTransactions(transactions);
+    const transactionsRes = await api.get(`/transactions/product/${product.productId}`);
+    const transactionsData = transactionsRes.success ? transactionsRes.data || [] : [];
+    setProductTransactions(transactionsData);
     setShowStockDetails(showStock);
     setShowTransactionsModal(true);
   } catch (err) {
@@ -1575,12 +1586,13 @@ const ProductTransactionsModal = ({ product, transactions, isOpen, onClose, show
       locationType: locationType
     });
     
-    const transactions = await api.get(`/transactions/product/${stock.productId}`);
+    const transactionsRes = await api.get(`/transactions/product/${stock.productId}`);
+    const transactionsData = transactionsRes.success ? transactionsRes.data || [] : [];
     
-    // ✅ UPDATED: Filter transactions for this specific location
-    let filteredTransactions = transactions;
+    // Filter transactions for this specific location
+    let filteredTransactions = transactionsData;
     if (locationType === 'warehouse' && stock.warehouseId) {
-      filteredTransactions = transactions.filter(t => {
+      filteredTransactions = transactionsData.filter(t => {
         const transactionType = t.transactionType || t.inventoryType;
         
         // For TRANSFER - only show SUBTRACT (sending out from warehouse)
@@ -1613,7 +1625,7 @@ const ProductTransactionsModal = ({ product, transactions, isOpen, onClose, show
                t.toWarehouse?.id === stock.warehouseId;
       });
     } else if (locationType === 'branch' && stock.branchId) {
-      filteredTransactions = transactions.filter(t => {
+      filteredTransactions = transactionsData.filter(t => {
         const transactionType = t.transactionType || t.inventoryType;
         
         // For TRANSFER - only show ADD (receiving at branch)

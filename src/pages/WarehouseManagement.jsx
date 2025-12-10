@@ -32,17 +32,24 @@ const WarehouseManagement = () => {
   }, []);
 
   const loadWarehouses = async () => {
-    setLoading(true);
-    try {
-      const data = await api.get('/warehouse');
-      setWarehouses(data);
-    } catch (error) {
-      toast.error('Failed to load warehouses');
-      console.error(error);
-    } finally {
-      setLoading(false);
+  setLoading(true);
+  try {
+    const response = await api.get('/warehouse');
+    // Check if response is successful and has data
+    if (response.success) {
+      setWarehouses(response.data || []);
+    } else {
+      toast.error(response.error || 'Failed to load warehouses');
+      setWarehouses([]);
     }
-  };
+  } catch (error) {
+    toast.error('Failed to load warehouses');
+    console.error(error);
+    setWarehouses([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;

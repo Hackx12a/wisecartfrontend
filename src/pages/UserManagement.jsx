@@ -37,17 +37,23 @@ const UserManagement = () => {
   }, []);
 
   const loadUsers = async () => {
-    setLoading(true);
-    try {
-      const data = await api.get('/users');
-      setUsers(data);
-    } catch (error) {
-      toast.error('Failed to load users');
-      console.error(error);
-    } finally {
-      setLoading(false);
+  setLoading(true);
+  try {
+    const response = await api.get('/users');
+    if (response.success) {
+      setUsers(response.data || []);
+    } else {
+      toast.error(response.error || 'Failed to load users');
+      setUsers([]);
     }
-  };
+  } catch (error) {
+    toast.error('Failed to load users');
+    console.error(error);
+    setUsers([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;

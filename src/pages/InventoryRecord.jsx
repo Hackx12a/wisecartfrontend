@@ -218,85 +218,95 @@ const InventoryRecordsManagement = () => {
   }, [statusFilter]);
 
   const loadData = async () => {
-    try {
-      setLoading(true);
-      const [inventoriesData, productsData, warehousesData, branchesData] = await Promise.all([
-        api.get('/inventories'),
-        api.get('/products'),
-        api.get('/warehouse'),
-        api.get('/branches')
-      ]);
-      
-      const actualInventories = inventoriesData.filter(inv => 
-        inv.inventoryType && 
-        ['STOCK_IN', 'TRANSFER', 'RETURN', 'DAMAGE'].includes(inv.inventoryType)
-      );
-      
-      setInventories(actualInventories);
-      setProducts(productsData);
-      setWarehouses(warehousesData);
-      setBranches(branchesData);
-    } catch (error) {
-      console.error('Failed to load data', error);
-      alert('Failed to load data: ' + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    setLoading(true);
+    const [inventoriesRes, productsRes, warehousesRes, branchesRes] = await Promise.all([
+      api.get('/inventories'),
+      api.get('/products'),
+      api.get('/warehouse'),
+      api.get('/branches')
+    ]);
+    
+    // Access the data property from each response
+    const inventoriesData = inventoriesRes.success ? inventoriesRes.data || [] : [];
+    const productsData = productsRes.success ? productsRes.data || [] : [];
+    const warehousesData = warehousesRes.success ? warehousesRes.data || [] : [];
+    const branchesData = branchesRes.success ? branchesRes.data || [] : [];
+    
+    const actualInventories = inventoriesData.filter(inv => 
+      inv.inventoryType && 
+      ['STOCK_IN', 'TRANSFER', 'RETURN', 'DAMAGE'].includes(inv.inventoryType)
+    );
+    
+    setInventories(actualInventories);
+    setProducts(productsData);
+    setWarehouses(warehousesData);
+    setBranches(branchesData);
+  } catch (error) {
+    console.error('Failed to load data', error);
+    alert('Failed to load data: ' + error.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const loadLocationStock = async (productId, itemIndex) => {
-    try {
-      let locationId = null;
-      let locationType = null;
+  try {
+    let locationId = null;
+    let locationType = null;
+    
+    if (formData.fromWarehouseId) {
+      locationId = formData.fromWarehouseId;
+      locationType = 'warehouse';
+    } else if (formData.fromBranchId) {
+      locationId = formData.fromBranchId;
+      locationType = 'branch';
+    } else if (formData.toWarehouseId) {
+      locationId = formData.toWarehouseId;
+      locationType = 'warehouse';
+    } else if (formData.toBranchId) {
+      locationId = formData.toBranchId;
+      locationType = 'branch';
+    }
+    
+    if (locationId && productId && locationType) {
+      let stockRes = null;
       
-      if (formData.fromWarehouseId) {
-        locationId = formData.fromWarehouseId;
-        locationType = 'warehouse';
-      } else if (formData.fromBranchId) {
-        locationId = formData.fromBranchId;
-        locationType = 'branch';
-      } else if (formData.toWarehouseId) {
-        locationId = formData.toWarehouseId;
-        locationType = 'warehouse';
-      } else if (formData.toBranchId) {
-        locationId = formData.toBranchId;
-        locationType = 'branch';
-      }
-      
-      if (locationId && productId && locationType) {
-        let stock = null;
-        
-        if (locationType === 'warehouse') {
-          stock = await api.get(`/stocks/warehouses/${locationId}/products/${productId}`);
+      if (locationType === 'warehouse') {
+        stockRes = await api.get(`/stocks/warehouses/${locationId}/products/${productId}`);
+        if (stockRes.success) {
           setWarehouseStocks(prev => ({
             ...prev,
-            [`${itemIndex}_${productId}_${locationId}`]: stock
+            [`${itemIndex}_${productId}_${locationId}`]: stockRes.data
           }));
-        } else if (locationType === 'branch') {
-          try {
-            stock = await api.get(`/stocks/branches/${locationId}/products/${productId}`);
+        }
+      } else if (locationType === 'branch') {
+        try {
+          stockRes = await api.get(`/stocks/branches/${locationId}/products/${productId}`);
+          if (stockRes.success) {
             setBranchStocks(prev => ({
               ...prev,
-              [`${itemIndex}_${productId}_${locationId}`]: stock
-            }));
-          } catch (error) {
-            console.log('Branch stock endpoint not available, using default');
-            stock = { availableQuantity: 0, quantity: 0, reservedQuantity: 0 };
-            setBranchStocks(prev => ({
-              ...prev,
-              [`${itemIndex}_${productId}_${locationId}`]: stock
+              [`${itemIndex}_${productId}_${locationId}`]: stockRes.data
             }));
           }
+        } catch (error) {
+          console.log('Branch stock endpoint not available, using default');
+          const defaultStock = { availableQuantity: 0, quantity: 0, reservedQuantity: 0 };
+          setBranchStocks(prev => ({
+            ...prev,
+            [`${itemIndex}_${productId}_${locationId}`]: defaultStock
+          }));
         }
-        
-        return stock;
       }
-    } catch (error) {
-      console.error('Failed to load stock:', error);
-      return { availableQuantity: 0, quantity: 0, reservedQuantity: 0 };
+      
+      return stockRes?.success ? stockRes.data : { availableQuantity: 0, quantity: 0, reservedQuantity: 0 };
     }
-    return null;
-  };
+  } catch (error) {
+    console.error('Failed to load stock:', error);
+    return { availableQuantity: 0, quantity: 0, reservedQuantity: 0 };
+  }
+  return null;
+};
 
   const getItemStockInfo = (itemIndex, productId) => {
     let locationId = null;
@@ -342,64 +352,70 @@ const InventoryRecordsManagement = () => {
       setWarehouseStocks({});
       setBranchStocks({});
     } else if (mode === 'edit' && inventory) {
-      if (inventory.status === 'CONFIRMED') {
+    if (inventory.status === 'CONFIRMED') {
+      alert('Cannot edit a confirmed inventory record.');
+      return;
+    }
+    
+    try {
+      const fullInventoryRes = await api.get(`/inventories/${inventory.id}`);
+      
+      if (!fullInventoryRes.success) {
+        throw new Error(fullInventoryRes.error || 'Failed to load inventory');
+      }
+      
+      const fullInventory = fullInventoryRes.data;
+      
+      if (fullInventory.status === 'CONFIRMED') {
         alert('Cannot edit a confirmed inventory record.');
         return;
       }
       
-      try {
-        const fullInventory = await api.get(`/inventories/${inventory.id}`);
+      setSelectedInventory(fullInventory);
+      setFormData({
+        inventoryType: fullInventory.inventoryType,
+        fromWarehouseId: fullInventory.fromWarehouse?.id || '',
+        toWarehouseId: fullInventory.toWarehouse?.id || '',
+        fromBranchId: fullInventory.fromBranch?.id || '',
+        toBranchId: fullInventory.toBranch?.id || '',
+        verificationDate: fullInventory.verificationDate,
+        verifiedBy: fullInventory.verifiedBy,
+        remarks: fullInventory.remarks || '',
+        status: fullInventory.status || 'PENDING',
+        items: fullInventory.items.map(item => ({
+          productId: item.product.id,
+          quantity: item.quantity
+        }))
+      });
+      
+      setWarehouseStocks({});
+      setBranchStocks({});
+      
+      for (let i = 0; i < fullInventory.items.length; i++) {
+        const item = fullInventory.items[i];
+        const warehouseId = fullInventory.fromWarehouse?.id || fullInventory.toWarehouse?.id;
+        const branchId = fullInventory.fromBranch?.id || fullInventory.toBranch?.id;
         
-        if (fullInventory.status === 'CONFIRMED') {
-          alert('Cannot edit a confirmed inventory record.');
-          return;
+        if (warehouseId && item.product?.id) {
+          await loadLocationStock(item.product.id, i);
+        } else if (branchId && item.product?.id) {
+          await loadLocationStock(item.product.id, i);
         }
-        
-        setSelectedInventory(fullInventory);
-        setFormData({
-          inventoryType: fullInventory.inventoryType,
-          fromWarehouseId: fullInventory.fromWarehouse?.id || '',
-          toWarehouseId: fullInventory.toWarehouse?.id || '',
-          fromBranchId: fullInventory.fromBranch?.id || '',
-          toBranchId: fullInventory.toBranch?.id || '',
-          verificationDate: fullInventory.verificationDate,
-          verifiedBy: fullInventory.verifiedBy,
-          remarks: fullInventory.remarks || '',
-          status: fullInventory.status || 'PENDING',
-          items: fullInventory.items.map(item => ({
-            productId: item.product.id,
-            quantity: item.quantity
-          }))
-        });
-        
-        setWarehouseStocks({});
-        setBranchStocks({});
-        
-        for (let i = 0; i < fullInventory.items.length; i++) {
-          const item = fullInventory.items[i];
-          const warehouseId = fullInventory.fromWarehouse?.id || fullInventory.toWarehouse?.id;
-          const branchId = fullInventory.fromBranch?.id || fullInventory.toBranch?.id;
-          
-          if (warehouseId && item.product?.id) {
-            await loadLocationStock(item.product.id, i);
-          } else if (branchId && item.product?.id) {
-            await loadLocationStock(item.product.id, i);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to load inventory details');
-        alert('Failed to load inventory details: ' + error.message);
       }
-    } else if (mode === 'view' && inventory) {
-      try {
-        const fullInventory = await api.get(`/inventories/${inventory.id}`);
-        setSelectedInventory(fullInventory);
-      } catch (error) {
-        console.error('Failed to load inventory details:', error);
-      }
+    } catch (error) {
+      console.error('Failed to load inventory details');
+      alert('Failed to load inventory details: ' + error.message);
     }
-    setShowModal(true);
-  };
+  } else if (mode === 'view' && inventory) {
+    try {
+      const fullInventoryRes = await api.get(`/inventories/${inventory.id}`);
+      if (fullInventoryRes.success) {
+        setSelectedInventory(fullInventoryRes.data);
+      }
+    } catch (error) {
+      console.error('Failed to load inventory details:', error);
+    }
+  }
 
   const handleCloseModal = () => {
     setShowModal(false);
@@ -488,65 +504,72 @@ const InventoryRecordsManagement = () => {
   };
 
   const handleConfirmInventory = async (inventory) => {
-    let locationInfo = '';
-    if (inventory.inventoryType === 'STOCK_IN') {
-      locationInfo = `\n📦 Adding stock to: ${inventory.toWarehouse?.warehouseName || inventory.toBranch?.branchName}`;
-    } else if (inventory.inventoryType === 'TRANSFER') {
-      const from = inventory.fromWarehouse?.warehouseName || inventory.fromBranch?.branchName;
-      const to = inventory.toWarehouse?.warehouseName || inventory.toBranch?.branchName;
-      locationInfo = `\n📦 Transfer from: ${from}\n📍 Transfer to: ${to}`;
-    } else if (inventory.inventoryType === 'RETURN') {
-      const from = inventory.fromBranch?.branchName;
-      const to = inventory.toWarehouse?.warehouseName;
-      locationInfo = `\n📦 Return from: ${from}\n📍 Return to: ${to}`;
-    } else if (inventory.inventoryType === 'DAMAGE') {
-      locationInfo = `\n📦 Mark damaged at: ${inventory.toWarehouse?.warehouseName || inventory.toBranch?.branchName}`;
-    }
+  let locationInfo = '';
+  if (inventory.inventoryType === 'STOCK_IN') {
+    locationInfo = `\n📦 Adding stock to: ${inventory.toWarehouse?.warehouseName || inventory.toBranch?.branchName}`;
+  } else if (inventory.inventoryType === 'TRANSFER') {
+    const from = inventory.fromWarehouse?.warehouseName || inventory.fromBranch?.branchName;
+    const to = inventory.toWarehouse?.warehouseName || inventory.toBranch?.branchName;
+    locationInfo = `\n📦 Transfer from: ${from}\n📍 Transfer to: ${to}`;
+  } else if (inventory.inventoryType === 'RETURN') {
+    const from = inventory.fromBranch?.branchName;
+    const to = inventory.toWarehouse?.warehouseName;
+    locationInfo = `\n📦 Return from: ${from}\n📍 Return to: ${to}`;
+  } else if (inventory.inventoryType === 'DAMAGE') {
+    locationInfo = `\n📦 Mark damaged at: ${inventory.toWarehouse?.warehouseName || inventory.toBranch?.branchName}`;
+  }
+  
+  const itemCount = inventory.items?.length || 0;
+  const totalQty = inventory.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
+  
+  const confirmMessage = `Are you sure you want to confirm this ${inventory.inventoryType} record?${locationInfo}\n\n📊 Items: ${itemCount}\n📦 Total Quantity: ${totalQty}\n\n⚠️ This will update stock levels and cannot be undone.`;
+  
+  if (!window.confirm(confirmMessage)) {
+    return;
+  }
+  
+  try {
+    const loadingToast = document.createElement('div');
+    loadingToast.className = 'fixed top-4 right-4 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+    loadingToast.textContent = '⏳ Confirming inventory...';
+    document.body.appendChild(loadingToast);
     
-    const itemCount = inventory.items?.length || 0;
-    const totalQty = inventory.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
+    const response = await api.patch(`/inventories/${inventory.id}/confirm`);
     
-    const confirmMessage = `Are you sure you want to confirm this ${inventory.inventoryType} record?${locationInfo}\n\n📊 Items: ${itemCount}\n📦 Total Quantity: ${totalQty}\n\n⚠️ This will update stock levels and cannot be undone.`;
+    document.body.removeChild(loadingToast);
     
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
-    
-    try {
-      const loadingToast = document.createElement('div');
-      loadingToast.className = 'fixed top-4 right-4 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg z-50';
-      loadingToast.textContent = '⏳ Confirming inventory...';
-      document.body.appendChild(loadingToast);
-      
-      await api.patch(`/inventories/${inventory.id}/confirm`);
-      
-      document.body.removeChild(loadingToast);
-      
+    if (response.success) {
       alert(`✅ Inventory confirmed successfully!\n\n${inventory.inventoryType} record has been processed and stock levels have been updated.`);
-      
       await loadData();
-      
-    } catch (error) {
-      console.error('Failed to confirm inventory:', error);
-      const errorMsg = error.response?.data?.error || error.message || 'Unknown error';
-      alert(`❌ Failed to confirm inventory:\n\n${errorMsg}\n\nPlease check stock availability and try again.`);
+    } else {
+      alert(response.error || 'Failed to confirm inventory');
     }
-  };
+    
+  } catch (error) {
+    console.error('Failed to confirm inventory:', error);
+    const errorMsg = error.response?.data?.error || error.message || 'Unknown error';
+    alert(`❌ Failed to confirm inventory:\n\n${errorMsg}\n\nPlease check stock availability and try again.`);
+  }
+};
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this inventory record?')) return;
-    
-    try {
-      await api.delete(`/inventories/${id}`);
+  if (!window.confirm('Are you sure you want to delete this inventory record?')) return;
+  
+  try {
+    const response = await api.delete(`/inventories/${id}`);
+    if (response.success) {
       alert('Inventory deleted successfully');
       loadData();
       if (filteredInventories.length % itemsPerPage === 1 && currentPage > 1) {
         setCurrentPage(currentPage - 1);
       }
-    } catch (error) {
-      alert('Failed to delete: ' + error.message);
+    } else {
+      alert(response.error || 'Failed to delete inventory');
     }
-  };
+  } catch (error) {
+    alert('Failed to delete: ' + error.message);
+  }
+};
 
   const getLocationOptions = (inventoryType, locationType = 'to') => {
     const opts = [];
@@ -1368,6 +1391,7 @@ const InventoryRecordsManagement = () => {
       </div>
     </div>
   );
+}
 };
 
 export default InventoryRecordsManagement;

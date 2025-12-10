@@ -135,19 +135,33 @@ const ProductManagement = () => {
   }, []);
 
   const loadData = async () => {
-    setLoading(true);
-    try {
-      const productsData = await api.get('/products');
-      const clientsData = await api.get('/clients');
-      setProducts(productsData);
-      setClients(clientsData);
-    } catch (error) {
-      toast.error('Failed to load data');
-      console.error(error);
-    } finally {
-      setLoading(false);
+  setLoading(true);
+  try {
+    const productsResponse = await api.get('/products');
+    const clientsResponse = await api.get('/clients');
+    
+    if (productsResponse.success) {
+      setProducts(productsResponse.data || []);
+    } else {
+      toast.error(productsResponse.error || 'Failed to load products');
+      setProducts([]);
     }
-  };
+    
+    if (clientsResponse.success) {
+      setClients(clientsResponse.data || []);
+    } else {
+      toast.error(clientsResponse.error || 'Failed to load clients');
+      setClients([]);
+    }
+  } catch (error) {
+    toast.error('Failed to load data');
+    console.error(error);
+    setProducts([]);
+    setClients([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

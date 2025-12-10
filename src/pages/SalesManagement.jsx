@@ -152,62 +152,68 @@
     }, [statusFilter]);
 
     const loadData = async () => {
-    setLoading(true);
+  setLoading(true);
+  try {
+    const [
+      invRes,
+      prodRes,
+      warehousesRes,
+      branchesRes,
+      warehouseStocksRes,
+      branchStocksRes,
+      salesRes,
+      clientsRes
+    ] = await Promise.all([
+      api.get('/inventories'),
+      api.get('/products'),
+      api.get('/warehouse'),
+      api.get('/branches'),
+      api.get('/stocks/warehouses'),
+      api.get('/stocks/branches'),
+      api.get('/sales'),
+      api.get('/clients')
+    ]);
+
+    if (invRes.success) setInventories(invRes.data || []);
+    if (prodRes.success) setProducts(prodRes.data || []);
+    if (warehousesRes.success) setWarehouses(warehousesRes.data || []);
+    if (branchesRes.success) setBranches(branchesRes.data || []);
+    if (warehouseStocksRes.success) setWarehouseStocks(warehouseStocksRes.data || []);
+    if (branchStocksRes.success) setBranchStocks(branchStocksRes.data || []);
+    if (salesRes.success) setSales(salesRes.data || []);
+    if (clientsRes.success) setClients(clientsRes.data || []);
+
     try {
-      const [
-        invRes,
-        prodRes,
-        warehousesRes,
-        branchesRes,
-        warehouseStocksRes,
-        branchStocksRes,
-        salesRes,
-        clientsRes
-      ] = await Promise.all([
-        api.get('/inventories'),
-        api.get('/products'),
-        api.get('/warehouse'),
-        api.get('/branches'),
-        api.get('/stocks/warehouses'),
-        api.get('/stocks/branches'),
-        api.get('/sales'),
-        api.get('/clients')
-      ]);
-
-      setInventories(invRes);
-      setProducts(prodRes);
-      setWarehouses(warehousesRes);
-      setBranches(branchesRes);
-      setWarehouseStocks(warehouseStocksRes);
-      setBranchStocks(branchStocksRes);
-      setSales(salesRes);
-      setClients(clientsRes);
-
-      try {
-        const summaryRes = await api.get('/inventories/products/summary');
-        setProductSummaries(summaryRes);
-      } catch (summaryErr) {
-        console.warn('Could not load product summaries:', summaryErr);
-        setProductSummaries([]);
+      const summaryRes = await api.get('/inventories/products/summary');
+      if (summaryRes.success) {
+        setProductSummaries(summaryRes.data || []);
       }
-    } catch (err) {
-      console.error('Failed to load data:', err);
-      alert('Failed to load data');
-    } finally {
-      setLoading(false);
+    } catch (summaryErr) {
+      console.warn('Could not load product summaries:', summaryErr);
+      setProductSummaries([]);
     }
-  };
+  } catch (err) {
+    console.error('Failed to load data:', err);
+    alert('Failed to load data');
+  } finally {
+    setLoading(false);
+  }
+};
 
-    const getProductPriceForClient = async (productId, clientId) => {
-      try {
-        const response = await api.get(`/sales/product-price?productId=${productId}&clientId=${clientId}`);
-        return response.price;
-      } catch (error) {
-        console.error('Failed to get price:', error);
-        const product = products.find(p => p.id === productId);
-        return product?.price || 0;
-      }
-    };
+const getProductPriceForClient = async (productId, clientId) => {
+  try {
+    const response = await api.get(`/sales/product-price?productId=${productId}&clientId=${clientId}`);
+    if (response.success) {
+      return response.data?.price || 0;
+    }
+    const product = products.find(p => p.id === productId);
+    return product?.price || 0;
+  } catch (error) {
+    console.error('Failed to get price:', error);
+    const product = products.find(p => p.id === productId);
+    return product?.price || 0;
+  }
+};
 
     const loadProductPricesForClient = async (clientId) => {
       if (!clientId) {
@@ -228,43 +234,50 @@
     };
 
     const handleOpenModal = async (mode, sale = null) => {
-      setModalMode(mode);
+  setModalMode(mode);
 
-      if (mode === 'edit' && sale && sale.status === 'INVOICED') {
-      alert('Cannot edit sale that has already been INVOICED. Please revert status first.');
-      return;
-    }
-      
-      if (mode === 'create') {
-        setSelectedSale(null);
-        setFormData({ branchId: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), items: [] });
-        setBranchInfo(null);
-      } else if (mode === 'edit' && sale) {
-        setSelectedSale(sale);
-        setFormData({
-          branchId: sale.branch.id,
-          month: sale.month,
-          year: sale.year,
-          items: sale.items.map(item => ({productId: item.product.id,quantity: item.quantity || 1}))
-        });
-        try {
-          const info = await api.get(`/sales/branch-info/${sale.branch.id}`);
-          setBranchInfo(info);
-          await loadProductPricesForClient(info.clientId);
-        } catch (error) {
-          console.error('Failed to load branch info');
-        }
-      } else if (mode === 'view' && sale) {
-        try {
-          const freshSale = await api.get(`/sales/${sale.id}`);
-          setSelectedSale(freshSale);
-        } catch (error) {
-          console.error('Failed to load fresh sale data:', error);
-          setSelectedSale(sale); // Fallback to stale data
-        }
+  if (mode === 'edit' && sale && sale.status === 'INVOICED') {
+    alert('Cannot edit sale that has already been INVOICED. Please revert status first.');
+    return;
+  }
+  
+  if (mode === 'create') {
+    setSelectedSale(null);
+    setFormData({ branchId: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), items: [] });
+    setBranchInfo(null);
+  } else if (mode === 'edit' && sale) {
+    setSelectedSale(sale);
+    setFormData({
+      branchId: sale.branch.id,
+      month: sale.month,
+      year: sale.year,
+      items: sale.items.map(item => ({ productId: item.product.id, quantity: item.quantity || 1 }))
+    });
+    try {
+      const info = await api.get(`/sales/branch-info/${sale.branch.id}`);
+      if (info.success) {
+        setBranchInfo(info.data);
+        await loadProductPricesForClient(info.data?.clientId);
       }
-      setShowModal(true);
-    };
+    } catch (error) {
+      console.error('Failed to load branch info');
+    }
+  } else if (mode === 'view' && sale) {
+    try {
+      const freshSale = await api.get(`/sales/${sale.id}`);
+      if (freshSale.success) {
+        setSelectedSale(freshSale.data);
+      }
+    } catch (error) {
+      console.error('Failed to load fresh sale data:', error);
+      setSelectedSale(sale);
+    }
+  }
+  
+  // MOVE THIS INSIDE THE FUNCTION, NOT IN A SEPARATE BLOCK
+  setShowModal(true);
+};
+    
 
     const handleCloseModal = () => {
       setShowModal(false);
@@ -275,34 +288,33 @@
     const handleBranchChange = async (branchId) => {
       setFormData({ ...formData, branchId });
       if (branchId) {
+  try {
+    const info = await api.get(`/sales/branch-info/${branchId}`);
+    if (info.success) {
+      setBranchInfo(info.data);
+      await loadProductPricesForClient(info.data?.clientId);
+      
+      // Load branch stock information for all products
+      const stockMap = {};
+      for (const product of products) {
         try {
-          const info = await api.get(`/sales/branch-info/${branchId}`);
-          setBranchInfo(info);
-          await loadProductPricesForClient(info.clientId);
-          
-          // Load branch stock information for all products
-          const stockMap = {};
-          for (const product of products) {
-            try {
-              const stock = await api.get(`/stocks/branches/${branchId}/products/${product.id}`);
-              stockMap[product.id] = stock;
-            } catch (error) {
-              stockMap[product.id] = { quantity: 0, availableQuantity: 0 };
-            }
+          const stock = await api.get(`/stocks/branches/${branchId}/products/${product.id}`);
+          if (stock.success) {
+            stockMap[product.id] = stock.data;
           }
-          setBranchStocks(stockMap);
         } catch (error) {
-          console.error('Failed to load branch info');
-          setBranchInfo(null);
-          setProductPrices({});
-          setBranchStocks({});
+          stockMap[product.id] = { quantity: 0, availableQuantity: 0 };
         }
-      } else {
-        setBranchInfo(null);
-        setProductPrices({});
-        setBranchStocks({});
       }
-    };
+      setBranchStocks(stockMap);
+    }
+  } catch (error) {
+    console.error('Failed to load branch info');
+    setBranchInfo(null);
+    setProductPrices({});
+    setBranchStocks({});
+  }
+}
 
     const handleAddItem = () => {
       setFormData({ ...formData, items: [...formData.items, { productId: '', quantity: 1 }] });
@@ -405,63 +417,69 @@
   };
 
     const handleFilterSales = async () => {
-      try {
-        const filtered = await api.post('/sales/filter', filterData);
-        setSales(filtered);
-        setShowFilterModal(false);
-        setCurrentPage(1); // Reset to first page after filtering
-        alert(`Found ${filtered.length} sales`);
-      } catch (error) {
-        alert('Filter failed: ' + error.message);
-      }
-    };
+  try {
+    const filtered = await api.post('/sales/filter', filterData);
+    if (filtered.success) {
+      setSales(filtered.data || []);
+      setShowFilterModal(false);
+      setCurrentPage(1);
+      alert(`Found ${filtered.data?.length || 0} sales`);
+    }
+  } catch (error) {
+    alert('Filter failed: ' + error.message);
+  }
+};
 
-      const handleGenerateInvoice = async () => {
-        if (!filterData.clientId) {
-          alert('Please select a client first');
-          return;
-        }
-        
-        try {
-          const generatedBy = localStorage.getItem('fullName') || 'System';
-          
-          const report = await api.post('/sales/invoice/generate', {
-            ...filterData,
-            generatedBy: generatedBy
-          });
-          
-          report.adjustments = [];
-          setInvoiceReport(report);
-          setShowInvoiceModal(false);
-          
-          // Improved success message
-          let successMessage = `✅ Invoice generated successfully!\n\n`;
-          successMessage += `Generated by: ${generatedBy}\n`;
-          successMessage += `Total Sales in Report: ${report.totalSalesCount}\n`;
-          
-          if (report.newlyInvoicedCount > 0) {
-            successMessage += `Newly Marked as INVOICED: ${report.newlyInvoicedCount}\n`;
-          }
-          
-          successMessage += `Total Amount: ₱${formatCurrency(report.totalSalesVatInclusive)}\n\n`;
-          successMessage += `Note: Only CONFIRMED and INVOICED sales are included in invoice generation.`;
-          
-          alert(successMessage);
-          
-          await loadData(); // Reload to show updated statuses
-        } catch (error) {
-          console.error('Invoice generation error:', error);
-          
-          // Better error handling
-          if (error.message.includes('No sales found')) {
-            alert('Cannot generate invoice:\n\n' + 
-                  'No CONFIRMED or INVOICED sales found for the selected criteria.\n' +
-                  'Please confirm sales first before generating invoices.');
-          } else {
-            alert('Failed to generate invoice: ' + error.message);
-          }
-        }
-      };
+  const handleGenerateInvoice = async () => {
+  if (!filterData.clientId) {
+    alert('Please select a client first');
+    return;
+  }
+  
+  try {
+    const generatedBy = localStorage.getItem('fullName') || 'System';
+    
+    const response = await api.post('/sales/invoice/generate', {
+      ...filterData,
+      generatedBy: generatedBy
+    });
+    
+    if (response.success) {
+      // Initialize adjustments array
+      response.data.adjustments = response.data.adjustments || [];
+      setInvoiceReport(response.data);
+      setShowInvoiceModal(false);
+      
+      let successMessage = `✅ Invoice generated successfully!\n\n`;
+      successMessage += `Generated by: ${generatedBy}\n`;
+      successMessage += `Total Sales in Report: ${response.data.totalSalesCount || 0}\n`;
+      
+      if (response.data.newlyInvoicedCount > 0) {
+        successMessage += `Newly Marked as INVOICED: ${response.data.newlyInvoicedCount}\n`;
+      }
+      
+      successMessage += `Total Amount: ₱${formatCurrency(response.data.totalSalesVatInclusive || 0)}\n\n`;
+      successMessage += `Note: Only CONFIRMED and INVOICED sales are included in invoice generation.`;
+      
+      alert(successMessage);
+      
+      await loadData(); // Reload to show updated statuses
+    } else {
+      alert('Failed to generate invoice: ' + (response.message || 'Unknown error'));
+    }
+  } catch (error) {
+    console.error('Invoice generation error:', error);
+    
+    // Better error handling
+    if (error.message.includes('No sales found')) {
+      alert('Cannot generate invoice:\n\n' + 
+            'No CONFIRMED or INVOICED sales found for the selected criteria.\n' +
+            'Please confirm sales first before generating invoices.');
+    } else {
+      alert('Failed to generate invoice: ' + error.message);
+    }
+  }
+};
 
     const handleResetFilter = () => {
       setFilterData({
@@ -1715,6 +1733,7 @@
           </div>
         </div>
       );
+    }
     };
 
     export default SalesManagement;

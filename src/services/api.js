@@ -1,10 +1,9 @@
-// src/services/api.js
+import { toast } from 'react-hot-toast';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Helper function to decode JWT without external library
 const decodeJWT = (token) => {
   try {
-    // JWT has format: header.payload.signature
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     const jsonPayload = decodeURIComponent(
@@ -19,26 +18,23 @@ const decodeJWT = (token) => {
   }
 };
 
-// Check if token is expired
 const isTokenExpired = (token) => {
   if (!token) return true;
   
   const decoded = decodeJWT(token);
   if (!decoded || !decoded.exp) return true;
   
-  const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+  const currentTime = Math.floor(Date.now() / 1000);
   return decoded.exp < currentTime;
 };
 
 const getToken = () => {
   const token = localStorage.getItem('authToken');
   
-  // Check if token exists and is not expired
   if (!token || isTokenExpired(token)) {
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
     
-    // Only redirect if we're not already on login page
     if (!window.location.pathname.includes('/login')) {
       window.location.href = '/login';
     }
@@ -49,30 +45,102 @@ const getToken = () => {
 };
 
 const handleResponse = async (response) => {
+  // Handle 401 Unauthorized
   if (response.status === 401) {
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
     
-    // Only redirect if we're not already on login page
+    toast.error('Session expired. Please login again.');
+    
     if (!window.location.pathname.includes('/login')) {
       window.location.href = '/login';
     }
-    throw new Error('Session expired. Please login again.');
+    
+    return {
+      success: false,
+      error: 'Session expired. Please login again.',
+      status: 401
+    };
   }
   
+  // Handle error responses (400, 404, 500, etc.)
   if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.error || err.message || 'Request failed');
+    let errorMessage = 'Request failed';
+    
+    try {
+      const contentType = response.headers.get('content-type');
+      
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || 'Request failed';
+      } else {
+        // Handle text/plain responses (like your backend error messages)
+        const text = await response.text();
+        if (text && text.trim()) {
+          // Remove "Error: " prefix if it exists
+          errorMessage = text.replace(/^Error:\s*/i, '').trim();
+        }
+      }
+    } catch (parseError) {
+      errorMessage = response.statusText || 'Request failed';
+    }
+    
+    // Show error toast
+    toast.error(errorMessage);
+    
+    return {
+      success: false,
+      error: errorMessage,
+      status: response.status
+    };
   }
   
-  return response.json();
+  // Handle successful responses
+  const contentType = response.headers.get('content-type');
+  
+  if (contentType && contentType.includes('application/json')) {
+    const data = await response.json();
+    return {
+      success: true,
+      data: data,
+      status: response.status
+    };
+  }
+  
+  if (response.status === 204) {
+    return {
+      success: true,
+      data: null,
+      status: 204
+    };
+  }
+  
+  if (response.status === 201) {
+    return {
+      success: true,
+      data: null,
+      status: 201
+    };
+  }
+  
+  const textData = await response.text();
+  return {
+    success: true,
+    data: textData,
+    status: response.status
+  };
 };
 
 // Generic fetch function
 const fetchWithAuth = async (url, options = {}) => {
   const token = getToken();
   if (!token && !url.includes('/auth/')) {
-    throw new Error('No valid token found');
+    toast.error('Session expired. Please login again.');
+    return {
+      success: false,
+      error: 'No valid token found',
+      status: 401
+    };
   }
   
   const defaultHeaders = {
@@ -81,12 +149,22 @@ const fetchWithAuth = async (url, options = {}) => {
     ...options.headers,
   };
   
-  const response = await fetch(`${API_BASE_URL}${url}`, {
-    ...options,
-    headers: defaultHeaders,
-  });
-  
-  return handleResponse(response);
+  try {
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      ...options,
+      headers: defaultHeaders,
+    });
+    
+    return await handleResponse(response);
+  } catch (error) {
+    // Network error
+    toast.error('Network error. Please check your connection.');
+    return {
+      success: false,
+      error: 'Network error',
+      status: 0
+    };
+  }
 };
 
 export const api = {
@@ -101,17 +179,17 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
- // PATCH request
-patch: (endpoint, data = null, config = {}) => {
-  const queryParams = config.params 
-    ? '?' + new URLSearchParams(config.params).toString() 
-    : '';
-  
-  return fetchWithAuth(`${endpoint}${queryParams}`, {
-    method: 'PATCH',
-    body: data ? JSON.stringify(data) : undefined,
-  });
-},
+  // PATCH request
+  patch: (endpoint, data = null, config = {}) => {
+    const queryParams = config.params 
+      ? '?' + new URLSearchParams(config.params).toString() 
+      : '';
+    
+    return fetchWithAuth(`${endpoint}${queryParams}`, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  },
 
   // PUT request
   put: (endpoint, data) => {
@@ -132,47 +210,152 @@ patch: (endpoint, data = null, config = {}) => {
     fetchWithAuth(endpoint, { method: 'DELETE' }),
 
   // Upload file (multipart/form-data)
-  upload: (endpoint, formData) => {
+  upload: async (endpoint, formData) => {
     const token = getToken();
     if (!token) {
-      throw new Error('No valid token found');
+      toast.error('Session expired. Please login again.');
+      return {
+        success: false,
+        error: 'No valid token found',
+        status: 401
+      };
     }
     
-    return fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-      body: formData,
-    }).then(handleResponse);
-  },
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
 
-  // Download file
-  download: (endpoint) => {
-    const token = getToken();
-    if (!token) {
-      throw new Error('No valid token found');
-    }
-    
-    return fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    }).then(async (response) => {
       if (response.status === 401) {
         localStorage.removeItem('authToken');
         localStorage.removeItem('user');
+        toast.error('Session expired. Please login again.');
         window.location.href = '/login';
-        throw new Error('Session expired');
+        return {
+          success: false,
+          error: 'Session expired',
+          status: 401
+        };
       }
       
       if (!response.ok) {
-        throw new Error('Download failed');
+        let errorMessage = 'Upload failed';
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorData.message || 'Upload failed';
+          } else {
+            const text = await response.text();
+            if (text && text.trim()) {
+              errorMessage = text.replace(/^Error:\s*/i, '').trim();
+            }
+          }
+        } catch (e) {
+          errorMessage = response.statusText || 'Upload failed';
+        }
+        
+        toast.error(errorMessage);
+        return {
+          success: false,
+          error: errorMessage,
+          status: response.status
+        };
       }
       
-      return response.blob();
-    });
+      const contentType = response.headers.get('content-type');
+      let data;
+      
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        data = await response.text();
+      }
+      
+      return {
+        success: true,
+        data: data,
+        status: response.status
+      };
+    } catch (error) {
+      toast.error('Network error. Please check your connection.');
+      return {
+        success: false,
+        error: 'Network error',
+        status: 0
+      };
+    }
+  },
+
+  // Download file
+  download: async (endpoint) => {
+    const token = getToken();
+    if (!token) {
+      toast.error('Session expired. Please login again.');
+      return {
+        success: false,
+        error: 'No valid token found',
+        status: 401
+      };
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        toast.error('Session expired. Please login again.');
+        window.location.href = '/login';
+        return {
+          success: false,
+          error: 'Session expired',
+          status: 401
+        };
+      }
+      
+      if (!response.ok) {
+        let errorMessage = 'Download failed';
+        try {
+          const text = await response.text();
+          if (text && text.trim()) {
+            errorMessage = text.replace(/^Error:\s*/i, '').trim();
+          }
+        } catch (e) {
+          errorMessage = response.statusText || 'Download failed';
+        }
+        
+        toast.error(errorMessage);
+        return {
+          success: false,
+          error: errorMessage,
+          status: response.status
+        };
+      }
+      
+      const blob = await response.blob();
+      return {
+        success: true,
+        data: blob,
+        status: response.status
+      };
+    } catch (error) {
+      toast.error('Network error. Please check your connection.');
+      return {
+        success: false,
+        error: 'Network error',
+        status: 0
+      };
+    }
   },
 
   // Check token validity
