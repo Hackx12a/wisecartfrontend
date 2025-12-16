@@ -547,12 +547,12 @@ const checkSKUAvailability = (sku) => {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+           <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">UPC</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unit Cost</th> {/* Add this */}
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unit Cost</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client Price</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
@@ -590,11 +590,11 @@ const checkSKUAvailability = (sku) => {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">{product.sku}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{product.upc || '-'}</td>
-                      <td className="px-6 py-4 text-sm font-medium text-green-600"> {/* Add this cell */}
-                          {product.unitCost != null 
-                            ? `₱${Number(product.unitCost).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
-                            : '-'}
-                        </td>
+                      <td className="px-6 py-4 text-sm font-medium text-green-600">
+                        {product.unitCost != null 
+                          ? `₱${Number(product.unitCost).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+                          : '-'}
+                      </td>
                       <td className="px-6 py-4 text-sm font-medium text-blue-600">
                         {clientPrice != null ? `₱${Number(clientPrice).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                       </td>
