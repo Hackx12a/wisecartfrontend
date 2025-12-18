@@ -1831,32 +1831,79 @@ const handleDelete = async (id) => {
     const isSale = transactionToDelete?.inventoryType === 'SALE';
     const isDelivery = transactionToDelete?.inventoryType === 'DELIVERY';
     
+    let actualReferenceId = id;
+    if (isSale && id > 2000000) {
+      actualReferenceId = id - 2000000;
+    } else if (isDelivery && id > 1000000) {
+      actualReferenceId = id - 1000000;
+    }
+    
+
     await api.delete(`/inventories/${id}`);
+    
+
+    if (isSale || isDelivery) {
+      try {
+        const timestamp = Date.now();
+        
+        if (isSale) {
+          const branchStocksRes = await api.get(`/stocks/branches?_t=${timestamp}`);
+          if (branchStocksRes.success) {
+            setBranchStocks(branchStocksRes.data || []);
+            console.log('✅ Branch stocks refreshed:', branchStocksRes.data?.length, 'records');
+          }
+          const summaryRes = await api.get(`/inventories/products/summary?_t=${timestamp}`);
+          if (summaryRes.success) {
+            setProductSummaries(summaryRes.data || []);
+            console.log('✅ Product summaries refreshed');
+          }
+        }
+        
+        if (isDelivery) {
+          const [warehouseStocksRes, branchStocksRes] = await Promise.all([
+            api.get(`/stocks/warehouses?_t=${timestamp}`),
+            api.get(`/stocks/branches?_t=${timestamp}`)
+          ]);
+          
+          if (warehouseStocksRes.success) {
+            setWarehouseStocks(warehouseStocksRes.data || []);
+            console.log('✅ Warehouse stocks refreshed:', warehouseStocksRes.data?.length, 'records');
+          }
+          if (branchStocksRes.success) {
+            setBranchStocks(branchStocksRes.data || []);
+            console.log('✅ Branch stocks refreshed:', branchStocksRes.data?.length, 'records');
+          }
+        }
+        
+        toast.success('Stock levels updated successfully');
+      } catch (refreshErr) {
+        console.error('Failed to refresh stock data:', refreshErr);
+        toast.error('Deleted but failed to refresh stock. Please refresh the page.');
+      }
+    }
+    
     toast.success('Deleted successfully');
     
     // Remove from inventories list
     setInventories(prev => prev.filter(inv => inv.id !== id));
     
-    // If transaction history modal is open, mark ALL related transactions as deleted
+    // Mark transactions as deleted in modal
     if (showTransactionsModal && selectedProduct) {
       setProductTransactions(prev => prev.map(t => {
-        // Match by reference number or reference ID
         let matchesDeletedTransaction = false;
         
-        if (transactionToDelete.inventoryType === 'SALE') {
-          const saleId = id > 2000000 ? id - 2000000 : id;
+        if (isSale) {
           matchesDeletedTransaction = 
-            t.referenceNumber === `SALE-${saleId}` ||
-            t.referenceId === saleId ||
-            (t.remarks && t.remarks.includes(`SALE-${saleId}`));
-        } else if (transactionToDelete.inventoryType === 'DELIVERY') {
-          const deliveryId = id > 1000000 ? id - 1000000 : id;
+            t.referenceNumber === `SALE-${actualReferenceId}` ||
+            t.referenceId === actualReferenceId ||
+            (t.remarks && t.remarks.includes(`SALE-${actualReferenceId}`));
+        } else if (isDelivery) {
+          const deliveryRefNumber = transactionToDelete.remarks?.match(/Delivery: ([^\s]+)/)?.[1];
           matchesDeletedTransaction = 
-            t.referenceNumber === transactionToDelete.remarks?.match(/Delivery: ([^\s]+)/)?.[1] ||
-            t.referenceId === deliveryId ||
-            (t.remarks && t.remarks.includes(transactionToDelete.remarks?.match(/Delivery: ([^\s]+)/)?.[1]));
+            t.referenceNumber === deliveryRefNumber ||
+            t.referenceId === actualReferenceId ||
+            (t.remarks && deliveryRefNumber && t.remarks.includes(deliveryRefNumber));
         } else {
-          // For regular inventory transactions (STOCK_IN, TRANSFER, RETURN, DAMAGE)
           matchesDeletedTransaction = 
             t.referenceId === id ||
             t.referenceNumber === `INV-${id}` ||
@@ -1873,46 +1920,18 @@ const handleDelete = async (id) => {
         }
         return t;
       }));
-      toast.info('Transaction marked as deleted in history');
-    }
-    
-    // If it's a sale or delivery, refresh stock data
-    if (isSale) {
-      try {
-        const branchStocksRes = await api.get('/stocks/branches');
-        if (branchStocksRes.success) {
-          setBranchStocks(branchStocksRes.data || []);
-        }
-      } catch (refreshErr) {
-        console.warn('Could not refresh branch stocks:', refreshErr);
-      }
-    }
-    
-    if (isDelivery) {
-      try {
-        const [warehouseStocksRes, branchStocksRes] = await Promise.all([
-          api.get('/stocks/warehouses'),
-          api.get('/stocks/branches')
-        ]);
-        if (warehouseStocksRes.success) {
-          setWarehouseStocks(warehouseStocksRes.data || []);
-        }
-        if (branchStocksRes.success) {
-          setBranchStocks(branchStocksRes.data || []);
-        }
-      } catch (refreshErr) {
-        console.warn('Could not refresh stocks:', refreshErr);
-      }
+      toast.info('Transactions marked as deleted in history');
     }
     
     if (filteredInventories.length % itemsPerPage === 1 && currentPage > 1) {
       setCurrentPage(currentPage - 1);
     }
   } catch (err) {
-    toast.error('Delete failed');
+    toast.error('Delete failed: ' + (err.message || 'Unknown error'));
     console.error('Delete error:', err);
   }
 };
+
 
 
 
