@@ -905,7 +905,7 @@ const Dashboard = () => {
       badge: totalAlerts > 0 ? <AlertBadge count={totalAlerts} type="danger" /> : null
     },
     {
-      title: 'Active Revenue',
+      title: 'Active Sales',
       value: formatCurrency(stats.activeRevenue),
       icon: PesoSign,
       color: 'blue',
@@ -1799,7 +1799,7 @@ const Dashboard = () => {
                 <div className="flex-1 min-w-0">
                   <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-1">
                     <TrendingUp className="text-blue-600" size={24} />
-                    Active Revenue Trend ({selectedYear})
+                    Active Sales Trend ({selectedYear})
                   </h3>
                   <p className="text-sm text-gray-500">Confirmed & Invoiced sales combined</p>
                   {(selectedClient !== 'all' || selectedBranch !== 'all') && (
@@ -1823,7 +1823,7 @@ const Dashboard = () => {
                 <div className="flex items-center gap-4 flex-shrink-0">
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-                    <span className="text-sm font-medium text-gray-700">Active Revenue</span>
+                    <span className="text-sm font-medium text-gray-700">Active Sales</span>
                   </div>
 
                   {selectedClient !== 'all' || selectedBranch !== 'all' ? (
@@ -2020,7 +2020,7 @@ const Dashboard = () => {
                   <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
                     <div className="flex items-center gap-2 mb-2">
                       <PesoSign size={20} className="text-blue-600" />
-                      <p className="text-xs font-medium text-blue-700 uppercase">Total Revenue</p>
+                      <p className="text-xs font-medium text-blue-700 uppercase">Total Sales</p>
                     </div>
                     <p className="text-2xl font-bold text-blue-800">
                       {formatCurrency(monthlySalesData.reduce((sum, month) => sum + month.activeRevenue, 0))}
@@ -2230,7 +2230,7 @@ const Dashboard = () => {
 
                             <div className="space-y-2">
                               <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600">Revenue</span>
+                                <span className="text-sm text-gray-600">Sales</span>
                                 <span className="text-sm font-semibold text-gray-900">{formatCurrency(revenue)}</span>
                               </div>
                               <div className="w-full bg-white rounded-full h-2 border border-gray-200">
@@ -2242,7 +2242,7 @@ const Dashboard = () => {
                               {count > 0 && (
                                 <div className="flex justify-between items-center text-xs text-gray-500">
                                   <span>Avg: {formatCurrency(revenue / count)}</span>
-                                  <span>{((revenue / stats.activeRevenue) * 100).toFixed(1)}% of active revenue</span>
+                                  <span>{((revenue / stats.activeRevenue) * 100).toFixed(1)}% of active Sales</span>
                                 </div>
                               )}
                             </div>
@@ -2258,7 +2258,7 @@ const Dashboard = () => {
                         <p className="text-lg font-bold text-gray-900">{formatNumber(stats.totalSales)}</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-xs text-gray-500">Total Revenue</p>
+                        <p className="text-xs text-gray-500">Total Sales</p>
                         <p className="text-lg font-bold text-blue-700">
                           {formatCurrency(Object.values(salesByStatus.revenues).reduce((a, b) => a + b, 0))}
                         </p>

@@ -18,6 +18,7 @@ export const AuthProvider = ({ children }) => {
       const currentTime = Date.now() / 1000;
       return decoded.exp < currentTime;
     } catch (error) {
+      console.error('Token decode error:', error);
       return true;
     }
   };
@@ -34,15 +35,24 @@ export const AuthProvider = ({ children }) => {
 
     if (isTokenExpired(token)) {
       localStorage.removeItem('authToken');
+      localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
       setUser(null);
       toast.error('Session expired. Please login again.');
-      window.location.href = '/login';
       return false;
     }
 
-    setUser(JSON.parse(userData));
-    return true;
+    try {
+      setUser(JSON.parse(userData));
+      return true;
+    } catch (error) {
+      console.error('Error parsing user data:', error);
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      setUser(null);
+      return false;
+    }
   };
 
   useEffect(() => {
@@ -50,15 +60,35 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const logout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
-    setUser(null);
-    toast.success('Logged out successfully');
-    window.location.href = '/login';
+  const logout = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      
+      // Call backend logout endpoint
+      if (token) {
+        await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Clear local storage
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      setUser(null);
+      toast.success('Logged out successfully');
+      window.location.href = '/login';
+    }
   };
 
   const login = (token, userData) => {
+    // Store token and user data
     localStorage.setItem('authToken', token);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
@@ -83,7 +113,13 @@ export const AuthProvider = ({ children }) => {
 };
 
 // Custom hook
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return context;
+};
 
 // Loading wrapper component
 export const AuthLoading = ({ children }) => {
@@ -92,7 +128,10 @@ export const AuthLoading = ({ children }) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="text-2xl font-medium text-gray-700">Loading...</div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <div className="text-xl font-medium text-gray-700">Loading...</div>
+        </div>
       </div>
     );
   }
@@ -102,17 +141,39 @@ export const AuthLoading = ({ children }) => {
 
 // Protected Route Component
 export const ProtectedRoute = ({ children }) => {
-  const { isTokenValid } = useAuth();
-  return isTokenValid() ? children : <Navigate to="/login" replace />;
+  const { isTokenValid, loading } = useAuth();
+  
+  // Don't redirect while loading
+  if (loading) {
+    return null;
+  }
+  
+  if (!isTokenValid()) {
+    toast.error('Please login to continue');
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
 };
 
 // Admin Route Component
 export const AdminRoute = ({ children }) => {
-  const { user, isTokenValid } = useAuth();
+  const { user, isTokenValid, loading } = useAuth();
+  
+  // Don't redirect while loading
+  if (loading) {
+    return null;
+  }
   
   if (!isTokenValid()) {
+    toast.error('Please login to continue');
     return <Navigate to="/login" replace />;
   }
   
-  return (user && user.role === 'ADMIN') ? children : <Navigate to="/dashboard" replace />;
+  if (!user || user.role !== 'ADMIN') {
+    toast.error('Admin access required');
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return children;
 };

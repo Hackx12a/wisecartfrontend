@@ -1,6 +1,6 @@
-// src/utils/format.js
 
-// Format currency as Philippine Peso (₱1,234,567.00)
+
+// Format currency as Philippine Peso
 export const formatCurrency = (amount) => {
   if (amount === null || amount === undefined) return '₱0.00';
   return `₱${Number(amount).toLocaleString('en-PH', {
