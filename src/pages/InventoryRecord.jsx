@@ -176,6 +176,98 @@ const GroupedLocationDropdown = ({ locations, value, onChange, placeholder }) =>
   );
 };
 
+
+
+
+const SearchableLocationDropdown = ({ locations, value, onChange, placeholder, label }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setIsOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filtered = locations.filter(loc =>
+    loc.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    loc.code?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const selected = locations.find(loc => loc.id === parseInt(value));
+
+  return (
+    <div ref={dropdownRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition text-left flex items-center justify-between bg-white text-sm"
+      >
+        <span className={selected ? 'text-gray-900' : 'text-gray-500'}>
+          {selected ? selected.name : placeholder}
+        </span>
+        <ChevronDown size={16} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-hidden">
+          <div className="p-2 border-b border-gray-200 sticky top-0 bg-white">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+              <input
+                type="text"
+                placeholder={`Search ${label.toLowerCase()}...`}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 border rounded text-sm focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              />
+            </div>
+          </div>
+          <div className="overflow-y-auto max-h-48">
+            <button
+              type="button"
+              onClick={() => {
+                onChange('');
+                setIsOpen(false);
+                setSearchTerm('');
+              }}
+              className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 transition ${!value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-500 italic'}`}
+            >
+              {placeholder}
+            </button>
+            {filtered.length === 0 ? (
+              <div className="px-3 py-4 text-center text-gray-500 text-xs">No results found</div>
+            ) : (
+              filtered.map((loc) => (
+                <button
+                  key={loc.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(loc.id.toString());
+                    setIsOpen(false);
+                    setSearchTerm('');
+                  }}
+                  className={`w-full px-3 py-2 text-left hover:bg-blue-50 transition ${value === loc.id.toString() ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-900'}`}
+                >
+                  <div className="text-sm font-medium">{loc.name}</div>
+                  {loc.code && <div className="text-xs text-gray-500">{loc.code}</div>}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+
+
 const InventoryRecordsManagement = () => {
   const [inventories, setInventories] = useState([]);
   const [products, setProducts] = useState([]);
@@ -194,6 +286,13 @@ const InventoryRecordsManagement = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [canModifyStatus, setCanModifyStatus] = useState({});
+  const [typeFilter, setTypeFilter] = useState('ALL');
+  const [fromWarehouseFilter, setFromWarehouseFilter] = useState('');
+  const [toWarehouseFilter, setToWarehouseFilter] = useState('');
+  const [fromBranchFilter, setFromBranchFilter] = useState('');
+  const [toBranchFilter, setToBranchFilter] = useState('');
+  const [startDateFilter, setStartDateFilter] = useState('');
+  const [endDateFilter, setEndDateFilter] = useState('');
 
   const [formData, setFormData] = useState({
     inventoryType: 'STOCK_IN',
@@ -798,7 +897,24 @@ const InventoryRecordsManagement = () => {
 
     const matchesStatus = statusFilter === 'ALL' || inventory.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    const matchesType = typeFilter === 'ALL' || inventory.inventoryType === typeFilter;
+
+    const matchesFromWarehouse = !fromWarehouseFilter || inventory.fromWarehouse?.id === parseInt(fromWarehouseFilter);
+
+    const matchesToWarehouse = !toWarehouseFilter || inventory.toWarehouse?.id === parseInt(toWarehouseFilter);
+
+    const matchesFromBranch = !fromBranchFilter || inventory.fromBranch?.id === parseInt(fromBranchFilter);
+
+    const matchesToBranch = !toBranchFilter || inventory.toBranch?.id === parseInt(toBranchFilter);
+
+    const inventoryDate = new Date(inventory.verificationDate);
+    const matchesStartDate = !startDateFilter || inventoryDate >= new Date(startDateFilter);
+    const matchesEndDate = !endDateFilter || inventoryDate <= new Date(endDateFilter + 'T23:59:59');
+
+    return matchesSearch && matchesStatus && matchesType &&
+      matchesFromWarehouse && matchesToWarehouse &&
+      matchesFromBranch && matchesToBranch &&
+      matchesStartDate && matchesEndDate;
   }));
 
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -826,7 +942,7 @@ const InventoryRecordsManagement = () => {
 
           {/* Action Bar */}
           <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-            <div className="flex flex-wrap gap-4 items-center justify-between">
+            <div className="flex flex-wrap gap-4 items-center justify-between mb-4">
               <button
                 onClick={() => handleOpenModal('create')}
                 className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium"
@@ -855,6 +971,107 @@ const InventoryRecordsManagement = () => {
                     className="pl-12 pr-4 py-3 border border-gray-300 rounded-lg w-80 focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Advanced Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 pt-4 border-t border-gray-200">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-2">Inventory Type</label>
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                >
+                  <option value="ALL">All Types</option>
+                  <option value="STOCK_IN">Stock In</option>
+                  <option value="TRANSFER">Transfer</option>
+                  <option value="RETURN">Return</option>
+                  <option value="DAMAGE">Damage</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-2">From Warehouse</label>
+                <SearchableLocationDropdown
+                  locations={warehouses.map(wh => ({ id: wh.id, name: wh.warehouseName, code: wh.warehouseCode }))}
+                  value={fromWarehouseFilter}
+                  onChange={setFromWarehouseFilter}
+                  placeholder="All Warehouses"
+                  label="warehouses"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-2">To Warehouse</label>
+                <SearchableLocationDropdown
+                  locations={warehouses.map(wh => ({ id: wh.id, name: wh.warehouseName, code: wh.warehouseCode }))}
+                  value={toWarehouseFilter}
+                  onChange={setToWarehouseFilter}
+                  placeholder="All Warehouses"
+                  label="warehouses"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-2">From Branch</label>
+                <SearchableLocationDropdown
+                  locations={branches.map(br => ({ id: br.id, name: br.branchName, code: br.branchCode }))}
+                  value={fromBranchFilter}
+                  onChange={setFromBranchFilter}
+                  placeholder="All Branches"
+                  label="branches"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-2">To Branch</label>
+                <SearchableLocationDropdown
+                  locations={branches.map(br => ({ id: br.id, name: br.branchName, code: br.branchCode }))}
+                  value={toBranchFilter}
+                  onChange={setToBranchFilter}
+                  placeholder="All Branches"
+                  label="branches"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-2">Start Date</label>
+                <input
+                  type="date"
+                  value={startDateFilter}
+                  onChange={(e) => setStartDateFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-2">End Date</label>
+                <input
+                  type="date"
+                  value={endDateFilter}
+                  onChange={(e) => setEndDateFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+
+              <div className="md:col-span-3 flex items-end">
+                <button
+                  onClick={() => {
+                    setTypeFilter('ALL');
+                    setFromWarehouseFilter('');
+                    setToWarehouseFilter('');
+                    setFromBranchFilter('');
+                    setToBranchFilter('');
+                    setStartDateFilter('');
+                    setEndDateFilter('');
+                    setSearchTerm('');
+                    setStatusFilter('ALL');
+                  }}
+                  className="px-4 py-2 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition font-medium"
+                >
+                  Clear All Filters
+                </button>
               </div>
             </div>
           </div>

@@ -2637,7 +2637,7 @@ const EnhancedInventoryManagement = () => {
                         <tr key={product.productId} className="hover:bg-gray-50">
                           <td className="px-3 py-3">
                             <div className="max-w-[200px]">
-                              <div className="font-medium text-gray-900 text-sm truncate" title={product.productName}>
+                              <div className="font-medium text-gray-900 text-xs break-words whitespace-normal leading-tight">
                                 {product.productName}
                               </div>
                             </div>
