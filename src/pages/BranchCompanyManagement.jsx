@@ -462,8 +462,6 @@ const BranchCompanyManagement = () => {
 
       if (editingBranch && editingBranch.id !== 'company-only-edit') {
         if (companyMode === 'view') {
-          console.log('📤 Updating branch only. Payload:', payload);
-          console.log('📤 Branch TIN:', payload.tin);
           result = await api.put(`/branches/${editingBranch.id}`, payload);
         } else if (companyMode === 'edit') {
           payload.useExistingCompany = false;
@@ -857,7 +855,9 @@ const BranchCompanyManagement = () => {
                           <span className="font-medium text-gray-900">{branch.branchCode}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{branch.branchName}</td>
+                      <td className="px-6 py-4 text-sm text-gray-900">{branch.branchName}
+                        <div className="text-xs text-gray-500">Branch TIN: {branch.tin}</div></td>
+                      
                       <td className="px-6 py-4 text-sm text-gray-600">
                         <div>{branch.city}, {branch.province}</div>
                         <div className="text-xs text-gray-500">{branch.address}</div>
@@ -871,7 +871,7 @@ const BranchCompanyManagement = () => {
                         {branch.company ? (
                           <div>
                             <div className="font-medium">{branch.company.companyName}</div>
-                            <div className="text-xs text-gray-500">Branch TIN: {branch.tin}</div>
+                            
                             {branch.company.tin && (
                               <div className="text-xs text-gray-500">Company TIN: {branch.company.tin}</div>
                             )}

@@ -851,8 +851,13 @@ const SalesManagement = () => {
           return;
         }
 
-        // Initialize adjustments array if not present
         invoiceData.adjustments = invoiceData.adjustments || [];
+        if (invoiceData.branchId) {
+          const branch = branches.find(b => b.id === invoiceData.branchId);
+          if (branch && branch.tin) {
+            invoiceData.tin = branch.tin;
+          }
+        }
 
         setInvoiceReport(invoiceData);
         setShowInvoiceModal(false);
@@ -865,7 +870,6 @@ const SalesManagement = () => {
           { duration: 4000 }
         );
 
-        // Reload sales data to reflect any status changes
         loadData();
       } else {
         toast.error('Failed to generate invoice', { duration: 5000 });
@@ -1714,6 +1718,7 @@ const SalesManagement = () => {
                         <tr>
                           <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">Product</th>
                           <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">SKU</th>
+                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">UPC</th>
                           <th className="px-6 py-4 text-right text-sm font-medium text-gray-700">Quantity</th>
                           <th className="px-6 py-4 text-right text-sm font-medium text-gray-700">Unit Price</th>
                           <th className="px-6 py-4 text-right text-sm font-medium text-gray-700">Amount</th>
@@ -1725,9 +1730,20 @@ const SalesManagement = () => {
                             <tr key={item.id || i} className="hover:bg-gray-50 transition">
                               <td className="px-6 py-4 text-sm font-medium text-gray-900">
                                 {item.product.productName}
+                                {item.variation && (
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {item.variation.combinationDisplay ||
+                                      (item.variation.variationType && item.variation.variationValue
+                                        ? `${item.variation.variationType}: ${item.variation.variationValue}`
+                                        : 'Variation')}
+                                  </div>
+                                )}
                               </td>
                               <td className="px-6 py-4 text-sm text-gray-500">
-                                {item.product.sku || '—'}
+                                {item.variation ? (item.variation.sku || '—') : (item.product.sku || '—')}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-500">
+                                {item.variation ? (item.variation.upc || '—') : (item.product.upc || '—')}
                               </td>
                               <td className="px-6 py-4 text-sm text-right font-semibold text-gray-900">
                                 {item.quantity.toLocaleString()}
@@ -1742,7 +1758,7 @@ const SalesManagement = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="5" className="px-6 py-12 text-center text-gray-500 italic">
+                            <td colSpan="6" className="px-6 py-12 text-center text-gray-500 italic">
                               No items in this sale
                             </td>
                           </tr>
@@ -1970,7 +1986,7 @@ const SalesManagement = () => {
                     <div className="flex items-center mb-1.5">
                       <span className="font-bold text-gray-900 w-48">TIN:</span>
                       <span className="text-black-900 flex-1 print-visible">
-                        {invoiceReport.tin || 'N/A'}
+                        {invoiceReport.tin || invoiceReport.branchTin || 'N/A'}
                       </span>
                     </div>
                     <div className="grid grid-cols-[180px_1fr] items-start gap-3">

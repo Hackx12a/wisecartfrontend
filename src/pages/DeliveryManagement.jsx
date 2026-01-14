@@ -258,6 +258,8 @@ const VariationSearchableDropdown = ({ options, value, onChange, placeholder, re
 };
 
 
+
+
 const DeliveryManagement = () => {
   const [deliveries, setDeliveries] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -278,9 +280,11 @@ const DeliveryManagement = () => {
   const [itemsPerPage] = useState(10);
   const [loadingStocks, setLoadingStocks] = useState({});
   const [stockErrors, setStockErrors] = useState({});
+  const [showCompanyDetails, setShowCompanyDetails] = useState(true);
+  const [showBranchDetails, setShowBranchDetails] = useState(true);
   const [formData, setFormData] = useState({
     branchId: '',
-    date: new Date().toISOString().split('T')[0],
+    date: '',
     deliveryReceiptNumber: '',
     purchaseOrderNumber: '',
     transmittal: '',
@@ -289,7 +293,9 @@ const DeliveryManagement = () => {
     customStatus: '',
     remarks: '',
     items: [],
-    selectedWarehouseId: ''
+    selectedWarehouseId: '',
+    datePrepared: '',
+    dateDelivered: ''
   });
 
   const [filterData, setFilterData] = useState({
@@ -300,6 +306,8 @@ const DeliveryManagement = () => {
     endDate: '',
     receiptNumber: ''
   });
+
+
 
   const handleGenerateReceiptFull = async (delivery) => {
     try {
@@ -322,7 +330,7 @@ const DeliveryManagement = () => {
         }),
         branchName: fullDelivery.branch?.branchName || delivery.branchName,
         companyName: fullDelivery.company?.companyName || delivery.companyName,
-        companyTin: fullDelivery.company?.tin || 'N/A',
+        companyTin: fullDelivery.branch?.tin || fullDelivery.company?.tin || 'N/A',
         branchAddress: `${fullDelivery.branch?.address || ''}, ${fullDelivery.branch?.city || ''}, ${fullDelivery.branch?.province || ''}`.trim(),
         preparedBy: fullDelivery.preparedBy || localStorage.getItem('fullName') || '',
         purchaseOrderNumber: fullDelivery.purchaseOrderNumber || '',
@@ -391,6 +399,11 @@ const DeliveryManagement = () => {
       return false;
     }
 
+    if (!formData.datePrepared) {
+      alert('Date prepared is required');
+      return false;
+    }
+
     if (formData.items.length === 0) {
       alert('Please add at least one item to the delivery');
       return false;
@@ -408,7 +421,6 @@ const DeliveryManagement = () => {
       return false;
     }
 
-
     const invalidPreparedQty = formData.items.filter(item =>
       item.preparedQty === '' || item.preparedQty === 0 || item.preparedQty < 1
     );
@@ -418,6 +430,11 @@ const DeliveryManagement = () => {
     }
 
     if (formData.status === 'DELIVERED') {
+      if (!formData.dateDelivered) {
+        alert('Date delivered is required for DELIVERED status');
+        return false;
+      }
+
       const invalidDeliveredQty = formData.items.filter(item =>
         item.deliveredQty === '' || item.deliveredQty === 0 || item.deliveredQty < 1
       );
@@ -431,10 +448,16 @@ const DeliveryManagement = () => {
         alert('Delivered quantity cannot exceed prepared quantity for any item');
         return false;
       }
+    } else {
+      if (formData.dateDelivered) {
+        setFormData({ ...formData, dateDelivered: '' });
+      }
     }
 
     return true;
   };
+
+
 
   const handleItemChange = async (index, field, value) => {
     const newItems = [...formData.items];
@@ -505,9 +528,20 @@ const DeliveryManagement = () => {
 
     if (mode === 'create') {
       setSelectedDelivery(null);
+      setShowCompanyDetails(true);
+      setShowBranchDetails(true);
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      const localISOString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+
       setFormData({
         branchId: '',
-        date: new Date().toISOString().split('T')[0],
+        date: localISOString,
         deliveryReceiptNumber: '',
         purchaseOrderNumber: '',
         transmittal: '',
@@ -515,7 +549,10 @@ const DeliveryManagement = () => {
         status: 'PREPARING',
         customStatus: '',
         remarks: '',
-        items: []
+        items: [],
+        selectedWarehouseId: '',
+        datePrepared: localISOString,
+        dateDelivered: ''
       });
       setBranchInfo(null);
       setWarehouseStocks({});
@@ -543,9 +580,28 @@ const DeliveryManagement = () => {
         }
 
         setSelectedDelivery(fullDelivery);
+        const formatDateForInput = (dateString) => {
+          if (!dateString) return '';
+          let cleanDate = dateString.replace('Z', '').split('.')[0].split('+')[0];
+          if (cleanDate.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/)) {
+            if (!cleanDate.includes(':', cleanDate.lastIndexOf(':'))) {
+              cleanDate += ':00';
+            }
+            return cleanDate;
+          }
+          const date = new Date(dateString);
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const hours = String(date.getHours()).padStart(2, '0');
+          const minutes = String(date.getMinutes()).padStart(2, '0');
+          const seconds = String(date.getSeconds()).padStart(2, '0');
+          return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+        };
+
         setFormData({
           branchId: fullDelivery.branch.id,
-          date: fullDelivery.date,
+          date: fullDelivery.date ? formatDateForInput(fullDelivery.date) : formatDateForInput(new Date()),
           deliveryReceiptNumber: fullDelivery.deliveryReceiptNumber,
           purchaseOrderNumber: fullDelivery.purchaseOrderNumber || '',
           transmittal: fullDelivery.transmittal || '',
@@ -554,19 +610,30 @@ const DeliveryManagement = () => {
           customStatus: fullDelivery.customStatus || '',
           remarks: fullDelivery.remarks || '',
           selectedWarehouseId: fullDelivery.items[0]?.warehouse?.id || '',
+          datePrepared: fullDelivery.datePrepared ? formatDateForInput(fullDelivery.datePrepared) : formatDateForInput(fullDelivery.date || new Date()),
+          dateDelivered: fullDelivery.dateDelivered ? formatDateForInput(fullDelivery.dateDelivered) : '',
           items: fullDelivery.items.map(item => ({
             productId: item.product.id,
             quantity: item.quantity,
             preparedQty: item.preparedQty || '',
             deliveredQty: item.deliveredQty || '',
             uom: item.uom || '',
-            warehouseId: item.warehouse?.id || ''
+            warehouseId: item.warehouse?.id || '',
+            originalPreparedQty: item.preparedQty || 0
           }))
         });
+
+
         setBranchInfo({
           companyName: fullDelivery.company.companyName,
           tin: fullDelivery.company.tin,
-          fullAddress: `${fullDelivery.company.address || ''}, ${fullDelivery.company.city || ''}, ${fullDelivery.company.province || ''}`.trim()
+          fullAddress: `${fullDelivery.company.address || ''}, ${fullDelivery.company.city || ''}, ${fullDelivery.company.province || ''}`.trim(),
+
+          branchName: fullDelivery.branch.branchName,
+          branchCode: fullDelivery.branch.branchCode,
+          branchAddress: `${fullDelivery.branch.address || ''}, ${fullDelivery.branch.city || ''}, ${fullDelivery.branch.province || ''}`.trim(),
+          branchTin: fullDelivery.branch.tin || '',
+          branchContactNumber: fullDelivery.branch.contactNumber || ''
         });
 
         const stockLoadPromises = fullDelivery.items.map((item, index) => {
@@ -645,7 +712,10 @@ const DeliveryManagement = () => {
     setShowModal(false);
     setSelectedDelivery(null);
     setBranchInfo(null);
+    setShowCompanyDetails(true);
+    setShowBranchDetails(true);
   };
+
 
   const handleBranchChange = async (branchId) => {
     setFormData({ ...formData, branchId });
@@ -656,7 +726,12 @@ const DeliveryManagement = () => {
           setBranchInfo({
             companyName: branch.company.companyName,
             tin: branch.company.tin,
-            fullAddress: `${branch.company.address || ''}, ${branch.company.city || ''}, ${branch.company.province || ''}`.trim()
+            fullAddress: `${branch.company.address || ''}, ${branch.company.city || ''}, ${branch.company.province || ''}`.trim(),
+            branchName: branch.branchName,
+            branchCode: branch.branchCode,
+            branchAddress: `${branch.address || ''}, ${branch.city || ''}, ${branch.province || ''}`.trim(),
+            branchTin: branch.tin || '',
+            branchContactNumber: branch.contactNumber || ''
           });
         }
       } catch (error) {
@@ -676,7 +751,8 @@ const DeliveryManagement = () => {
         preparedQty: '',
         deliveredQty: '',
         uom: '',
-        warehouseId: formData.selectedWarehouseId || ''
+        warehouseId: formData.selectedWarehouseId || '',
+        originalPreparedQty: 0
       }]
     });
   };
@@ -685,6 +761,8 @@ const DeliveryManagement = () => {
     setFormData({ ...formData, items: formData.items.filter((_, i) => i !== index) });
   };
 
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -692,38 +770,67 @@ const DeliveryManagement = () => {
       return;
     }
 
+    const deliveryData = {
+      ...formData,
+      date: formData.datePrepared || null,
+      datePrepared: formData.datePrepared || null,
+      dateDelivered: formData.status === 'DELIVERED' && formData.dateDelivered
+        ? formData.dateDelivered
+        : null
+    };
 
-    for (const item of formData.items) {
-      if (item.deliveredQty > item.preparedQty) {
-        const product = products.find(p => p.id === item.productId);
-        alert(`Delivered quantity (${item.deliveredQty}) cannot exceed prepared quantity (${item.preparedQty}) for product "${product?.productName}"`);
-        return;
-      }
+    if (formData.status !== 'DELIVERED') {
+      delete deliveryData.dateDelivered;
     }
 
+    for (const item of formData.items) {
+      if (formData.status === 'DELIVERED') {
+        const itemIndex = formData.items.indexOf(item);
+        const stockKey = `${itemIndex}_${item.productId}_${item.warehouseId}`;
+        const stockInfo = warehouseStocks[stockKey];
+        const effectiveMaxQty = (stockInfo?.availableQuantity || 0) + (item.preparedQty || 0);
+
+        if (item.deliveredQty > effectiveMaxQty) {
+          const product = products.find(p => p.id === item.productId);
+          const warehouse = warehouses.find(w => w.id === item.warehouseId);
+
+          alert(`⚠️ INSUFFICIENT STOCK\n\n` +
+            `Product: ${product?.productName}\n` +
+            `Warehouse: ${warehouse?.warehouseName}\n\n` +
+            `Delivered Quantity: ${item.deliveredQty}\n` +
+            `Maximum Allowed: ${effectiveMaxQty}\n` +
+            `  (Available: ${stockInfo?.availableQuantity || 0} + Prepared: ${item.preparedQty || 0})\n\n` +
+            `Please reduce the delivered quantity or increase warehouse stock.`);
+          return;
+        }
+      }
+    }
 
     try {
       setActionLoading(true);
       setLoadingMessage(modalMode === 'create' ? 'Creating delivery...' : 'Updating delivery...');
+
       for (const item of formData.items) {
         const stockResponse = await api.get(`/stocks/warehouses/${item.warehouseId}/products/${item.productId}`);
 
         const quantityNeeded = item.preparedQty || 0;
+        const originalReserved = item.originalPreparedQty || 0;
+        const effectiveAvailableStock = (stockResponse.data?.availableQuantity || 0) + originalReserved;
 
-        if (!stockResponse.success || stockResponse.data?.availableQuantity < quantityNeeded) {
+        if (!stockResponse.success || effectiveAvailableStock < quantityNeeded) {
           const product = products.find(p => p.id === item.productId);
           const warehouse = warehouses.find(w => w.id === item.warehouseId);
 
-          alert(`Insufficient stock for product "${product?.productName}" in warehouse "${warehouse?.warehouseName}". Available: ${stockResponse.data?.availableQuantity || 0}, Requested: ${quantityNeeded}`);
+          alert(`Insufficient stock for product "${product?.productName}" in warehouse "${warehouse?.warehouseName}". Available (including reserved): ${effectiveAvailableStock}, Requested: ${quantityNeeded}`);
           return;
         }
       }
 
       if (modalMode === 'create') {
-        await api.post('/deliveries', formData);
+        await api.post('/deliveries', deliveryData);
         alert('Delivery created successfully!');
       } else {
-        await api.put(`/deliveries/${selectedDelivery.id}`, formData);
+        await api.put(`/deliveries/${selectedDelivery.id}`, deliveryData);
         alert('Delivery updated successfully!');
       }
 
@@ -739,12 +846,28 @@ const DeliveryManagement = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this delivery?')) return;
+    const delivery = deliveries.find(d => d.id === id);
+
+    const userRole = localStorage.getItem('userRole') || 'USER';
+
+    let confirmMessage = 'Are you sure you want to delete this delivery?';
+
+    if (delivery?.status === 'DELIVERED') {
+      if (userRole !== 'ADMIN') {
+        alert('⚠️ PERMISSION DENIED\n\nOnly administrators can delete delivered deliveries.\n\nPlease contact your system administrator.');
+        return;
+      }
+      confirmMessage = '⚠️ ADMIN ACTION REQUIRED\n\nYou are about to delete a DELIVERED delivery.\nThis action will reverse all stock movements.\n\nAre you sure you want to proceed?';
+    }
+
+    if (!window.confirm(confirmMessage)) return;
 
     try {
       setActionLoading(true);
       setLoadingMessage('Deleting delivery...');
-      const response = await api.delete(`/deliveries/${id}`);
+
+      const response = await api.delete(`/deliveries/${id}?userRole=${userRole}`);
+
       if (!response.success) {
         alert(response.error || 'Failed to delete delivery');
         return;
@@ -756,14 +879,12 @@ const DeliveryManagement = () => {
         setCurrentPage(currentPage - 1);
       }
     } catch (error) {
-
       const errorMessage = error.response?.data?.error ||
         error.response?.data?.message ||
         error.message ||
         'Failed to delete delivery';
 
       alert(errorMessage);
-
       console.error('Delete error:', error);
     } finally {
       setActionLoading(false);
@@ -855,7 +976,6 @@ const DeliveryManagement = () => {
       }
     }
 
-    // Legacy search term (keep for backwards compatibility)
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch = !searchTerm ||
       delivery.branchName?.toLowerCase().includes(searchLower) ||
@@ -944,13 +1064,25 @@ const DeliveryManagement = () => {
 
   const getStatusColor = (status) => {
     const colors = {
-      PREPARING: 'bg-blue-100 text-blue-800',
+      PREPARING: 'bg-yellow-100 text-yellow-800',
       IN_TRANSIT: 'bg-purple-100 text-purple-800',
       DELIVERED: 'bg-green-100 text-green-800',
       CANCELLED: 'bg-red-100 text-red-800',
       CUSTOM: 'bg-gray-100 text-gray-800'
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+
+
+  const getStatusDropdownBgColor = (status) => {
+    const colors = {
+      PREPARING: 'bg-yellow-50 border-yellow-200',
+      IN_TRANSIT: 'bg-purple-50 border-purple-200',
+      DELIVERED: 'bg-green-50 border-green-200',
+      CANCELLED: 'bg-red-50 border-red-200'
+    };
+    return colors[status] || 'bg-gray-50 border-gray-200';
   };
 
   const branchOptions = branches.map(b => ({ id: b.id, name: `${b.branchName} (${b.branchCode})` }));
@@ -1132,7 +1264,8 @@ const DeliveryManagement = () => {
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receipt #</th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Prepared</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Delivered</th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -1141,7 +1274,7 @@ const DeliveryManagement = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {currentDeliveries.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
+                      <td colSpan="8" className="px-6 py-12 text-center text-gray-500">
                         {filteredDeliveries.length === 0 ? 'No deliveries found' : 'No deliveries on this page'}
                       </td>
                     </tr>
@@ -1159,7 +1292,18 @@ const DeliveryManagement = () => {
                           {delivery.companyName}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(delivery.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                          {delivery.datePrepared ? new Date(delivery.datePrepared).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          }) : 'Not prepared'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {delivery.dateDelivered ? new Date(delivery.dateDelivered).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          }) : 'Not delivered'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
@@ -1168,19 +1312,27 @@ const DeliveryManagement = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="status-with-date">
-                            <span className={`px-3 py-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(delivery.status)}`}>
+                          <div className="flex flex-col gap-1">
+                            <span className={`px-3 py-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(delivery.status)} w-fit`}>
                               {delivery.customStatus || delivery.status}
                             </span>
                             {delivery.status === 'DELIVERED' && delivery.dateDelivered && (
-                              <span className="date-badge">
-                                {new Date(delivery.dateDelivered).toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
+                              <div className="flex items-center gap-1 text-xs text-green-700">
+                                <span className="font-medium">Delivered:</span>
+                                <span>
+                                  {new Date(delivery.dateDelivered).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                  })}
+                                </span>
+                                <span className="text-gray-500">
+                                  {new Date(delivery.dateDelivered).toLocaleTimeString('en-US', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              </div>
                             )}
                           </div>
                         </td>
@@ -1289,63 +1441,80 @@ const DeliveryManagement = () => {
                   </button>
                 </div>
 
-                {/* Warehouse Requirement Notice */}
-                <div className="px-8 pt-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0">
-                        <Truck className="text-blue-600 mt-0.5" size={20} />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-blue-800 mb-1">
-                          Warehouse Requirement
-                        </h3>
-                        <p className="text-sm text-blue-700">
-                          Warehouse selection is now mandatory for all delivery items. This ensures proper stock tracking and reservation.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
 
                 <form onSubmit={handleSubmit} className="p-8">
                   <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-3">
-                          Branch *
-                          {(formData.status === 'IN_TRANSIT' || formData.status === 'DELIVERED' || formData.status === 'CANCELLED') && (
-                            <span className="ml-2 text-xs text-orange-600">(Locked - Cannot change in {formData.status} status)</span>
-                          )}
-                        </label>
-                        <SearchableDropdown
-                          options={branchOptions}
-                          value={formData.branchId}
-                          onChange={handleBranchChange}
-                          placeholder="Select Branch"
-                          displayKey="name"
-                          valueKey="id"
-                          required
-                          disabled={formData.status === 'IN_TRANSIT' || formData.status === 'DELIVERED' || formData.status === 'CANCELLED'}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-3">Date *</label>
-                        <input
-                          type="date"
-                          value={formData.date}
-                          onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                          required
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Branch *
+                        {(formData.status === 'IN_TRANSIT' || formData.status === 'DELIVERED' || formData.status === 'CANCELLED') && (
+                          <span className="ml-2 text-xs text-orange-600">(Locked - Cannot change in {formData.status} status)</span>
+                        )}
+                      </label>
+                      <SearchableDropdown
+                        options={branchOptions}
+                        value={formData.branchId}
+                        onChange={handleBranchChange}
+                        placeholder="Select Branch"
+                        displayKey="name"
+                        valueKey="id"
+                        required
+                        disabled={formData.status === 'IN_TRANSIT' || formData.status === 'DELIVERED' || formData.status === 'CANCELLED'}
+                      />
                     </div>
 
                     {branchInfo && (
-                      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                        <p className="text-sm text-blue-800 mb-1"><strong>Company:</strong> {branchInfo.companyName}</p>
-                        <p className="text-sm text-blue-800 mb-1"><strong>TIN:</strong> {branchInfo.tin}</p>
-                        <p className="text-sm text-blue-800"><strong>Address:</strong> {branchInfo.fullAddress}</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className={`bg-green-50 rounded-lg border border-green-200 transition-all duration-300 ${showBranchDetails ? 'h-auto' : 'h-[60px]'}`}>
+                          <button
+                            type="button"
+                            onClick={() => setShowBranchDetails(!showBranchDetails)}
+                            className="w-full p-4 flex items-center justify-between hover:bg-green-100 transition rounded-lg"
+                          >
+                            <h3 className="text-sm font-bold text-green-900 flex items-center gap-2">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                              Branch Details
+                            </h3>
+                            <ChevronDown
+                              size={20}
+                              className={`text-green-600 transition-transform ${showBranchDetails ? 'rotate-180' : ''}`}
+                            />
+                          </button>
+
+                          <div className={`overflow-hidden transition-all duration-300 ${showBranchDetails ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                            {showBranchDetails && (
+                              <div className="px-4 pb-4 space-y-2">
+                                <div className="flex items-start">
+                                  <span className="text-xs text-green-600 font-medium min-w-20">Branch:</span>
+                                  <span className="text-sm text-green-900 font-semibold ml-2">{branchInfo.branchName}</span>
+                                </div>
+                                <div className="flex items-start">
+                                  <span className="text-xs text-green-600 font-medium min-w-20">Code:</span>
+                                  <span className="text-sm text-green-900 ml-2">{branchInfo.branchCode}</span>
+                                </div>
+                                {branchInfo.branchTin && (
+                                  <div className="flex items-start">
+                                    <span className="text-xs text-green-600 font-medium min-w-20">TIN:</span>
+                                    <span className="text-sm text-green-900 ml-2">{branchInfo.branchTin}</span>
+                                  </div>
+                                )}
+                                <div className="flex items-start">
+                                  <span className="text-xs text-green-600 font-medium min-w-20">Address:</span>
+                                  <span className="text-sm text-green-900 ml-2">{branchInfo.branchAddress}</span>
+                                </div>
+                                {branchInfo.branchContactNumber && (
+                                  <div className="flex items-start">
+                                    <span className="text-xs text-green-600 font-medium min-w-20">Contact:</span>
+                                    <span className="text-sm text-green-900 ml-2">{branchInfo.branchContactNumber}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     )}
 
@@ -1391,7 +1560,6 @@ const DeliveryManagement = () => {
                         />
                       </div>
                     </div>
-
                     {modalMode === 'edit' && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-3">Status</label>
@@ -1400,38 +1568,77 @@ const DeliveryManagement = () => {
                           onChange={(e) => {
                             const newStatus = e.target.value;
 
-                            // Auto-fill deliveredQty with preparedQty when changing to DELIVERED
-                            if (newStatus === 'DELIVERED') {
+                            if (newStatus === 'PREPARING') {
+                              setFormData({
+                                ...formData,
+                                status: newStatus,
+                                dateDelivered: ''
+                              });
+                            } else if (newStatus === 'IN_TRANSIT') {
+                              setFormData({
+                                ...formData,
+                                status: newStatus,
+                                dateDelivered: ''
+                              });
+                            } else if (newStatus === 'DELIVERED') {
                               const updatedItems = formData.items.map(item => ({
                                 ...item,
                                 deliveredQty: item.deliveredQty || item.preparedQty
                               }));
+                              const getLocalISOString = () => {
+                                const now = new Date();
+                                const year = now.getFullYear();
+                                const month = String(now.getMonth() + 1).padStart(2, '0');
+                                const day = String(now.getDate()).padStart(2, '0');
+                                const hours = String(now.getHours()).padStart(2, '0');
+                                const minutes = String(now.getMinutes()).padStart(2, '0');
+                                const seconds = String(now.getSeconds()).padStart(2, '0');
+                                return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+                              };
+
                               setFormData({
                                 ...formData,
                                 status: newStatus,
+                                dateDelivered: formData.dateDelivered || getLocalISOString(),
                                 items: updatedItems
                               });
+                            } else if (newStatus === 'CANCELLED') {
+                              setFormData({
+                                ...formData,
+                                status: newStatus,
+                                dateDelivered: ''
+                              });
                             } else {
-                              setFormData({ ...formData, status: newStatus });
+                              const updatedItems = formData.items.map(item => ({
+                                ...item,
+                                deliveredQty: ''
+                              }));
+                              setFormData({
+                                ...formData,
+                                status: newStatus,
+                                dateDelivered: '',
+                                items: updatedItems
+                              });
                             }
                           }}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition ${getStatusDropdownBgColor(formData.status)}`}
                         >
-                          {formData.status === 'PREPARING' && (
+                          {selectedDelivery.status === 'PREPARING' && (
                             <>
                               <option value="PREPARING">PREPARING</option>
                               <option value="IN_TRANSIT">IN_TRANSIT</option>
                             </>
                           )}
-                          {formData.status === 'IN_TRANSIT' && (
+                          {selectedDelivery.status === 'IN_TRANSIT' && (
+
                             <>
                               <option value="IN_TRANSIT">IN_TRANSIT</option>
                               <option value="DELIVERED">DELIVERED</option>
                               <option value="CANCELLED">CANCELLED</option>
                             </>
                           )}
-                          {(formData.status === 'DELIVERED' || formData.status === 'CANCELLED') && (
-                            <option value={formData.status}>{formData.status}</option>
+                          {(selectedDelivery.status === 'DELIVERED' || selectedDelivery.status === 'CANCELLED') && (
+                            <option value={selectedDelivery.status}>{selectedDelivery.status}</option>
                           )}
                         </select>
                       </div>
@@ -1446,6 +1653,118 @@ const DeliveryManagement = () => {
                       />
                     </div>
 
+
+                    <div className="grid grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                          Date Prepared *
+                          {modalMode === 'edit' && formData.status !== 'PREPARING' && (
+                            <span className="ml-2 text-xs text-orange-600">(Locked - cannot change after PREPARING status)</span>
+                          )}
+                          {modalMode === 'edit' && formData.status === 'PREPARING' && (
+                            <span className="ml-2 text-xs text-green-600">(Editable in PREPARING status)</span>
+                          )}
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={
+                            formData.datePrepared
+                              ? (() => {
+                                let cleanDate = formData.datePrepared.replace('Z', '').split('.')[0].split('+')[0];
+                                if (cleanDate.length > 16) {
+                                  cleanDate = cleanDate.substring(0, 16);
+                                }
+                                return cleanDate;
+                              })()
+                              : ''
+                          }
+                          onChange={(e) => {
+                            if (modalMode === 'create' || (modalMode === 'edit' && formData.status === 'PREPARING')) {
+                              const localDateTimeStr = e.target.value;
+                              const isoWithoutZ = localDateTimeStr + ':00';
+
+                              setFormData({
+                                ...formData,
+                                datePrepared: isoWithoutZ
+                              });
+                            }
+                          }}
+                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-blue-500 transition ${modalMode === 'edit' && formData.status !== 'PREPARING'
+                            ? 'border-gray-200 bg-gray-100 cursor-not-allowed'
+                            : 'border-gray-300 focus:ring-blue-500 bg-white'
+                            }`}
+                          disabled={modalMode === 'edit' && formData.status !== 'PREPARING'}
+                          required
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          {modalMode === 'create'
+                            ? 'Pre-filled with current Philippine time. You can edit if needed before saving.'
+                            : formData.status === 'PREPARING'
+                              ? 'You can edit this while status is PREPARING. Once changed to IN_TRANSIT or DELIVERED, it becomes locked.'
+                              : 'Date when delivery was originally prepared (locked after PREPARING status)'}
+                        </p>
+                      </div>
+
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                          Date Delivered
+                          {formData.status !== 'DELIVERED' && (
+                            <span className="ml-2 text-xs text-orange-600">(Enabled only when status is DELIVERED)</span>
+                          )}
+                          {formData.status === 'DELIVERED' && (
+                            <span className="ml-2 text-xs text-orange-600">(Required for DELIVERED status)</span>
+                          )}
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={
+                            formData.dateDelivered
+                              ? (() => {
+                                let cleanDate = formData.dateDelivered.replace('Z', '').split('.')[0].split('+')[0];
+                                if (cleanDate.length > 16) {
+                                  cleanDate = cleanDate.substring(0, 16);
+                                }
+                                return cleanDate;
+                              })()
+                              : formData.status === 'DELIVERED'
+                                ? (() => {
+                                  const now = new Date();
+                                  const year = now.getFullYear();
+                                  const month = String(now.getMonth() + 1).padStart(2, '0');
+                                  const day = String(now.getDate()).padStart(2, '0');
+                                  const hours = String(now.getHours()).padStart(2, '0');
+                                  const minutes = String(now.getMinutes()).padStart(2, '0');
+                                  return `${year}-${month}-${day}T${hours}:${minutes}`;
+                                })()
+                                : ''
+                          }
+                          onChange={(e) => {
+                            const localDateTimeStr = e.target.value;
+                            const isoWithoutZ = localDateTimeStr + ':00';
+                            setFormData({
+                              ...formData,
+                              dateDelivered: isoWithoutZ
+                            });
+                          }}
+                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-blue-500 transition ${formData.status === 'DELIVERED'
+                            ? 'border-gray-300 focus:ring-blue-500 bg-white'
+                            : 'border-gray-200 bg-gray-100 cursor-not-allowed'
+                            }`}
+                          disabled={formData.status !== 'DELIVERED'}
+                          required={formData.status === 'DELIVERED'}
+                        />
+                        {formData.status !== 'DELIVERED' ? (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Will be enabled automatically when status changes to DELIVERED
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Required when status is DELIVERED
+                          </p>
+                        )}
+                      </div>
+                    </div>
                     <div>
                       <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                         <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -1460,7 +1779,6 @@ const DeliveryManagement = () => {
                           options={warehouseOptions}
                           value={formData.selectedWarehouseId}
                           onChange={(value) => {
-                            // Update warehouse for all existing items
                             const newItems = formData.items.map(item => ({
                               ...item,
                               warehouseId: value
@@ -1508,7 +1826,10 @@ const DeliveryManagement = () => {
                         const stockKey = `${i}_${item.productId}_${item.warehouseId}`;
                         const stockInfo = warehouseStocks[stockKey];
                         const isLoadingStock = loadingStocks[stockKey];
-                        const hasInsufficientStock = stockInfo && item.preparedQty > (stockInfo.availableQuantity || 0);
+                        const effectiveAvailable = modalMode === 'edit'
+                          ? (stockInfo?.availableQuantity || 0) + (item.originalPreparedQty || 0)
+                          : (stockInfo?.availableQuantity || 0);
+                        const hasInsufficientStock = stockInfo && item.preparedQty > effectiveAvailable;
 
                         const isDelivered = formData.status === 'DELIVERED';
                         const isInTransit = formData.status === 'IN_TRANSIT';
@@ -1583,7 +1904,7 @@ const DeliveryManagement = () => {
                                       : 'border-gray-300 bg-gray-100 cursor-not-allowed'
                                       }`}
                                     min="0"
-                                    max={item.preparedQty || 0}
+                                    max={(stockInfo?.availableQuantity || 0) + (item.preparedQty || 0)}
                                     disabled={!isDelivered}
                                     placeholder={isDelivered ? "Enter delivered quantity" : "Set when delivered"}
                                     required={isDelivered}
@@ -1591,14 +1912,14 @@ const DeliveryManagement = () => {
                                   {isDelivered && (item.deliveredQty === '' || item.deliveredQty === 0 || item.deliveredQty < 1) && (
                                     <p className="text-red-500 text-xs mt-1">Delivered quantity required (min 1)</p>
                                   )}
-                                  {isDelivered && item.deliveredQty > item.preparedQty && (
+                                  {isDelivered && item.deliveredQty > ((stockInfo?.availableQuantity || 0) + (item.preparedQty || 0)) && (
                                     <p className="text-red-500 text-xs mt-1">
-                                      Cannot exceed prepared quantity ({item.preparedQty})
+                                      Cannot exceed available + prepared quantity ({(stockInfo?.availableQuantity || 0) + (item.preparedQty || 0)})
                                     </p>
                                   )}
                                   <p className="text-xs text-gray-500 mt-1">
                                     {isDelivered
-                                      ? "This quantity will be deducted from warehouse and added to branch"
+                                      ? `Max: ${(stockInfo?.availableQuantity || 0) + (item.preparedQty || 0)} (Available: ${stockInfo?.availableQuantity || 0} + Prepared: ${item.preparedQty || 0})`
                                       : "Enter this after changing status to DELIVERED"}
                                   </p>
                                 </div>
@@ -1636,11 +1957,26 @@ const DeliveryManagement = () => {
                             {!isLoadingStock && stockInfo && (
                               <div className={`mt-2 p-2 rounded border ${hasInsufficientStock ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
                                 <div className={`text-xs ${hasInsufficientStock ? 'text-red-700' : 'text-blue-700'}`}>
-                                  <div className="font-semibold text-sm">
-                                    Available Stock: {stockInfo.availableQuantity || 0}
+                                  <div className="space-y-1">
+                                    <div className="font-semibold text-sm">
+                                      Available Stock: {stockInfo.availableQuantity || 0}
+                                    </div>
+                                    {modalMode === 'edit' && item.originalPreparedQty > 0 && (
+                                      <div className="text-xs text-blue-600">
+                                        + Originally Reserved: {item.originalPreparedQty}
+                                        <div className="font-semibold text-green-700">
+                                          = Effective Available: {(stockInfo.availableQuantity || 0) + (item.originalPreparedQty || 0)}
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
-                                {hasInsufficientStock && (
+                                {hasInsufficientStock && modalMode === 'edit' && (
+                                  <div className="text-orange-600 text-xs mt-1 font-medium">
+                                    ℹ️ Note: Your originally reserved {item.originalPreparedQty} units are included in available stock for editing
+                                  </div>
+                                )}
+                                {hasInsufficientStock && modalMode !== 'edit' && (
                                   <div className="text-red-600 text-xs mt-1 font-medium">
                                     ⚠️ Prepared quantity exceeds available stock!
                                   </div>
@@ -1721,7 +2057,7 @@ const DeliveryManagement = () => {
                       </div>
                     </div>
 
-                    {/* Date Prepared/Delivered - NEW SECTION */}
+
                     {(selectedDelivery.datePrepared || selectedDelivery.dateDelivered) && (
                       <div className="grid grid-cols-2 gap-6">
                         {selectedDelivery.datePrepared && (
@@ -1830,7 +2166,7 @@ const DeliveryManagement = () => {
                           <thead className="bg-gray-50">
                             <tr>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU/UPC</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU & UPC</th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Warehouse</th>
                               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Prepared</th>
                               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Delivered</th>
@@ -1845,7 +2181,22 @@ const DeliveryManagement = () => {
                                     {item.product?.productName || 'Unknown Product'}
                                   </td>
                                   <td className="px-4 py-3 text-sm text-gray-600">
-                                    {item.product?.sku || item.product?.upc || '-'}
+                                    <div className="space-y-1">
+                                      <div className="text-xs">
+                                        <span className="font-medium">SKU:</span> {
+                                          item.product?.variations && item.product.variations.length > 0
+                                            ? (item.product.variations.find(v => v.id === item.productId)?.sku || item.product?.sku || 'N/A')
+                                            : (item.product?.sku || 'N/A')
+                                        }
+                                      </div>
+                                      <div className="text-xs">
+                                        <span className="font-medium">UPC:</span> {
+                                          item.product?.variations && item.product.variations.length > 0
+                                            ? (item.product.variations.find(v => v.id === item.productId)?.upc || item.product?.upc || 'N/A')
+                                            : (item.product?.upc || 'N/A')
+                                        }
+                                      </div>
+                                    </div>
                                   </td>
                                   <td className="px-4 py-3 text-sm text-gray-600">
                                     {item.warehouse?.warehouseName || 'N/A'}
@@ -1872,28 +2223,6 @@ const DeliveryManagement = () => {
                         </table>
                       </div>
                     </div>
-
-                    {/* Status Update Section - Only show if not DELIVERED */}
-                    {selectedDelivery.status !== 'DELIVERED' && (
-                      <div className="border-t border-gray-200 pt-6 mt-6">
-                        <label className="block text-sm font-medium text-gray-700 mb-3">Update Status</label>
-                        <div className="flex gap-3 flex-wrap">
-                          {deliveryStatuses.map((status) => (
-                            <button
-                              key={status}
-                              onClick={() => handleUpdateStatus(selectedDelivery.id, status)}
-                              disabled={selectedDelivery.status === status}
-                              className={`px-4 py-2 rounded-lg font-medium transition ${selectedDelivery.status === status
-                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                                }`}
-                            >
-                              {status}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
 
                     {/* If delivered, show delivery completion info */}
                     {selectedDelivery.status === 'DELIVERED' && (
