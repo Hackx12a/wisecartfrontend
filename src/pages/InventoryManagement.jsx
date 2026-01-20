@@ -2128,122 +2128,122 @@ const EnhancedInventoryManagement = () => {
   };
 
 
- const handleViewStockTransactions = async (stock, locationType) => {
-  try {
-    setActionLoading(true);
-    setLoadingMessage('Loading stock transactions...');
+  const handleViewStockTransactions = async (stock, locationType) => {
+    try {
+      setActionLoading(true);
+      setLoadingMessage('Loading stock transactions...');
 
-    // Check if this stock has variation information
-    const hasVariation = stock.variationId || stock.isVariation;
-    const targetId = hasVariation ? (stock.variationId || stock.id) : (stock.productId || stock.id);
-    const targetType = hasVariation ? 'variation' : 'product';
+      // Check if this stock has variation information
+      const hasVariation = stock.variationId || stock.isVariation;
+      const targetId = hasVariation ? (stock.variationId || stock.id) : (stock.productId || stock.id);
+      const targetType = hasVariation ? 'variation' : 'product';
 
-    setSelectedProduct({
-      productId: stock.productId,
-      variationId: stock.variationId,
-      productName: stock.productName,
-      sku: stock.sku,
-      warehouseId: stock.warehouseId,
-      warehouseName: stock.warehouseName,
-      branchId: stock.branchId,
-      branchName: stock.branchName,
-      locationType: locationType,
-      variationName: stock.variationName,
-      variationSku: stock.variationSku,
-      isVariation: hasVariation,
-      targetId: targetId,
-      targetType: targetType
-    });
-
-    // Use the appropriate API endpoint based on whether it's a variation or base product
-    let transactionsRes;
-    if (hasVariation && stock.variationId) {
-      transactionsRes = await api.get(`/transactions/variation/${stock.variationId}`);
-    } else {
-      transactionsRes = await api.get(`/transactions/product/${stock.productId || stock.id}`);
-    }
-    
-    const transactionsData = transactionsRes.success ? transactionsRes.data || [] : [];
-
-    // Filter transactions for this specific location
-    let filteredTransactions = transactionsData;
-    if (locationType === 'warehouse' && stock.warehouseId) {
-      filteredTransactions = transactionsData.filter(t => {
-        const transactionType = t.transactionType || t.inventoryType;
-
-        // For TRANSFER - show BOTH sending out (SUBTRACT) AND receiving in (ADD)
-        if (transactionType === 'TRANSFER') {
-          // Show SUBTRACT if this warehouse is the source (sending out)
-          const isSendingOut = t.fromWarehouse?.id === stock.warehouseId && t.action === 'SUBTRACT';
-          // Show ADD if this warehouse is the destination (receiving in)
-          const isReceivingIn = t.toWarehouse?.id === stock.warehouseId && t.action === 'ADD';
-          return isSendingOut || isReceivingIn;
-        }
-
-        // For DELIVERY - only show SUBTRACT (warehouse side - sending to branch)
-        if (transactionType === 'DELIVERY') {
-          return t.fromWarehouse?.id === stock.warehouseId && t.action === 'SUBTRACT';
-        }
-
-        // For STOCK_IN - show if warehouse is the destination
-        if (transactionType === 'STOCK_IN') {
-          return t.toWarehouse?.id === stock.warehouseId;
-        }
-
-        // For RETURN - show ADD (receiving returns back to warehouse)
-        if (transactionType === 'RETURN') {
-          return t.toWarehouse?.id === stock.warehouseId && t.action === 'ADD';
-        }
-
-        // For DAMAGE - show SUBTRACT (damaged items removed from warehouse)
-        if (transactionType === 'DAMAGE') {
-          return t.fromWarehouse?.id === stock.warehouseId && t.action === 'SUBTRACT';
-        }
-
-        // For other transactions, show if warehouse is involved in either side
-        return t.fromWarehouse?.id === stock.warehouseId ||
-          t.toWarehouse?.id === stock.warehouseId;
+      setSelectedProduct({
+        productId: stock.productId,
+        variationId: stock.variationId,
+        productName: stock.productName,
+        sku: stock.sku,
+        warehouseId: stock.warehouseId,
+        warehouseName: stock.warehouseName,
+        branchId: stock.branchId,
+        branchName: stock.branchName,
+        locationType: locationType,
+        variationName: stock.variationName,
+        variationSku: stock.variationSku,
+        isVariation: hasVariation,
+        targetId: targetId,
+        targetType: targetType
       });
-    } else if (locationType === 'branch' && stock.branchId) {
-      filteredTransactions = transactionsData.filter(t => {
-        const transactionType = t.transactionType || t.inventoryType;
 
-        // For TRANSFER - only show ADD (receiving at branch)
-        if (transactionType === 'TRANSFER') {
-          return t.toBranch?.id === stock.branchId && t.action === 'ADD';
-        }
+      // Use the appropriate API endpoint based on whether it's a variation or base product
+      let transactionsRes;
+      if (hasVariation && stock.variationId) {
+        transactionsRes = await api.get(`/transactions/variation/${stock.variationId}`);
+      } else {
+        transactionsRes = await api.get(`/transactions/product/${stock.productId || stock.id}`);
+      }
 
-        // For DELIVERY - only show ADD (branch side - receiving from warehouse)
-        if (transactionType === 'DELIVERY') {
-          return t.toBranch?.id === stock.branchId && t.action === 'ADD';
-        }
+      const transactionsData = transactionsRes.success ? transactionsRes.data || [] : [];
 
-        // For SALE - show SUBTRACT (items sold from branch)
-        if (transactionType === 'SALE') {
-          return t.fromBranch?.id === stock.branchId && t.action === 'SUBTRACT';
-        }
+      // Filter transactions for this specific location
+      let filteredTransactions = transactionsData;
+      if (locationType === 'warehouse' && stock.warehouseId) {
+        filteredTransactions = transactionsData.filter(t => {
+          const transactionType = t.transactionType || t.inventoryType;
 
-        // For RETURN - show SUBTRACT (items returned from branch)
-        if (transactionType === 'RETURN') {
-          return t.fromBranch?.id === stock.branchId && t.action === 'SUBTRACT';
-        }
+          // For TRANSFER - show BOTH sending out (SUBTRACT) AND receiving in (ADD)
+          if (transactionType === 'TRANSFER') {
+            // Show SUBTRACT if this warehouse is the source (sending out)
+            const isSendingOut = t.fromWarehouse?.id === stock.warehouseId && t.action === 'SUBTRACT';
+            // Show ADD if this warehouse is the destination (receiving in)
+            const isReceivingIn = t.toWarehouse?.id === stock.warehouseId && t.action === 'ADD';
+            return isSendingOut || isReceivingIn;
+          }
 
-        // For other transactions, show if branch is involved in either side
-        return t.fromBranch?.id === stock.branchId ||
-          t.toBranch?.id === stock.branchId;
-      });
+          // For DELIVERY - only show SUBTRACT (warehouse side - sending to branch)
+          if (transactionType === 'DELIVERY') {
+            return t.fromWarehouse?.id === stock.warehouseId && t.action === 'SUBTRACT';
+          }
+
+          // For STOCK_IN - show if warehouse is the destination
+          if (transactionType === 'STOCK_IN') {
+            return t.toWarehouse?.id === stock.warehouseId;
+          }
+
+          // For RETURN - show ADD (receiving returns back to warehouse)
+          if (transactionType === 'RETURN') {
+            return t.toWarehouse?.id === stock.warehouseId && t.action === 'ADD';
+          }
+
+          // For DAMAGE - show SUBTRACT (damaged items removed from warehouse)
+          if (transactionType === 'DAMAGE') {
+            return t.fromWarehouse?.id === stock.warehouseId && t.action === 'SUBTRACT';
+          }
+
+          // For other transactions, show if warehouse is involved in either side
+          return t.fromWarehouse?.id === stock.warehouseId ||
+            t.toWarehouse?.id === stock.warehouseId;
+        });
+      } else if (locationType === 'branch' && stock.branchId) {
+        filteredTransactions = transactionsData.filter(t => {
+          const transactionType = t.transactionType || t.inventoryType;
+
+          // For TRANSFER - only show ADD (receiving at branch)
+          if (transactionType === 'TRANSFER') {
+            return t.toBranch?.id === stock.branchId && t.action === 'ADD';
+          }
+
+          // For DELIVERY - only show ADD (branch side - receiving from warehouse)
+          if (transactionType === 'DELIVERY') {
+            return t.toBranch?.id === stock.branchId && t.action === 'ADD';
+          }
+
+          // For SALE - show SUBTRACT (items sold from branch)
+          if (transactionType === 'SALE') {
+            return t.fromBranch?.id === stock.branchId && t.action === 'SUBTRACT';
+          }
+
+          // For RETURN - show SUBTRACT (items returned from branch)
+          if (transactionType === 'RETURN') {
+            return t.fromBranch?.id === stock.branchId && t.action === 'SUBTRACT';
+          }
+
+          // For other transactions, show if branch is involved in either side
+          return t.fromBranch?.id === stock.branchId ||
+            t.toBranch?.id === stock.branchId;
+        });
+      }
+
+      setProductTransactions(filteredTransactions);
+      setShowTransactionsModal(true);
+    } catch (err) {
+      console.error('Failed to load stock transactions:', err);
+      toast.error('Failed to load transactions');
+    } finally {
+      setActionLoading(false);
+      setLoadingMessage('');
     }
-
-    setProductTransactions(filteredTransactions);
-    setShowTransactionsModal(true);
-  } catch (err) {
-    console.error('Failed to load stock transactions:', err);
-    toast.error('Failed to load transactions');
-  } finally {
-    setActionLoading(false);
-    setLoadingMessage('');
-  }
-};
+  };
 
 
 
@@ -3114,7 +3114,7 @@ const EnhancedInventoryManagement = () => {
                             </td>
                             <td className="px-3 py-3 text-center">
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                {stock.availableQuantity || 0}
+                                {Math.max(0, (stock.quantity || 0) - (stock.reservedQuantity || 0))}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-xs text-gray-500">

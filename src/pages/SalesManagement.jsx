@@ -336,6 +336,7 @@ const SalesManagement = () => {
   const [loadingMessage, setLoadingMessage] = useState('');
   const [loadingStocks, setLoadingStocks] = useState({});
   const [stockErrors, setStockErrors] = useState({});
+  const [originalSaleItems, setOriginalSaleItems] = useState([]);
 
   const [formData, setFormData] = useState({
     branchId: '',
@@ -488,9 +489,11 @@ const SalesManagement = () => {
     setLoadingStocks({});
     setStockErrors({});
 
-    if (mode === 'edit' && sale && sale.status === 'INVOICED') {
-      alert('Cannot edit sale that has already been INVOICED. Please revert status first.');
-      return;
+    if (mode === 'edit' && sale) {
+      if (sale.status !== 'PENDING') {
+        alert(`Cannot edit sale that is ${sale.status}. Only PENDING sales can be edited.`);
+        return;
+      }
     }
 
     if (mode === 'create') {
@@ -498,6 +501,7 @@ const SalesManagement = () => {
       setFormData({ branchId: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), items: [] });
       setBranchInfo(null);
       setBranchStocks({});
+
     } else if (mode === 'edit' && sale) {
       setSelectedSale(sale);
       setFormData({
@@ -506,11 +510,16 @@ const SalesManagement = () => {
         year: sale.year,
         items: sale.items.map(item => ({
           productId: item.product.id,
-          variationId: item.variation?.id || item.product.id,
+          variationId: item.variation?.id || null,
           quantity: item.quantity || 1
         }))
       });
 
+      setOriginalSaleItems(sale.items.map(item => ({
+        productId: item.product.id,
+        variationId: item.variation?.id || null,
+        quantity: item.quantity || 1
+      })));
 
       const loadingToast = toast.loading('Loading sale data and stock information...');
 
@@ -520,7 +529,6 @@ const SalesManagement = () => {
           setBranchInfo(info.data);
           await loadProductPricesForCompany(info.data?.companyId);
 
-          // Load stock for all products in the sale
           const stockMap = {};
           const errors = {};
 
@@ -571,6 +579,14 @@ const SalesManagement = () => {
     }
 
     setShowModal(true);
+  };
+
+
+  const getMaxAllowedQuantity = (item, stockInfo, oldItem) => {
+    if (!stockInfo) return undefined;
+    const currentAvailable = stockInfo.availableQuantity || 0;
+    const originalReserved = oldItem ? oldItem.quantity : 0;
+    return currentAvailable + originalReserved;
   };
 
   const handleCloseModal = () => {
@@ -624,9 +640,8 @@ const SalesManagement = () => {
 
   const loadProductStock = async (productId, branchId, variationId = null) => {
     if (!branchId) return;
-    const stockKey = variationId
-      ? `${productId}_${variationId}`
-      : `${productId}`;
+
+    const stockKey = variationId ? `${productId}_${variationId}` : `${productId}`;
 
     setLoadingStocks(prev => ({ ...prev, [stockKey]: true }));
     setStockErrors(prev => ({ ...prev, [stockKey]: null }));
@@ -635,7 +650,6 @@ const SalesManagement = () => {
       const endpoint = variationId
         ? `/stocks/branches/${branchId}/products/${productId}/variations/${variationId}`
         : `/stocks/branches/${branchId}/products/${productId}`;
-
 
       const stock = await api.get(endpoint);
       if (stock.success) {
@@ -1550,7 +1564,8 @@ const SalesManagement = () => {
 
                   {branchInfo && (
                     <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <p className="text-sm text-blue-800 mb-1"><strong>Company:</strong> {branchInfo.companyName}</p>
+                      <p className="text-sm text-blue-800 mb-1"><strong>Branch:</strong> {branchInfo.branchName}</p>
+                      <p className="text-sm text-blue-800 mb-1"><strong>Branch Code:</strong> {branchInfo.branchCode}</p>
                       <p className="text-sm text-blue-800 mb-1"><strong>TIN:</strong> {branchInfo.tin}</p>
                       <p className="text-sm text-blue-800"><strong>Address:</strong> {branchInfo.fullAddress}</p>
                     </div>
@@ -1605,10 +1620,18 @@ const SalesManagement = () => {
                         : `${item.productId}`;
 
                       const stockInfo = branchStocks[stockKey];
-                      const availableStock = stockInfo ? stockInfo.availableQuantity : 0;
-                      const hasEnoughStock = availableStock >= item.quantity;
                       const isLoadingStock = loadingStocks[stockKey];
                       const stockError = stockErrors[stockKey];
+                      const oldItem = modalMode === 'edit' && originalSaleItems
+                        ? originalSaleItems.find(oi =>
+                          oi.productId === item.productId &&
+                          oi.variationId === item.variationId
+                        )
+                        : null;
+
+                      // Use the helper function for consistency
+                      const maxAllowed = getMaxAllowedQuantity(item, stockInfo, oldItem);
+                      const hasEnoughStock = maxAllowed >= item.quantity;
 
                       return (
                         <div key={i} className="border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50">
@@ -1633,9 +1656,11 @@ const SalesManagement = () => {
                                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 transition ${!hasEnoughStock && !isLoadingStock && item.quantity > 0 ? 'border-red-300 bg-red-50' : 'border-gray-300'
                                   }`}
                                 min="0"
+                                max={maxAllowed}
                                 required
                                 disabled={isLoadingStock}
                               />
+
                               {item.productId && (
                                 <div className="text-xs mt-2">
                                   {isLoadingStock ? (
@@ -1650,11 +1675,23 @@ const SalesManagement = () => {
                                     <span className="text-orange-600">{stockError}</span>
                                   ) : stockInfo ? (
                                     <div className="flex flex-col gap-0.5">
-                                      <div className={hasEnoughStock ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
-                                        Available Stock: {availableStock}
+                                      <div className="text-green-600 font-semibold">
+                                        Current Available: {stockInfo.availableQuantity || 0}
+                                        {modalMode === 'edit' && oldItem && (
+                                          <>
+                                            <div className="text-blue-600 text-xs mt-1">
+                                              Original Reserved: {oldItem.quantity || 0}
+                                            </div>
+                                            <div className="font-bold text-green-700">
+                                              Max Allowed: {maxAllowed}
+                                            </div>
+                                          </>
+                                        )}
                                       </div>
                                       {!hasEnoughStock && item.quantity > 0 && (
-                                        <div className="text-red-500 font-medium">⚠ Insufficient stock!</div>
+                                        <div className="text-red-500 font-medium">
+                                          ⚠ Exceeds maximum allowed: {maxAllowed}
+                                        </div>
                                       )}
                                     </div>
                                   ) : (
@@ -1670,7 +1707,7 @@ const SalesManagement = () => {
                               disabled={isLoadingStock}
                             >
                               <Trash2 size={20} />
-                            </button>
+                            </button>s
                           </div>
                         </div>
                       );
@@ -2100,9 +2137,19 @@ const SalesManagement = () => {
                     <tbody>
                       {invoiceReport.products.map((product, i) => (
                         <tr key={i} className="align-top">
-                          <td className="py-2 px-4 text-sm text-gray-900">{product.productName}</td>
-                          <td className="py-2 px-4 text-right text-sm text-gray-900">{product.totalQuantity.toLocaleString()}</td>
-                          <td className="py-2 px-4 text-right  text-sm text-gray-900">
+                          <td className="py-2 px-4 text-sm text-gray-900">
+                            {product.productName}
+                            {product.variation &&
+                              `  ${product.variation.combinationDisplay ||
+                              (product.variation.variationType && product.variation.variationValue
+                                ? `${product.variation.variationType}: ${product.variation.variationValue}`
+                                : 'Variation')} - ${product.variation.upc || 'N/A'}`
+                            }
+                          </td>
+                          <td className="py-2 px-4 text-right text-sm text-gray-900">
+                            {product.totalQuantity.toLocaleString()}
+                          </td>
+                          <td className="py-2 px-4 text-right text-sm text-gray-900">
                             {formatCurrency(product.totalAmount / product.totalQuantity)}
                           </td>
                           <td className="py-2 px-4 text-right text-sm text-gray-900">
@@ -2110,8 +2157,6 @@ const SalesManagement = () => {
                           </td>
                         </tr>
                       ))}
-
-                      {/* Adjustments Section */}
                       {invoiceReport.adjustments && invoiceReport.adjustments.length > 0 && (
                         <>
                           {invoiceReport.adjustments.map((adj, i) => (
@@ -2176,7 +2221,6 @@ const SalesManagement = () => {
                           ))}
                         </>
                       )}
-                      {/* This pushes content to top and lets table expand downward */}
                       <tr className="h-full">
                         <td colSpan={4} className="p-0"></td>
                       </tr>

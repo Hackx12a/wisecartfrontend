@@ -328,6 +328,7 @@ const DeliveryManagement = () => {
   const [filterData, setFilterData] = useState({
     companyId: '',
     branchId: '',
+    warehouseId: '',
     status: '',
     startDate: '',
     endDate: '',
@@ -364,7 +365,11 @@ const DeliveryManagement = () => {
         termsOfPayment: fullDelivery.termsOfPayment || '',
         businessStyle: fullDelivery.businessStyle || '',
         remarks: fullDelivery.remarks || '',
-        items: fullDelivery.items || [],
+        items: fullDelivery.items?.map(item => ({
+          ...item,
+          warehouseName: item.warehouse?.warehouseName || 'N/A',
+          warehouseCode: item.warehouse?.warehouseCode || 'N/A'
+        })) || [],
         extraHeader: fullDelivery.extraHeader || 'EXTRA',
         generatedDate: new Date().toLocaleDateString('en-US', {
           year: 'numeric',
@@ -1050,6 +1055,14 @@ const DeliveryManagement = () => {
     }
 
 
+    if (filterData.warehouseId && delivery.warehouses) {
+      const hasWarehouse = delivery.warehouses.some(wh => wh.id === filterData.warehouseId);
+      if (!hasWarehouse) {
+        return false;
+      }
+    }
+
+
     if (filterData.companyId && delivery.company?.id !== filterData.companyId) {
       const company = companies.find(c => c.id === filterData.companyId);
       if (!company || delivery.companyName !== company.companyName) {
@@ -1253,7 +1266,7 @@ const DeliveryManagement = () => {
     <>
       <LoadingOverlay show={actionLoading} message={loadingMessage || 'Loading...'} />
       <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Delivery Management</h1>
             <p className="text-gray-600">Track and manage product deliveries to branches</p>
@@ -1284,7 +1297,7 @@ const DeliveryManagement = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 pt-4 border-t border-gray-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 pt-4 border-t border-gray-200">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Company</label>
                   <SearchableDropdown
@@ -1311,6 +1324,19 @@ const DeliveryManagement = () => {
                   {filterData.companyId && filteredBranchOptions.length === 0 && (
                     <p className="text-xs text-orange-600 mt-1">No branches available for this company</p>
                   )}
+                </div>
+
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Warehouse</label>
+                  <SearchableDropdown
+                    options={warehouseOptions}
+                    value={filterData.warehouseId}
+                    onChange={(value) => setFilterData({ ...filterData, warehouseId: value })}
+                    placeholder="All Warehouses"
+                    displayKey="name"
+                    valueKey="id"
+                  />
                 </div>
 
                 <div>
@@ -1349,16 +1375,15 @@ const DeliveryManagement = () => {
               </div>
 
               {/* Filter Actions */}
-              {(filterData.companyId || filterData.branchId || filterData.status || filterData.startDate || filterData.endDate || filterData.receiptNumber) && (
-                <div className="flex justify-end pt-2">
-                  <button
-                    onClick={handleResetFilter}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
-                  >
-                    <X size={16} />
-                    Clear All Filters
-                  </button>
-                </div>
+              {(filterData.companyId || filterData.branchId || filterData.warehouseId || filterData.status || filterData.startDate || filterData.endDate || filterData.receiptNumber) && (<div className="flex justify-end pt-2">
+                <button
+                  onClick={handleResetFilter}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
+                >
+                  <X size={16} />
+                  Clear All Filters
+                </button>
+              </div>
               )}
             </div>
           </div>
@@ -1369,7 +1394,8 @@ const DeliveryManagement = () => {
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receipt #</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">From (Warehouse)</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">To (Branch)</th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Prepared</th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Delivered</th>
@@ -1381,7 +1407,7 @@ const DeliveryManagement = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {currentDeliveries.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="px-6 py-12 text-center text-gray-500">
+                      <td colSpan="9" className="px-6 py-12 text-center text-gray-500">
                         {filteredDeliveries.length === 0 ? 'No deliveries found' : 'No deliveries on this page'}
                       </td>
                     </tr>
@@ -1392,8 +1418,29 @@ const DeliveryManagement = () => {
                           <div className="text-sm font-medium text-gray-900">{delivery.deliveryReceiptNumber}</div>
                           {delivery.preparedBy && <div className="text-sm text-gray-500">By: {delivery.preparedBy}</div>}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {delivery.branchName}
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {delivery.warehouses && delivery.warehouses.length > 0 ? (
+                            <div className="space-y-1">
+                              {delivery.warehouses.map((warehouse, idx) => (
+                                <div key={idx} className="flex items-center gap-1">
+                                  <Package size={14} className="text-blue-500 flex-shrink-0" />
+                                  <div>
+                                    <div className="font-medium">{warehouse.warehouseName}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 italic">No warehouse</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          <div className="flex items-center gap-1">
+                            <Truck size={14} className="text-green-500 flex-shrink-0" />
+                            <span className="font-medium text-[11px]">
+                              {delivery.branchName}
+                            </span>
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {delivery.companyName}
@@ -1483,7 +1530,6 @@ const DeliveryManagement = () => {
               </table>
             </div>
 
-            {/* Pagination */}
             {filteredDeliveries.length > 0 && (
               <div className="px-6 py-4 border-t border-gray-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="text-sm text-gray-700">
@@ -2309,8 +2355,16 @@ const DeliveryManagement = () => {
                                       </div>
                                     </div>
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-gray-600">
-                                    {item.warehouse?.warehouseName || 'N/A'}
+                                  <td className="px-4 py-3 text-sm">
+                                    <div className="flex items-center gap-2">
+                                      <Package size={14} className="text-blue-500 flex-shrink-0" />
+                                      <div>
+                                        <div className="font-semibold text-gray-900">{item.warehouse?.warehouseName || 'N/A'}</div>
+                                        {item.warehouse?.warehouseCode && (
+                                          <div className="text-xs text-gray-500">Code: {item.warehouse.warehouseCode}</div>
+                                        )}
+                                      </div>
+                                    </div>
                                   </td>
                                   <td className="px-4 py-3 text-sm text-right font-semibold text-blue-700">
                                     {item.preparedQty || '-'}
@@ -2573,7 +2627,8 @@ const DeliveryManagement = () => {
                     <table className="w-full border-collapse" style={{ minHeight: '175mm' }}>
                       <thead>
                         <tr className="border-b border-gray-900">
-                          <th className="text-left px-3 py-1.5 font-bold text-gray-900 text-xs uppercase tracking-wider" style={{ width: '12%' }}>          Quantity
+                          <th className="text-left px-3 py-1.5 font-bold text-gray-900 text-xs uppercase tracking-wider" style={{ width: '12%' }}>
+                            Quantity
                           </th>
                           <th className="text-left px-2 py-1.5 font-bold text-gray-900 text-xs uppercase tracking-wider" style={{ width: '9%' }}>
                             Unit
