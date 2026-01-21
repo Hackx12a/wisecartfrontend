@@ -12,3 +12,4 @@ export const formatPercentage = (num) => {
   if (num === null || num === undefined) return '0%';
   return `${Number(num).toFixed(1)}%`;
 };
+

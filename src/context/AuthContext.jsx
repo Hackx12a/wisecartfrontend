@@ -1,4 +1,4 @@
-// src/context/AuthContext.jsx
+
 import { createContext, useContext, useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { jwtDecode } from 'jwt-decode';
@@ -6,12 +6,12 @@ import { Navigate } from 'react-router-dom';
 
 const AuthContext = createContext({});
 
-// Auth Provider Component
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Function to check if token is expired
+
   const isTokenExpired = (token) => {
     try {
       const decoded = jwtDecode(token);
@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Function to check and validate token on app load
+
   const validateToken = () => {
     const token = localStorage.getItem('authToken');
     const userData = localStorage.getItem('user');
@@ -63,8 +63,6 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      
-      // Call backend logout endpoint
       if (token) {
         await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/logout`, {
           method: 'POST',
@@ -77,7 +75,6 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Clear local storage
       localStorage.removeItem('authToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
@@ -88,7 +85,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = (token, userData) => {
-    // Store token and user data
     localStorage.setItem('authToken', token);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
@@ -112,7 +108,7 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Custom hook
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -121,7 +117,7 @@ export const useAuth = () => {
   return context;
 };
 
-// Loading wrapper component
+
 export const AuthLoading = ({ children }) => {
   const { loading } = useAuth();
   
@@ -139,11 +135,11 @@ export const AuthLoading = ({ children }) => {
   return children;
 };
 
-// Protected Route Component
+
 export const ProtectedRoute = ({ children }) => {
   const { isTokenValid, loading } = useAuth();
   
-  // Don't redirect while loading
+
   if (loading) {
     return null;
   }
@@ -156,11 +152,11 @@ export const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// Admin Route Component
+
 export const AdminRoute = ({ children }) => {
   const { user, isTokenValid, loading } = useAuth();
   
-  // Don't redirect while loading
+
   if (loading) {
     return null;
   }
