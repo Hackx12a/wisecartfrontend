@@ -369,13 +369,29 @@ const Dashboard = () => {
     const product = productSalesData.find(p => p.id === selectedProductId);
     if (!product) return [];
 
+    // Parse the selected product key
+    const [selectedProductIdNum, selectedVariationIdStr] = selectedProductId.split('_');
+    const selectedVariationId = selectedVariationIdStr !== 'base' ? selectedVariationIdStr : null;
+
     // Get all sales for this product and company, filtered by performance view
     const companySales = sales.filter(sale => {
       const statusMatch = sale.status === 'CONFIRMED' || sale.status === 'INVOICED';
       const companyMatch = sale.company?.companyName === companyName;
 
-      // Check if this sale contains the selected product
-      const hasProduct = sale.items?.some(item => item.product?.id === selectedProductId);
+      // Check if this sale contains the selected product/variation
+      const hasProduct = sale.items?.some(item => {
+        const itemProductId = item.product?.id;
+        const itemVariationId = item.variation?.id || null;
+
+        if (selectedVariationId) {
+          // Specific variation selected
+          return itemProductId == selectedProductIdNum &&
+            itemVariationId == selectedVariationId;
+        } else {
+          // Base product selected (any variation)
+          return itemProductId == selectedProductIdNum;
+        }
+      });
       if (!hasProduct) return false;
 
       // If "Overall" view, no date filtering
@@ -401,7 +417,19 @@ const Dashboard = () => {
       const branchName = sale.branch?.branchName || 'Unknown Branch';
 
       sale.items?.forEach(item => {
-        if (item.product?.id === selectedProductId) {
+        const itemProductId = item.product?.id;
+        const itemVariationId = item.variation?.id || null;
+
+        // Check if this item matches the selected product/variation
+        let matches = false;
+        if (selectedVariationId) {
+          matches = itemProductId == selectedProductIdNum &&
+            itemVariationId == selectedVariationId;
+        } else {
+          matches = itemProductId == selectedProductIdNum;
+        }
+
+        if (matches) {
           if (!branchData[branchName]) {
             branchData[branchName] = {
               branchName: branchName,
@@ -419,19 +447,18 @@ const Dashboard = () => {
       });
     });
 
-    // Update salesCount with unique transaction count
     Object.keys(branchData).forEach(branchName => {
       branchData[branchName].salesCount = salesByBranch[branchName].size;
     });
 
-    // Sort by sales (highest to lowest)
     return Object.values(branchData).sort((a, b) => b.sales - a.sales);
   };
 
 
+
+
   const loadPerformance = () => {
     try {
-
       const filteredSales = sales.filter(sale => {
         const statusMatch = sale.status === 'CONFIRMED' || sale.status === 'INVOICED';
 
@@ -448,25 +475,40 @@ const Dashboard = () => {
         return yearMatch && monthMatch && statusMatch;
       });
 
-      // Calculate product performance
+      // Calculate product performance with variations
       const productPerformance = {};
       filteredSales.forEach(sale => {
         if (sale.status === 'CONFIRMED' || sale.status === 'INVOICED') {
           sale.items?.forEach(item => {
-            const key = item.product?.id;
-            if (!productPerformance[key]) {
-              const fullProduct = products.find(p => p.id === key);
-              productPerformance[key] = {
-                id: key,
-                name: item.product?.productName || 'Unknown Product',
+            // Use unique key for variations
+            const variationId = item.variation?.id || 'base';
+            const uniqueKey = `${item.product?.id}_${variationId}`;
+
+            const variationName = item.variation?.combinationDisplay ||
+              item.variation?.variationValue ||
+              (variationId !== 'base' ? 'Default Variation' : null);
+
+            const displayName = variationId !== 'base' && variationName
+              ? `${item.product?.productName || 'Unknown Product'} (${variationName})`
+              : item.product?.productName || 'Unknown Product';
+
+            if (!productPerformance[uniqueKey]) {
+              const fullProduct = products.find(p => p.id === item.product?.id);
+              productPerformance[uniqueKey] = {
+                id: uniqueKey, // Use unique key
+                productId: item.product?.id, // Keep original product ID
+                variationId: variationId !== 'base' ? variationId : null,
+                name: displayName,
+                baseProductName: item.product?.productName || 'Unknown Product',
+                variationName: variationName,
                 category: fullProduct?.category || item.product?.category || 'Uncategorized',
                 revenue: 0,
                 quantity: 0,
                 margin: item.product?.margin || 0,
               };
             }
-            productPerformance[key].revenue += item.amount || 0;
-            productPerformance[key].quantity += item.quantity || 0;
+            productPerformance[uniqueKey].revenue += item.amount || 0;
+            productPerformance[uniqueKey].quantity += item.quantity || 0;
           });
         }
       });
@@ -475,13 +517,33 @@ const Dashboard = () => {
         .sort((a, b) => b.quantity - a.quantity)
         .slice(0, 10);
 
-      // Calculate branch performance - FILTER BY SELECTED PRODUCT
+      // Calculate branch performance - FILTER BY SELECTED PRODUCT (with variations)
       const branchPerformance = {};
       filteredSales.forEach(sale => {
         if (sale.status === 'CONFIRMED' || sale.status === 'INVOICED') {
-          // If a product is selected, only include sales that contain that product
-          const hasSelectedProduct = !selectedProductId ||
-            sale.items?.some(item => item.product?.id === selectedProductId);
+          // If a product is selected, parse the composite key
+          let hasSelectedProduct = !selectedProductId;
+
+          if (selectedProductId) {
+            // Parse the composite key: productId_variationId
+            const [selectedProductIdNum, selectedVariationIdStr] = selectedProductId.split('_');
+            const selectedVariationId = selectedVariationIdStr !== 'base' ? selectedVariationIdStr : null;
+
+            hasSelectedProduct = sale.items?.some(item => {
+              const itemProductId = item.product?.id;
+              const itemVariationId = item.variation?.id || null;
+
+              // Match both product ID and variation ID
+              if (selectedVariationId) {
+                // Looking for specific variation
+                return itemProductId == selectedProductIdNum &&
+                  itemVariationId == selectedVariationId;
+              } else {
+                // Looking for base product or any variation of the product
+                return itemProductId == selectedProductIdNum;
+              }
+            });
+          }
 
           if (!hasSelectedProduct) return;
 
@@ -498,16 +560,33 @@ const Dashboard = () => {
             };
           }
 
-          // If product is selected, only count revenue/quantity for that product
+          // If product is selected, only count revenue/quantity for that specific product/variation
           if (selectedProductId) {
+            // Parse the selected product key
+            const [selectedProductIdNum, selectedVariationIdStr] = selectedProductId.split('_');
+            const selectedVariationId = selectedVariationIdStr !== 'base' ? selectedVariationIdStr : null;
+
             sale.items?.forEach(item => {
-              if (item.product?.id === selectedProductId) {
-                branchPerformance[key].revenue += item.amount || 0;
-                branchPerformance[key].quantity += item.quantity || 0;
+              const itemProductId = item.product?.id;
+              const itemVariationId = item.variation?.id || null;
+
+              if (selectedVariationId) {
+                // Specific variation selected
+                if (itemProductId == selectedProductIdNum && itemVariationId == selectedVariationId) {
+                  branchPerformance[key].revenue += item.amount || 0;
+                  branchPerformance[key].quantity += item.quantity || 0;
+                }
+              } else {
+                // Base product selected (any variation)
+                if (itemProductId == selectedProductIdNum) {
+                  branchPerformance[key].revenue += item.amount || 0;
+                  branchPerformance[key].quantity += item.quantity || 0;
+                }
               }
             });
             branchPerformance[key].salesCount += 1;
           } else {
+            // No product selected, count all revenue
             branchPerformance[key].revenue += sale.totalAmount || 0;
             branchPerformance[key].salesCount += 1;
             sale.items?.forEach(item => {
@@ -516,7 +595,9 @@ const Dashboard = () => {
           }
 
           branchPerformance[key].averageOrderValue =
-            branchPerformance[key].revenue / branchPerformance[key].salesCount;
+            branchPerformance[key].salesCount > 0
+              ? branchPerformance[key].revenue / branchPerformance[key].salesCount
+              : 0;
         }
       });
 
@@ -524,13 +605,33 @@ const Dashboard = () => {
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 10);
 
-      // Calculate top companies - FILTER BY SELECTED PRODUCT
+      // Calculate top companies - FILTER BY SELECTED PRODUCT (with variations)
       const companyPerformance = {};
       filteredSales.forEach(sale => {
         if (sale.status === 'CONFIRMED' || sale.status === 'INVOICED') {
-          // If a product is selected, only include sales that contain that product
-          const hasSelectedProduct = !selectedProductId ||
-            sale.items?.some(item => item.product?.id === selectedProductId);
+          // If a product is selected, parse the composite key
+          let hasSelectedProduct = !selectedProductId;
+
+          if (selectedProductId) {
+            // Parse the composite key: productId_variationId
+            const [selectedProductIdNum, selectedVariationIdStr] = selectedProductId.split('_');
+            const selectedVariationId = selectedVariationIdStr !== 'base' ? selectedVariationIdStr : null;
+
+            hasSelectedProduct = sale.items?.some(item => {
+              const itemProductId = item.product?.id;
+              const itemVariationId = item.variation?.id || null;
+
+              // Match both product ID and variation ID
+              if (selectedVariationId) {
+                // Looking for specific variation
+                return itemProductId == selectedProductIdNum &&
+                  itemVariationId == selectedVariationId;
+              } else {
+                // Looking for base product or any variation of the product
+                return itemProductId == selectedProductIdNum;
+              }
+            });
+          }
 
           if (!hasSelectedProduct) return;
 
@@ -545,21 +646,39 @@ const Dashboard = () => {
             };
           }
 
-          // If product is selected, only count revenue for that product
+          // If product is selected, only count revenue for that specific product/variation
           if (selectedProductId) {
+            // Parse the selected product key
+            const [selectedProductIdNum, selectedVariationIdStr] = selectedProductId.split('_');
+            const selectedVariationId = selectedVariationIdStr !== 'base' ? selectedVariationIdStr : null;
+
             sale.items?.forEach(item => {
-              if (item.product?.id === selectedProductId) {
-                companyPerformance[key].revenue += item.amount || 0;
+              const itemProductId = item.product?.id;
+              const itemVariationId = item.variation?.id || null;
+
+              if (selectedVariationId) {
+                // Specific variation selected
+                if (itemProductId == selectedProductIdNum && itemVariationId == selectedVariationId) {
+                  companyPerformance[key].revenue += item.amount || 0;
+                }
+              } else {
+                // Base product selected (any variation)
+                if (itemProductId == selectedProductIdNum) {
+                  companyPerformance[key].revenue += item.amount || 0;
+                }
               }
             });
             companyPerformance[key].salesCount += 1;
           } else {
+            // No product selected, count all revenue
             companyPerformance[key].revenue += sale.totalAmount || 0;
             companyPerformance[key].salesCount += 1;
           }
 
           companyPerformance[key].averageOrderValue =
-            companyPerformance[key].revenue / companyPerformance[key].salesCount;
+            companyPerformance[key].salesCount > 0
+              ? companyPerformance[key].revenue / companyPerformance[key].salesCount
+              : 0;
         }
       });
 
@@ -597,8 +716,23 @@ const Dashboard = () => {
 
     filteredSales.forEach(sale => {
       sale.items?.forEach(item => {
+        // Use variation ID as part of the key if variation exists
+        const variationId = item.variation?.id || 'base';
         const productId = item.product?.id;
+
+        // Create unique key: productId_variationId
+        const uniqueKey = `${productId}_${variationId}`;
+
         const productName = item.product?.productName || 'Unknown Product';
+        const variationName = item.variation?.combinationDisplay ||
+          item.variation?.variationValue ||
+          (variationId !== 'base' ? 'Default Variation' : null);
+
+        // Create display name based on whether variation exists
+        const displayName = variationId !== 'base' && variationName
+          ? `${productName} (${variationName})`
+          : productName;
+
         const branchName = sale.branch?.branchName || 'Unknown Branch';
         const companyName = sale.company?.companyName || 'Unknown Company';
 
@@ -615,10 +749,14 @@ const Dashboard = () => {
         }
         const monthYear = `${month} ${year}`;
 
-        if (!productAnalysis[productId]) {
-          productAnalysis[productId] = {
-            id: productId,
-            name: productName,
+        if (!productAnalysis[uniqueKey]) {
+          productAnalysis[uniqueKey] = {
+            id: uniqueKey, // Use unique key instead of just productId
+            productId: productId, // Keep original productId for reference
+            variationId: variationId !== 'base' ? variationId : null,
+            name: displayName,
+            baseProductName: productName,
+            variationName: variationName,
             totalRevenue: 0,
             totalQuantity: 0,
             byMonth: {},
@@ -628,7 +766,7 @@ const Dashboard = () => {
           };
         }
 
-        const product = productAnalysis[productId];
+        const product = productAnalysis[uniqueKey];
         product.totalRevenue += item.amount || 0;
         product.totalQuantity += item.quantity || 0;
         product.salesCount += 1;
@@ -657,7 +795,7 @@ const Dashboard = () => {
         product.byBranch[branchName].quantity += item.quantity || 0;
         product.byBranch[branchName].count += 1;
 
-        // company analysis
+        // Company analysis
         if (!product.byCompany[companyName]) {
           product.byCompany[companyName] = {
             revenue: 0,
@@ -673,12 +811,11 @@ const Dashboard = () => {
 
     return Object.values(productAnalysis)
       .sort((a, b) => b.totalRevenue - a.totalRevenue);
-
   };
 
 
 
-const getSelectedProductStats = () => {
+  const getSelectedProductStats = () => {
     if (!selectedProductId) return null;
 
     const product = productSalesData.find(p => p.id === selectedProductId);
@@ -708,13 +845,19 @@ const getSelectedProductStats = () => {
 
     // Calculate revenue/quantity and count transactions from filtered period
     filteredSales.forEach(sale => {
-      const hasProduct = sale.items?.some(item => item.product?.id === selectedProductId);
-      
+      const hasProduct = sale.items?.some(item => {
+        const itemVariationId = item.variation?.id || 'base';
+        const itemKey = `${item.product?.id}_${itemVariationId}`;
+        return itemKey === selectedProductId;
+      });
+
       if (hasProduct) {
         transactionsWithProduct.add(sale.id);
-        
+
         sale.items?.forEach(item => {
-          if (item.product?.id === selectedProductId) {
+          const itemVariationId = item.variation?.id || 'base';
+          const itemKey = `${item.product?.id}_${itemVariationId}`;
+          if (itemKey === selectedProductId) {
             totalRevenue += item.amount || 0;
             totalQuantity += item.quantity || 0;
           }
@@ -732,8 +875,12 @@ const getSelectedProductStats = () => {
 
 
 
-  const getProductChartData = (productId) => {
-    if (!productId) return null;
+  const getProductChartData = (productKey) => {
+    if (!productKey) return null;
+
+    // Extract productId and variationId from the key
+    const [productId, variationIdStr] = productKey.split('_');
+    const variationId = variationIdStr !== 'base' ? variationIdStr : null;
 
     // Filter sales based on performance view
     const filteredSales = sales.filter(sale => {
@@ -758,7 +905,10 @@ const getSelectedProductStats = () => {
     filteredSales.forEach(sale => {
       const companyName = sale.company?.companyName || 'Unknown Company';
       sale.items?.forEach(item => {
-        if (item.product?.id === productId) {
+        const itemVariationId = item.variation?.id || 'base';
+        const itemKey = `${item.product?.id}_${itemVariationId}`;
+
+        if (itemKey === productKey) {
           if (!companyData[companyName]) {
             companyData[companyName] = {
               revenue: 0,
@@ -1042,14 +1192,27 @@ const getSelectedProductStats = () => {
       const monthIndex = sale.month ? sale.month - 1 : new Date(sale.createdAt || sale.date).getMonth();
 
       sale.items?.forEach(item => {
+        // Use unique key for variations
+        const variationId = item.variation?.id || 'base';
+        const uniqueKey = `${item.product?.id}_${variationId}`;
+
         const productName = item.product?.productName || 'Unknown';
-        if (!productMonthlyData[productName]) {
-          productMonthlyData[productName] = months.map(() => 0);
-          productQuantityData[productName] = 0;
-          productSalesCount[productName] = 0;
+        const variationName = item.variation?.combinationDisplay ||
+          item.variation?.variationValue ||
+          (variationId !== 'base' ? 'Default Variation' : null);
+
+        // Create display name with variation
+        const displayName = variationId !== 'base' && variationName
+          ? `${productName} (${variationName})`
+          : productName;
+
+        if (!productMonthlyData[uniqueKey]) {
+          productMonthlyData[uniqueKey] = months.map(() => 0);
+          productQuantityData[uniqueKey] = 0;
+          productSalesCount[uniqueKey] = 0;
         }
-        productMonthlyData[productName][monthIndex] += item.amount || 0;
-        productQuantityData[productName] += item.quantity || 0;
+        productMonthlyData[uniqueKey][monthIndex] += item.amount || 0;
+        productQuantityData[uniqueKey] += item.quantity || 0;
       });
     });
 
@@ -1057,17 +1220,23 @@ const getSelectedProductStats = () => {
     filteredSales.forEach(sale => {
       const productsInSale = new Set();
       sale.items?.forEach(item => {
-        const productName = item.product?.productName || 'Unknown';
-        productsInSale.add(productName);
+        const variationId = item.variation?.id || 'base';
+        const uniqueKey = `${item.product?.id}_${variationId}`;
+        productsInSale.add(uniqueKey);
       });
-      productsInSale.forEach(productName => {
-        if (productSalesCount[productName] !== undefined) {
-          productSalesCount[productName] += 1;
+      productsInSale.forEach(uniqueKey => {
+        if (productSalesCount[uniqueKey] !== undefined) {
+          productSalesCount[uniqueKey] += 1;
         }
       });
     });
 
-    return { months, products: productMonthlyData, quantities: productQuantityData, salesCounts: productSalesCount };
+    return {
+      months,
+      products: productMonthlyData,
+      quantities: productQuantityData,
+      salesCounts: productSalesCount
+    };
   };
 
 
@@ -2071,17 +2240,41 @@ const getSelectedProductStats = () => {
                           )}
                         </h4>
                         <div className="space-y-2 max-h-[400px] overflow-y-auto">
+
+
                           {(() => {
                             let branchesToShow = performanceData.topBranches || [];
 
                             if (selectedCompanyForTopBranches) {
+                              // Parse the selected product key if exists
+                              let selectedProductIdNum = null;
+                              let selectedVariationId = null;
+
+                              if (selectedProductId) {
+                                const [productIdNum, variationIdStr] = selectedProductId.split('_');
+                                selectedProductIdNum = productIdNum;
+                                selectedVariationId = variationIdStr !== 'base' ? variationIdStr : null;
+                              }
+
                               const companySales = sales.filter(sale => {
                                 const statusMatch = sale.status === 'CONFIRMED' || sale.status === 'INVOICED';
                                 const companyMatch = sale.company?.companyName === selectedCompanyForTopBranches;
 
-                                // If product is selected, only include sales that have this product
+                                // If product is selected, only include sales that have this product/variation
                                 if (selectedProductId) {
-                                  const hasProduct = sale.items?.some(item => item.product?.id === selectedProductId);
+                                  const hasProduct = sale.items?.some(item => {
+                                    const itemProductId = item.product?.id;
+                                    const itemVariationId = item.variation?.id || null;
+
+                                    if (selectedVariationId) {
+                                      // Specific variation selected
+                                      return itemProductId == selectedProductIdNum &&
+                                        itemVariationId == selectedVariationId;
+                                    } else {
+                                      // Base product selected (any variation)
+                                      return itemProductId == selectedProductIdNum;
+                                    }
+                                  });
                                   if (!hasProduct) return false;
                                 }
 
@@ -2119,10 +2312,21 @@ const getSelectedProductStats = () => {
                                   salesByBranch[branchId] = new Set();
                                 }
 
-                                // If product is selected, only count revenue for that product
+                                // If product is selected, only count revenue for that specific product/variation
                                 if (selectedProductId) {
                                   sale.items?.forEach(item => {
-                                    if (item.product?.id === selectedProductId) {
+                                    const itemProductId = item.product?.id;
+                                    const itemVariationId = item.variation?.id || null;
+
+                                    let matches = false;
+                                    if (selectedVariationId) {
+                                      matches = itemProductId == selectedProductIdNum &&
+                                        itemVariationId == selectedVariationId;
+                                    } else {
+                                      matches = itemProductId == selectedProductIdNum;
+                                    }
+
+                                    if (matches) {
                                       branchRevenue[branchId].revenue += item.amount || 0;
                                       branchRevenue[branchId].quantity += item.quantity || 0;
                                     }
@@ -2133,11 +2337,10 @@ const getSelectedProductStats = () => {
                                   sale.items?.forEach(item => {
                                     branchRevenue[branchId].quantity += item.quantity || 0;
                                   });
-                                  salesByBranch[branchId].add(sale.id); // Track unique sale
+                                  salesByBranch[branchId].add(sale.id);
                                 }
                               });
 
-                              // Update salesCount with unique transaction count
                               Object.keys(branchRevenue).forEach(branchId => {
                                 branchRevenue[branchId].salesCount = salesByBranch[branchId].size;
                                 branchRevenue[branchId].averageOrderValue =
@@ -2152,7 +2355,7 @@ const getSelectedProductStats = () => {
 
                             return branchesToShow.length > 0 ? (
                               branchesToShow.map((branch, idx) => {
-                                // Calculate max revenue from the current filtered branches
+
                                 const maxRevenue = branchesToShow.length > 0 ? branchesToShow[0]?.revenue || 1 : 1;
                                 const barWidth = (branch.revenue / maxRevenue) * 100;
 
@@ -2211,6 +2414,9 @@ const getSelectedProductStats = () => {
                               <div className="text-center py-6 text-gray-400">
                                 <Building size={24} className="mx-auto mb-2 opacity-50" />
                                 <p className="text-sm">No branch data for this period</p>
+                                {selectedProductId && (
+                                  <p className="text-xs mt-1">No sales found for this product/variation</p>
+                                )}
                               </div>
                             )
                           })()}
@@ -2529,7 +2735,8 @@ const getSelectedProductStats = () => {
 
               {(() => {
                 const productData = getProductMonthlySales();
-                const productList = Object.keys(productData.products).slice(0, 5); // Top 5 products
+                const productList = Object.keys(productData.products)
+                  .slice(0, 5);
 
                 if (productList.length === 0) {
                   return (
@@ -2550,29 +2757,67 @@ const getSelectedProductStats = () => {
 
                 const productChartData = {
                   labels: productData.months,
-                  datasets: productList.map((productName, idx) => ({
-                    label: productName,
-                    data: productData.products[productName],
-                    borderColor: colors[idx % colors.length].border,
-                    backgroundColor: colors[idx % colors.length].bg,
-                    borderWidth: 2,
-                    tension: 0.4,
-                    fill: true,
-                  }))
+                  datasets: productList.map((uniqueKey, idx) => {
+                    const [productId, variationIdStr] = uniqueKey.split('_');
+                    const variationId = variationIdStr !== 'base' ? variationIdStr : null;
+
+                    const product = products.find(p => p.id == productId);
+                    const productName = product?.productName || 'Unknown Product';
+
+                    let displayName = productName;
+                    if (variationId && product) {
+                      const variation = product.variations?.find(v => v.id == variationId);
+                      const variationName = variation?.combinationDisplay || variation?.variationValue || 'Default Variation';
+                      displayName = `${productName} (${variationName})`;
+                    }
+
+                    return {
+                      label: displayName,
+                      data: productData.products[uniqueKey],
+                      borderColor: colors[idx % colors.length].border,
+                      backgroundColor: colors[idx % colors.length].bg,
+                      borderWidth: 2,
+                      tension: 0.4,
+                      fill: true,
+                    };
+                  })
                 };
 
 
                 const productStats = Object.entries(productData.products)
-                  .map(([name, monthlyData]) => {
-                    const totalSales = monthlyData.reduce((sum, val) => sum + val, 0);
-                    const quantity = productData.quantities[name] || 0;
-                    const salesCount = productData.salesCounts[name] || 0;
+                  .map(([uniqueKey, monthlyData]) => {
+                    const [productId, variationIdStr] = uniqueKey.split('_');
+                    const variationId = variationIdStr !== 'base' ? variationIdStr : null;
 
-                    const productInfo = productSalesData.find(p => p.name === name);
-                    const category = productInfo ? products.find(p => p.id === productInfo.id)?.category || 'Uncategorized' : 'Uncategorized';
+                    // Find the product to get its name
+                    const product = products.find(p => p.id == productId);
+                    const productName = product?.productName || 'Unknown Product';
+
+                    // Get variation name if exists
+                    let variationName = null;
+                    let displayName = productName;
+
+                    if (variationId && product) {
+                      const variation = product.variations?.find(v => v.id == variationId);
+                      variationName = variation?.combinationDisplay || variation?.variationValue || 'Default Variation';
+                      displayName = `${productName} (${variationName})`;
+                    }
+
+                    const totalSales = monthlyData.reduce((sum, val) => sum + val, 0);
+                    const quantity = productData.quantities[uniqueKey] || 0;
+                    const salesCount = productData.salesCounts[uniqueKey] || 0;
+
+                    const productInfo = productSalesData.find(p => p.id === uniqueKey);
+                    const category = productInfo ? productInfo.category : (product?.category || 'Uncategorized');
 
                     return {
-                      name,
+                      id: uniqueKey,
+                      uniqueKey,
+                      productId,
+                      variationId,
+                      name: displayName,
+                      baseProductName: productName,
+                      variationName,
                       totalSales,
                       quantity,
                       salesCount,
@@ -2580,7 +2825,6 @@ const getSelectedProductStats = () => {
                     };
                   })
                   .filter(product => {
-                    // Filter by selected category
                     if (selectedCategory === 'all') return true;
                     return product.category === selectedCategory;
                   })
@@ -2657,7 +2901,7 @@ const getSelectedProductStats = () => {
 
                           return (
                             <div
-                              key={idx}
+                              key={product.id} // Use the unique key
                               className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all"
                             >
                               {/* Rank Badge */}
@@ -2675,6 +2919,12 @@ const getSelectedProductStats = () => {
                               <div className="flex-1 min-w-0">
                                 <p className="font-semibold text-gray-900 truncate">{product.name}</p>
                                 <p className="text-xs text-gray-500">{product.salesCount} transactions</p>
+                                {/* Show variation info if exists */}
+                                {product.variationName && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 mt-1 rounded text-xs bg-blue-100 text-blue-600">
+                                    Variation: {product.variationName}
+                                  </span>
+                                )}
                               </div>
 
                               {/* Stats */}
@@ -2708,7 +2958,6 @@ const getSelectedProductStats = () => {
                           );
                         })}
 
-                        {/* Show scrollable list if more than 3 products */}
                         {productStats.length > 3 && (
                           <>
                             <div className="my-3 border-t border-gray-200 pt-3">
@@ -2724,7 +2973,7 @@ const getSelectedProductStats = () => {
 
                               return (
                                 <div
-                                  key={actualIdx}
+                                  key={product.id} // Use the unique key
                                   className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all"
                                 >
                                   {/* Rank Badge */}
@@ -2738,6 +2987,12 @@ const getSelectedProductStats = () => {
                                   <div className="flex-1 min-w-0">
                                     <p className="font-semibold text-gray-900 truncate">{product.name}</p>
                                     <p className="text-xs text-gray-500">{product.salesCount} transactions</p>
+                                    {/* Show variation info if exists */}
+                                    {product.variationName && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 mt-1 rounded text-xs bg-blue-100 text-blue-600">
+                                        Variation: {product.variationName}
+                                      </span>
+                                    )}
                                   </div>
 
                                   {/* Stats */}

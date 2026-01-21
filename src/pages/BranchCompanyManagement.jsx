@@ -18,7 +18,7 @@ const SearchableDropdown = ({ options, value, onChange, placeholder, displayKey,
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);b 
   }, []);
 
   const filteredOptions = options.filter(option =>
