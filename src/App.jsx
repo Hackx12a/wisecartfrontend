@@ -10,9 +10,9 @@ import SalesManagement from './pages/SalesManagement';
 import ProductManagement from './pages/ProductManagement';
 import BranchCompanyManagement from './pages/BranchCompanyManagement';
 import WarehouseInventory from './pages/InventoryRecord';
-import Supplier from './pages/SupplierInventoryManagement';
 import NotFound from './pages/NotFound';
 import Layout from './components/layout/Layout';
+import Supplier from './pages/SupplierManagement';
 import { AuthProvider, AuthLoading, ProtectedRoute, AdminRoute } from './context/AuthContext';
 
 function App() {

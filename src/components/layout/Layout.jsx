@@ -12,7 +12,6 @@ const Layout = ({ children }) => {
       <div className="flex">
         <Sidebar isOpen={sidebarOpen} toggle={() => setSidebarOpen(!sidebarOpen)} />
         
-        {/* Main content - now takes remaining width after sidebar spacer */}
         <main className="flex-1 min-h-screen">
           {children}
         </main>

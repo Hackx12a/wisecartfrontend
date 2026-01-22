@@ -1,6 +1,6 @@
 // components/layout/Sidebar.jsx
 import React, { useState } from 'react';
-import { Package, Truck, Warehouse, ShoppingCart, Users, Home, UserPlus, PackageSearch, PackageOpen, ChevronDown, ChevronRight, ChevronLeft, Database, BoxIcon, BarChart3 } from 'lucide-react';
+import { Package, Truck, Warehouse, ShoppingCart, Users, Home, UserPlus, PackageSearch, PackageOpen, ChevronDown, ChevronRight, ChevronLeft, Database, BoxIcon, Factory } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -10,13 +10,13 @@ const mainMenuItems = [
   { to: '/deliveries', label: 'Deliveries', icon: Truck },
   { to: '/warehouseinventory', label: 'Warehouse', icon: PackageOpen },
   { to: '/inventory', label: 'Inventory Record', icon: PackageSearch },
-  { to: '/supplier', label: 'Supplier', icon: BoxIcon },
 ];
 
 const dataEntryItems = [
   { to: '/warehouse', label: 'Warehouse', icon: Warehouse },
   { to: '/branches', label: 'Branches & Clients', icon: Users },
   { to: '/products', label: 'Products', icon: Package },
+  { to: '/supplier', label: 'Supplier', icon: Factory },
 ];
 
 const Sidebar = ({ isOpen, toggle }) => {

@@ -57,9 +57,7 @@ const getToken = () => {
     return token;
 };
 
-// ============================================
-// RETRY LOGIC
-// ============================================
+
 const calculateRetryDelay = (attempt) => {
     return Math.min(
         RATE_LIMIT_CONFIG.baseDelay * Math.pow(RATE_LIMIT_CONFIG.backoffMultiplier, attempt),
@@ -124,9 +122,7 @@ const handleRateLimit = async (response, url, options, attempt = 0) => {
     return fetchWithAuthRetry(url, options, attempt + 1);
 };
 
-// ============================================
-// FETCH WITH AUTH AND RETRY
-// ============================================
+
 const fetchWithAuthRetry = async (url, options = {}, attempt = 0) => {
     const token = getToken();
     
@@ -192,9 +188,7 @@ const fetchWithAuthRetry = async (url, options = {}, attempt = 0) => {
     }
 };
 
-// ============================================
-// RESPONSE HANDLER
-// ============================================
+
 const handleResponse = async (response) => {
     // Handle 401 Unauthorized
     if (response.status === 401) {
@@ -295,9 +289,7 @@ const handleResponse = async (response) => {
     };
 };
 
-// ============================================
-// BATCH REQUESTS
-// ============================================
+
 const batchRequests = async (requests, delayBetween = 50) => {
     const results = [];
     
@@ -327,9 +319,7 @@ const batchRequests = async (requests, delayBetween = 50) => {
     return results;
 };
 
-// ============================================
-// PUBLIC API
-// ============================================
+
 export const api = {
     /**
      * GET request

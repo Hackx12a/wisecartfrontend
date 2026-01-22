@@ -23,7 +23,7 @@ const SearchableDropdown = ({ options, value, onChange, placeholder, displayKey,
         setIsOpen(false);
       }
     };
-    
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -433,80 +433,6 @@ const MultiCompanyPriceSelector = ({ companies, selectedPrices, onChange, assign
 
 
 
-const SupplierInput = ({ value, onChange, suppliers }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [inputValue, setInputValue] = useState(value || '');
-  const dropdownRef = useRef(null);
-
-  useEffect(() => {
-    setInputValue(value || '');
-  }, [value]);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const filteredSuppliers = suppliers.filter(sup =>
-    sup.toLowerCase().includes(inputValue.toLowerCase())
-  );
-
-
-  const handleInputChange = (e) => {
-    const newValue = e.target.value;
-    setInputValue(newValue);
-    onChange(newValue);
-    setIsOpen(true);
-  };
-
-  const handleSelectSupplier = (supplier) => {
-    setInputValue(supplier);
-    onChange(supplier);
-    setIsOpen(false);
-  };
-
-  return (
-    <div ref={dropdownRef} className="relative">
-      <input
-        type="text"
-        value={inputValue}
-        onChange={handleInputChange}
-        onFocus={() => setIsOpen(true)}
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        placeholder="Enter or select supplier"
-      />
-
-      {isOpen && filteredSuppliers.length > 0 && (
-        <div className="absolute z-50 w-full mt-2 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-          {filteredSuppliers.map((supplier, index) => (
-            <button
-              key={index}
-              type="button"
-              onClick={() => handleSelectSupplier(supplier)}
-              className={`w-full px-4 py-2 text-left hover:bg-blue-50 transition text-sm ${value === supplier ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-900'
-                }`}
-            >
-              {supplier}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {inputValue && !suppliers.includes(inputValue) && (
-        <p className="mt-1 text-xs text-blue-600">
-          ✓ New supplier: "{inputValue}"
-        </p>
-      )}
-    </div>
-  );
-};
-
-
 
 const ProductManagement = () => {
   const [products, setProducts] = useState([]);
@@ -522,7 +448,7 @@ const ProductManagement = () => {
     category: '',
     upc: '',
     sku: '',
-    supplier: '',
+    supplierId: '',
     countryOfOrigin: '',
     companyPrices: {},
     companyBasePrices: {},
@@ -602,7 +528,7 @@ const ProductManagement = () => {
     try {
       const productsResponse = await api.get('/products');
       const companiesResponse = await api.get('/companies');
-      const suppliersResponse = await api.get('/products/suppliers');
+      const suppliersResponse = await api.get('/suppliers');
 
       if (productsResponse.success) {
         setProducts(productsResponse.data || []);
@@ -925,7 +851,7 @@ const ProductManagement = () => {
         category: formData.category || null,
         upc: variationCombinations.length === 0 ? formData.upc : null,
         sku: variationCombinations.length === 0 ? formData.sku : null,
-        supplier: formData.supplier || null,
+        supplierId: formData.supplierId ? parseInt(formData.supplierId) : null, // ✅ CHANGED
         countryOfOrigin: formData.countryOfOrigin || null,
         weight: variationCombinations.length === 0 && formData.weight ? parseFloat(formData.weight) : null,
         dimensions: dimensionsString,
@@ -1029,7 +955,6 @@ const ProductManagement = () => {
       });
     }
 
-    // ✅ FIX: Load company base prices correctly
     const companyBasePricesObj = {};
     if (product.companyBasePrices && product.companyBasePrices.length > 0) {
       product.companyBasePrices.forEach(cbp => {
@@ -1046,7 +971,7 @@ const ProductManagement = () => {
       category: product.category || '',
       upc: product.upc || '',
       sku: product.sku || '',
-      supplier: product.supplier || '',
+      supplierId: product.supplier?.id || '', // ✅ CHANGED - Get supplier ID
       countryOfOrigin: product.countryOfOrigin || '',
       companyPrices: companyPricesObj,
       companyBasePrices: companyBasePricesObj,
@@ -1067,7 +992,6 @@ const ProductManagement = () => {
 
     setShowModal(true);
 
-    // Rest of variation loading code remains the same...
     if (product.variations && product.variations.length > 0) {
       const typeMap = new Map();
 
@@ -1183,7 +1107,7 @@ const ProductManagement = () => {
       category: '',
       upc: '',
       sku: '',
-      supplier: '',
+      supplierId: '',
       countryOfOrigin: '',
       companyPrices: {},
       companyBasePrices: {},
@@ -1657,10 +1581,14 @@ const ProductManagement = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
-                    <SupplierInput
-                      value={formData.supplier}
-                      onChange={(value) => setFormData({ ...formData, supplier: value })}
-                      suppliers={suppliers}
+                    <SearchableDropdown
+                      options={suppliers}
+                      value={formData.supplierId}
+                      onChange={(value) => setFormData({ ...formData, supplierId: value })}
+                      placeholder="Select supplier"
+                      displayKey="name"
+                      valueKey="id"
+                      required={false}
                     />
                   </div>
 
