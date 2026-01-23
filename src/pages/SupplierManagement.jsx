@@ -43,6 +43,7 @@ const SupplierManagement = () => {
         loadSuppliers();
     }, []);
 
+
     const loadSuppliers = async () => {
         setLoading(true);
         try {

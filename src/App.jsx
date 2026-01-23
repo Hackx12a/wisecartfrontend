@@ -13,6 +13,7 @@ import WarehouseInventory from './pages/InventoryRecord';
 import NotFound from './pages/NotFound';
 import Layout from './components/layout/Layout';
 import Supplier from './pages/SupplierManagement';
+import InventoryRequestManagement from './pages/InventoryRequestManagement';
 import { AuthProvider, AuthLoading, ProtectedRoute, AdminRoute } from './context/AuthContext';
 
 function App() {
@@ -41,6 +42,15 @@ function App() {
             } />
 
 
+            <Route path="/inventory-request" element={
+              <ProtectedRoute>
+                <Layout>
+                  <InventoryRequestManagement />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+
             
 
             <Route path="/deliveries" element={
@@ -51,7 +61,7 @@ function App() {
               </ProtectedRoute>
             } />
 
-            <Route path="/warehouseinventory" element={
+            <Route path="/warehouse-inventory" element={
               <ProtectedRoute>
                 <Layout>
                   <WarehouseInventory />

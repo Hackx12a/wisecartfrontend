@@ -14,8 +14,6 @@ const SearchableDropdown = ({ options, value, onChange, placeholder, displayKey,
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef(null);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState('');
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -123,8 +121,6 @@ const productCategories = [
 
 
 
-// COMPLETE UPDATED ProductManagement.jsx
-// Replace the entire CategoryInput component with this:
 
 const CategoryInput = ({ value, onChange, categories, existingCategories = [] }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -147,10 +143,12 @@ const CategoryInput = ({ value, onChange, categories, existingCategories = [] })
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Combine predefined categories with existing categories from products
+
+
+
   const allCategories = [...new Set([...categories, ...existingCategories])].sort();
 
-  // Filter categories based on search term
+
   const filteredCategories = allCategories.filter(cat =>
     cat.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -851,7 +849,7 @@ const ProductManagement = () => {
         category: formData.category || null,
         upc: variationCombinations.length === 0 ? formData.upc : null,
         sku: variationCombinations.length === 0 ? formData.sku : null,
-        supplierId: formData.supplierId ? parseInt(formData.supplierId) : null, // ✅ CHANGED
+        supplierId: formData.supplierId ? parseInt(formData.supplierId) : null,
         countryOfOrigin: formData.countryOfOrigin || null,
         weight: variationCombinations.length === 0 && formData.weight ? parseFloat(formData.weight) : null,
         dimensions: dimensionsString,
@@ -971,7 +969,7 @@ const ProductManagement = () => {
       category: product.category || '',
       upc: product.upc || '',
       sku: product.sku || '',
-      supplierId: product.supplier?.id || '', // ✅ CHANGED - Get supplier ID
+      supplierId: product.supplier?.id || '',
       countryOfOrigin: product.countryOfOrigin || '',
       companyPrices: companyPricesObj,
       companyBasePrices: companyBasePricesObj,
@@ -1366,9 +1364,8 @@ const ProductManagement = () => {
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{product.supplier || '-'}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{product.supplier?.id || '-'}</td>
 
-                      {/* NEW CREATION DATE COLUMN */}
                       <td className="px-6 py-4">
                         {product.createdAt ? (
                           <div className="flex flex-col">
@@ -1385,7 +1382,7 @@ const ProductManagement = () => {
                                     : `${daysSinceCreation} days ago`}
                               </span>
                             )}
-                            {/* Optional: Show shelf life expiry warning */}
+
                             {product.shelfLife && product.createdAt && (
                               (() => {
                                 const shelfLife = product.shelfLife.toLowerCase().trim();
@@ -1471,7 +1468,7 @@ const ProductManagement = () => {
                 <ChevronLeft size={16} />
               </button>
 
-              {/* Page numbers */}
+
               <div className="flex items-center gap-1">
                 {getPageNumbers().map((number) => (
                   <button
@@ -1487,7 +1484,7 @@ const ProductManagement = () => {
                 ))}
               </div>
 
-              {/* Next button */}
+
               <button
                 onClick={nextPage}
                 disabled={currentPage === totalPages}
@@ -1503,7 +1500,6 @@ const ProductManagement = () => {
         )}
       </div>
 
-      {/* Modal - Rest of your modal code remains exactly the same */}
       {showModal && (
         <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
@@ -1637,14 +1633,12 @@ const ProductManagement = () => {
                 </div>
               </div>
 
-              {/* Physical Details */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Box size={20} />
                   Physical Details
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* SKU - Only show if no variations */}
                   {variationCombinations.length === 0 && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1662,7 +1656,6 @@ const ProductManagement = () => {
                     </div>
                   )}
 
-                  {/* UPC - Only show if no variations */}
                   {variationCombinations.length === 0 && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1680,7 +1673,6 @@ const ProductManagement = () => {
                     </div>
                   )}
 
-                  {/* Weight - Only show if no variations */}
                   {variationCombinations.length === 0 && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1745,7 +1737,8 @@ const ProductManagement = () => {
                       </div>
                     </div>
                   )}
-                  {/* Materials */}
+
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Materials</label>
                     <input
@@ -1758,7 +1751,6 @@ const ProductManagement = () => {
                     />
                   </div>
 
-                  {/* Unit Cost */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Unit Cost (₱)
@@ -1774,7 +1766,6 @@ const ProductManagement = () => {
                   </div>
                 </div>
 
-                {/* Show disabled message when variations exist */}
                 {variationCombinations.length > 0 && (
                   <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                     <div className="flex items-center gap-2 text-amber-700">

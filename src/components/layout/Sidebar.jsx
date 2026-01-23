@@ -8,8 +8,9 @@ const mainMenuItems = [
   { to: '/dashboard', label: 'Dashboard', icon: Home },
   { to: '/sales', label: 'Sales', icon: ShoppingCart },
   { to: '/deliveries', label: 'Deliveries', icon: Truck },
-  { to: '/warehouseinventory', label: 'Warehouse', icon: PackageOpen },
+  { to: '/warehouse-inventory', label: 'Warehouse', icon: PackageOpen },
   { to: '/inventory', label: 'Inventory Record', icon: PackageSearch },
+  { to: '/inventory-request', label: 'Inventory Request', icon: PackageSearch },
 ];
 
 const dataEntryItems = [
