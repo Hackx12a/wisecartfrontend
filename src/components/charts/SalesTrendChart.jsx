@@ -4,6 +4,8 @@ import { TrendingUp } from 'lucide-react';
 import { chartOptions } from '../../utils/chartUtils';
 import { formatCurrency } from '../../utils/currencyUtils';
 
+//choose that specific category its not showing that product that is belong to that category in 
+
 const SalesTrendChart = ({ chartData, sales, selectedYear }) => {
     return (
         <div className="relative w-full" style={{ height: '400px' }}>

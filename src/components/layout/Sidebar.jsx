@@ -1,6 +1,6 @@
 // components/layout/Sidebar.jsx
 import React, { useState } from 'react';
-import { Package, Truck, Warehouse, ShoppingCart, Users, Home, UserPlus, PackageSearch, PackageOpen, ChevronDown, ChevronRight, ChevronLeft, Database, BoxIcon, Factory } from 'lucide-react';
+import { Package, Truck, Warehouse, ShoppingCart, Users, Home, UserPlus, PackageSearch, PackageOpen, ChevronDown, ChevronRight, ChevronLeft, Database, BoxIcon, Factory, ClipboardList } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -10,7 +10,7 @@ const mainMenuItems = [
   { to: '/deliveries', label: 'Deliveries', icon: Truck },
   { to: '/warehouse-inventory', label: 'Warehouse', icon: PackageOpen },
   { to: '/inventory', label: 'Inventory Record', icon: PackageSearch },
-  { to: '/inventory-request', label: 'Inventory Request', icon: PackageSearch },
+  { to: '/inventory-request', label: 'Procurement', icon: ClipboardList },
 ];
 
 const dataEntryItems = [
@@ -28,12 +28,10 @@ const Sidebar = ({ isOpen, toggle }) => {
 
   return (
     <>
-      {/* Mobile backdrop */}
       {isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" onClick={toggle} />
       )}
 
-      {/* Sidebar wrapper - fixed on desktop, slides in on mobile */}
       <div className={`fixed top-0 left-0 z-50 h-full transform transition-all duration-300
         ${isOpen ? 'translate-x-0' : '-translate-x-full'} 
         ${sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'} 
@@ -45,7 +43,6 @@ const Sidebar = ({ isOpen, toggle }) => {
           <div className="p-6 border-b border-gray-800 flex items-center justify-between">
             <div className={`transition-opacity duration-300 ${sidebarCollapsed ? 'lg:opacity-0 lg:hidden' : 'opacity-100'}`}>
               <h2 className="text-2xl font-bold">WiseCart</h2>
-              <p className="text-sm text-gray-400 mt-1">ERP System</p>
             </div>
             <div className={`transition-opacity duration-300 ${sidebarCollapsed ? 'lg:opacity-100 lg:block' : 'lg:opacity-0 lg:hidden'} hidden`}>
               <h2 className="text-2xl font-bold">WC</h2>
@@ -53,7 +50,6 @@ const Sidebar = ({ isOpen, toggle }) => {
           </div>
 
           <nav className="p-4 space-y-2">
-            {/* Main Menu Items */}
             {mainMenuItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -76,7 +72,6 @@ const Sidebar = ({ isOpen, toggle }) => {
               );
             })}
 
-            {/* Data Entry Section */}
             <div className={`pt-2 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
               <button
                 onClick={() => setDataEntryOpen(!dataEntryOpen)}
@@ -89,7 +84,6 @@ const Sidebar = ({ isOpen, toggle }) => {
                 {dataEntryOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
               </button>
 
-              {/* Collapsible Data Entry Items */}
               <div className={`overflow-hidden transition-all duration-300 ${dataEntryOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
                 <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-700 pl-2">
                   {dataEntryItems.map((item) => {
@@ -114,7 +108,6 @@ const Sidebar = ({ isOpen, toggle }) => {
               </div>
             </div>
             
-            {/* Collapsed Data Entry Items - Show as icons only when collapsed */}
             {sidebarCollapsed && (
               <div className="hidden lg:block pt-2 space-y-1">
                 {dataEntryItems.map((item) => {

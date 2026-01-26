@@ -1,7 +1,7 @@
 // src/hooks/data/useDeliveries.js
 import { useState, useEffect, useCallback } from 'react';
-import { api } from '../../services/api';
-import { formatDateForInput } from '../../utils/dateUtils';
+import { api } from '../services/api';
+import { formatDateForInput } from '../utils/dateUtils';
 
 export const useDeliveries = () => {
   const [deliveries, setDeliveries] = useState([]);
@@ -118,37 +118,11 @@ export const useDeliveries = () => {
     }
   };
 
-  // In src/hooks/useDeliveries.js, update the getDeliveryDetails method:
-
   const getDeliveryDetails = async (id) => {
     try {
       const response = await api.get(`/deliveries/${id}`);
       if (response.success) {
-        // Format the delivery data for the form
-        const delivery = response.data;
-
-        // Ensure items have properly formatted product IDs
-        const formattedItems = delivery.items?.map(item => {
-          const productId = item.product?.id || item.productId;
-          const variationId = item.variationId || item.variation?.id;
-
-          return {
-            ...item,
-            productId: productId,
-            variationId: variationId,
-            formattedProductId: variationId
-              ? `${productId}_${variationId}`
-              : `prod_${productId}`
-          };
-        }) || [];
-
-        return {
-          success: true,
-          data: {
-            ...delivery,
-            items: formattedItems
-          }
-        };
+        return { success: true, data: response.data };
       }
       return { success: false, error: response.error };
     } catch (err) {
@@ -282,13 +256,11 @@ export const useDeliveries = () => {
 
   const filterDeliveries = (deliveriesList, filters) => {
     return deliveriesList.filter(delivery => {
-      // Filter by receipt number
       if (filters.receiptNumber &&
         !delivery.deliveryReceiptNumber?.toLowerCase().includes(filters.receiptNumber.toLowerCase())) {
         return false;
       }
 
-      // Filter by warehouse
       if (filters.warehouseId && delivery.warehouses) {
         const hasWarehouse = delivery.warehouses.some(wh => wh.id === filters.warehouseId);
         if (!hasWarehouse) {
@@ -296,22 +268,18 @@ export const useDeliveries = () => {
         }
       }
 
-      // Filter by company
       if (filters.companyId && delivery.company?.id !== filters.companyId) {
         return false;
       }
 
-      // Filter by branch
       if (filters.branchId && delivery.branch?.id !== filters.branchId) {
         return false;
       }
 
-      // Filter by status
       if (filters.status && delivery.status !== filters.status) {
         return false;
       }
 
-      // Filter by date range
       if (filters.startDate || filters.endDate) {
         const deliveryDate = new Date(delivery.date);
 

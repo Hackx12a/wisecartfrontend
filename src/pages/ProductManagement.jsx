@@ -26,6 +26,19 @@ const SearchableDropdown = ({ options, value, onChange, placeholder, displayKey,
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+
+  useEffect(() => {
+    const handleProductUpdate = () => {
+      loadData();
+    };
+
+    window.addEventListener('productUpdated', handleProductUpdate);
+
+    return () => {
+      window.removeEventListener('productUpdated', handleProductUpdate);
+    };
+  }, []);
+
   const filteredOptions = options.filter(option =>
     option[displayKey]?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -461,6 +474,7 @@ const ProductManagement = () => {
     materials: '',
     brand: '',
     shelfLife: '',
+    unitCost: '',
     unitCost: '',
     variations: []
   });
@@ -1364,7 +1378,9 @@ const ProductManagement = () => {
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{product.supplier?.id || '-'}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {product.supplier?.name || '-'}
+                      </td>
 
                       <td className="px-6 py-4">
                         {product.createdAt ? (
@@ -1759,10 +1775,14 @@ const ProductManagement = () => {
                       type="number"
                       value={formData.unitCost || ''}
                       disabled
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
-                      placeholder="Calculated from supplier orders"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed text-gray-900"
+                      placeholder="Set via Purchase Orders"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Automatically calculated when supplier order status is OK</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {formData.unitCost
+                        ? `Current unit cost: ₱${parseFloat(formData.unitCost).toFixed(2)}`
+                        : 'Set unit price in Purchase Orders to update this value'}
+                    </p>
                   </div>
                 </div>
 

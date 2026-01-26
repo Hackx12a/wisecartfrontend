@@ -69,6 +69,7 @@ const Dashboard = () => {
   const [selectedCompanyForBranches, setSelectedCompanyForBranches] = useState(null);
   const [selectedCompanyForTopBranches, setSelectedCompanyForTopBranches] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategoryForMonthly, setSelectedCategoryForMonthly] = useState('all');
   const [productCategories, setProductCategories] = useState([]);
   const [performanceYear, setPerformanceYear] = useState(new Date().getFullYear());
   const [performanceView, setPerformanceView] = useState('year');
@@ -555,6 +556,7 @@ const Dashboard = () => {
         const monthYear = `${month} ${year}`;
 
         if (!productAnalysis[uniqueKey]) {
+          const fullProduct = products.find(p => p.id === productId);
           productAnalysis[uniqueKey] = {
             id: uniqueKey,
             productId: productId,
@@ -562,6 +564,7 @@ const Dashboard = () => {
             name: displayName,
             baseProductName: productName,
             variationName: variationName,
+            category: fullProduct?.category || 'Uncategorized',
             totalRevenue: 0,
             totalQuantity: 0,
             byMonth: {},
@@ -941,7 +944,7 @@ const Dashboard = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Product Sales Chart */}
+
             <div className="lg:col-span-2 bg-white rounded-2xl shadow-md p-6 border border-gray-200">
               <div className="flex justify-between items-center mb-6">
                 <div>
@@ -983,7 +986,6 @@ const Dashboard = () => {
                     const monthIndex = sale.month ? sale.month - 1 : new Date(sale.createdAt || sale.date).getMonth();
 
                     sale.items?.forEach(item => {
-                      // Use unique key for variations
                       const variationId = item.variation?.id || 'base';
                       const uniqueKey = `${item.product?.id}_${variationId}`;
 
@@ -1021,64 +1023,16 @@ const Dashboard = () => {
                 };
 
                 const productData = getProductMonthlySales();
-                const productList = Object.keys(productData.products)
-                  .slice(0, 5);
 
-                if (productList.length === 0) {
-                  return (
-                    <div className="h-64 flex flex-col items-center justify-center text-gray-400">
-                      <Package size={48} className="mb-4 opacity-50" />
-                      <p className="text-lg">No product sales data for selected filters</p>
-                    </div>
-                  );
-                }
-
-                const colors = [
-                  { border: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.1)' },
-                  { border: '#EC4899', bg: 'rgba(236, 72, 153, 0.1)' },
-                  { border: '#F59E0B', bg: 'rgba(245, 158, 11, 0.1)' },
-                  { border: '#10B981', bg: 'rgba(16, 185, 129, 0.1)' },
-                  { border: '#3B82F6', bg: 'rgba(59, 130, 246, 0.1)' },
-                ];
-
-                const productChartData = {
-                  labels: productData.months,
-                  datasets: productList.map((uniqueKey, idx) => {
-                    const [productId, variationIdStr] = uniqueKey.split('_');
-                    const variationId = variationIdStr !== 'base' ? variationIdStr : null;
-
-                    const product = products.find(p => p.id == productId);
-                    const productName = product?.productName || 'Unknown Product';
-
-                    let displayName = productName;
-                    if (variationId && product) {
-                      const variation = product.variations?.find(v => v.id == variationId);
-                      const variationName = variation?.combinationDisplay || variation?.variationValue || 'Default Variation';
-                      displayName = `${productName} (${variationName})`;
-                    }
-
-                    return {
-                      label: displayName,
-                      data: productData.products[uniqueKey],
-                      borderColor: colors[idx % colors.length].border,
-                      backgroundColor: colors[idx % colors.length].bg,
-                      borderWidth: 2,
-                      tension: 0.4,
-                      fill: true,
-                    };
-                  })
-                };
-
-                const productStats = Object.entries(productData.products)
+                // Build ALL product stats FIRST (before filtering or slicing)
+                const allProductStats = Object.entries(productData.products)
                   .map(([uniqueKey, monthlyData]) => {
                     const [productId, variationIdStr] = uniqueKey.split('_');
                     const variationId = variationIdStr !== 'base' ? variationIdStr : null;
 
-                    // Find the product to get its name
                     const product = products.find(p => p.id == productId);
                     const productName = product?.productName || 'Unknown Product';
 
-                    // Get variation name if exists
                     let variationName = null;
                     let displayName = productName;
 
@@ -1092,8 +1046,7 @@ const Dashboard = () => {
                     const quantity = productData.quantities[uniqueKey] || 0;
                     const salesCount = productData.salesCounts[uniqueKey] || 0;
 
-                    const productInfo = productSalesData.find(p => p.id === uniqueKey);
-                    const category = productInfo ? productInfo.category : (product?.category || 'Uncategorized');
+                    const category = product?.category || 'Uncategorized';
 
                     return {
                       id: uniqueKey,
@@ -1106,34 +1059,84 @@ const Dashboard = () => {
                       totalSales,
                       quantity,
                       salesCount,
-                      category
+                      category,
+                      monthlyData
                     };
                   })
-                  .filter(product => {
-                    if (selectedCategory === 'all') return true;
-                    return product.category === selectedCategory;
-                  })
                   .sort((a, b) => b.totalSales - a.totalSales);
+
+                const productStats = selectedCategoryForMonthly === 'all'
+                  ? allProductStats
+                  : allProductStats.filter(product => product.category === selectedCategoryForMonthly);
+
+
+                if (productStats.length === 0) {
+                  return (
+                    <div className="h-64 flex flex-col items-center justify-center text-gray-400">
+                      <Package size={48} className="mb-4 opacity-50" />
+                      <p className="text-lg">
+                        {selectedCategoryForMonthly === 'all'
+                          ? 'No product sales data for selected filters'
+                          : `No products found in "${selectedCategoryForMonthly}" category`}
+                      </p>
+                      {selectedCategoryForMonthly !== 'all' && (
+                        <button
+                          onClick={() => setSelectedCategoryForMonthly('all')}
+                          className="mt-3 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm"
+                        >
+                          View All Categories
+                        </button>
+                      )}
+                    </div>
+                  );
+                }
+
+                // Take top 5 from FILTERED results for the chart
+                const topProductsForChart = productStats.slice(0, 5);
+
+                const colors = [
+                  { border: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.1)' },
+                  { border: '#EC4899', bg: 'rgba(236, 72, 153, 0.1)' },
+                  { border: '#F59E0B', bg: 'rgba(245, 158, 11, 0.1)' },
+                  { border: '#10B981', bg: 'rgba(16, 185, 129, 0.1)' },
+                  { border: '#3B82F6', bg: 'rgba(59, 130, 246, 0.1)' },
+                ];
+
+                const productChartData = {
+                  labels: productData.months,
+                  datasets: topProductsForChart.map((product, idx) => {
+                    return {
+                      label: product.name,
+                      data: product.monthlyData,
+                      borderColor: colors[idx % colors.length].border,
+                      backgroundColor: colors[idx % colors.length].bg,
+                      borderWidth: 2,
+                      tension: 0.4,
+                      fill: true,
+                    };
+                  })
+                };
 
                 return (
                   <>
                     <ProductSalesChart productChartData={productChartData} />
 
-                    {/* Product List Below Chart */}
                     <div className="mt-6 pt-6 border-t border-gray-200">
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                           <Target size={16} className="text-purple-600" />
                           Top Products (Ranked by Sales)
+                          {selectedCategoryForMonthly !== 'all' && (
+                            <span className="text-xs font-normal text-purple-600">- {selectedCategoryForMonthly}</span>
+                          )}
                         </h4>
 
-                        {/* Category Filter for Top Products */}
                         {productCategories.length > 0 && (
                           <div className="relative">
                             <select
-                              value={selectedCategory}
+                              value={selectedCategoryForMonthly}
                               onChange={(e) => {
-                                setSelectedCategory(e.target.value);
+                                setSelectedCategoryForMonthly(e.target.value);
                               }}
                               className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 appearance-none pr-8"
                             >
@@ -1159,7 +1162,6 @@ const Dashboard = () => {
                               key={product.id}
                               className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all"
                             >
-                              {/* Rank Badge */}
                               <div className="flex-shrink-0">
                                 <span className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${idx === 0 ? 'bg-yellow-100 text-yellow-700 border-2 border-yellow-400' :
                                   idx === 1 ? 'bg-gray-200 text-gray-600 border-2 border-gray-400' :
@@ -1170,33 +1172,27 @@ const Dashboard = () => {
                                 </span>
                               </div>
 
-                              {/* Product Info */}
                               <div className="flex-1 min-w-0">
                                 <p className="font-semibold text-gray-900 truncate">{product.name}</p>
                                 <p className="text-xs text-gray-500">{product.salesCount} transactions</p>
-                                {/* Show variation info if exists */}
-                                {product.variationName && (
-                                  <span className="inline-flex items-center px-1.5 py-0.5 mt-1 rounded text-xs bg-blue-100 text-blue-600">
-                                    Variation: {product.variationName}
+                                {product.category && product.category !== 'Uncategorized' && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 mt-1 rounded text-xs bg-purple-100 text-purple-600">
+                                    {product.category}
                                   </span>
                                 )}
                               </div>
 
-                              {/* Stats */}
                               <div className="flex items-center gap-6">
-                                {/* Sales */}
                                 <div className="text-right">
                                   <p className="text-xs text-gray-500">Sales</p>
                                   <p className="font-bold text-green-600">{formatCurrency(product.totalSales)}</p>
                                 </div>
 
-                                {/* Quantity */}
                                 <div className="text-right">
                                   <p className="text-xs text-gray-500">Quantity</p>
                                   <p className="font-bold text-purple-600">{formatNumber(product.quantity)} units</p>
                                 </div>
 
-                                {/* Percentage Bar */}
                                 <div className="w-24">
                                   <div className="flex items-center justify-end gap-2 mb-1">
                                     <span className="text-xs font-medium text-gray-600">{percentage.toFixed(0)}%</span>
@@ -1231,40 +1227,33 @@ const Dashboard = () => {
                                   key={product.id}
                                   className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all"
                                 >
-                                  {/* Rank Badge */}
                                   <div className="flex-shrink-0">
                                     <span className="flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm bg-gray-100 text-gray-500">
                                       #{actualIdx + 1}
                                     </span>
                                   </div>
 
-                                  {/* Product Info */}
                                   <div className="flex-1 min-w-0">
                                     <p className="font-semibold text-gray-900 truncate">{product.name}</p>
                                     <p className="text-xs text-gray-500">{product.salesCount} transactions</p>
-                                    {/* Show variation info if exists */}
-                                    {product.variationName && (
-                                      <span className="inline-flex items-center px-1.5 py-0.5 mt-1 rounded text-xs bg-blue-100 text-blue-600">
-                                        Variation: {product.variationName}
+                                    {product.category && product.category !== 'Uncategorized' && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 mt-1 rounded text-xs bg-purple-100 text-purple-600">
+                                        {product.category}
                                       </span>
                                     )}
                                   </div>
 
-                                  {/* Stats */}
                                   <div className="flex items-center gap-6">
-                                    {/* Sales */}
                                     <div className="text-right">
                                       <p className="text-xs text-gray-500">Sales</p>
                                       <p className="font-bold text-green-600">{formatCurrency(product.totalSales)}</p>
                                     </div>
 
-                                    {/* Quantity */}
                                     <div className="text-right">
                                       <p className="text-xs text-gray-500">Quantity</p>
                                       <p className="font-bold text-purple-600">{formatNumber(product.quantity)} units</p>
                                     </div>
 
-                                    {/* Percentage Bar */}
                                     <div className="w-24">
                                       <div className="flex items-center justify-end gap-2 mb-1">
                                         <span className="text-xs font-medium text-gray-600">{percentage.toFixed(0)}%</span>
@@ -1284,13 +1273,12 @@ const Dashboard = () => {
                         )}
                       </div>
 
-                      {/* Summary */}
                       {productStats.length > 0 && (
                         <div className="mt-4 pt-4 border-t border-gray-200 bg-purple-50 rounded-lg p-4">
-                          {selectedCategory !== 'all' && (
+                          {selectedCategoryForMonthly !== 'all' && (
                             <div className="mb-2 text-center">
                               <span className="text-xs font-semibold text-purple-700">
-                                Showing: {selectedCategory}
+                                Showing: {selectedCategoryForMonthly}
                               </span>
                             </div>
                           )}
@@ -1320,7 +1308,6 @@ const Dashboard = () => {
               })()}
             </div>
 
-            {/* Status Distribution & Recent Sales */}
             <div className="space-y-6">
               <StatusDistribution stats={stats} sales={sales} navigate={navigate} />
               <RecentSales recentSales={recentSales} sales={sales} />
