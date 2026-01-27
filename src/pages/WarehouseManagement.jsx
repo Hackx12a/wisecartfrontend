@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Search, X, Warehouse, MapPin, Building, Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, X, Warehouse, MapPin, Building, Star, ChevronLeft, ChevronRight, User, Phone } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { LoadingOverlay } from './LoadingOverlay';
 import { api } from '../services/api';
@@ -24,7 +24,8 @@ const WarehouseManagement = () => {
     city: '',
     province: '',
     area: '',
-    region: '',
+    contactPerson: '',
+    contactNumber: '',
     isDefault: false
   });
 
@@ -33,80 +34,108 @@ const WarehouseManagement = () => {
   }, []);
 
   const loadWarehouses = async () => {
-  setLoading(true);
-  setLoadingMessage('Loading warehouses...');
-  try {
-    const response = await api.get('/warehouse');
-    if (response.success) {
-      setWarehouses(response.data || []);
-    } else {
-      toast.error(response.error || 'Failed to load warehouses');
+    setLoading(true);
+    setLoadingMessage('Loading warehouses...');
+    try {
+      const response = await api.get('/warehouse');
+      if (response.success) {
+        setWarehouses(response.data || []);
+      } else {
+        toast.error(response.error || 'Failed to load warehouses');
+        setWarehouses([]);
+      }
+    } catch (error) {
+      toast.error('Failed to load warehouses');
+      console.error(error);
       setWarehouses([]);
+    } finally {
+      setLoading(false);
+      setLoadingMessage('');
     }
-  } catch (error) {
-    toast.error('Failed to load warehouses');
-    console.error(error);
-    setWarehouses([]);
-  } finally {
-    setLoading(false);
-    setLoadingMessage('');
-  }
-};
+  };
 
+  const formatWarehouseCode = (value) => {
+    // Remove any existing WH- prefix and non-alphanumeric characters
+    let cleaned = value.replace(/^WH-/i, '').replace(/[^a-zA-Z0-9]/g, '');
+    // Return with WH- prefix
+    return cleaned ? `WH-${cleaned}` : 'WH-';
+  };
 
+  const formatPhoneNumber = (value) => {
+    // Remove all non-numeric characters
+    const numbers = value.replace(/\D/g, '');
+    
+    // Format as: 0000-000-0000 (Philippine format)
+    if (numbers.length <= 4) return numbers;
+    if (numbers.length <= 7) return `${numbers.slice(0, 4)}-${numbers.slice(4)}`;
+    return `${numbers.slice(0, 4)}-${numbers.slice(4, 7)}-${numbers.slice(7, 11)}`;
+  };
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
+    
+    if (name === 'warehouseCode') {
+      setFormData(prev => ({ ...prev, [name]: formatWarehouseCode(value) }));
+      return;
+    }
+    
+    if (name === 'contactNumber') {
+      setFormData(prev => ({ ...prev, [name]: formatPhoneNumber(value) }));
+      return;
+    }
+    
     setFormData(prev => ({ 
       ...prev, 
       [name]: type === 'checkbox' ? checked : value 
     }));
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  if (!formData.warehouseCode || !formData.warehouseName || !formData.address || 
-      !formData.city || !formData.province) {
-    toast.error('Please fill in all required fields');
-    return;
-  }
-
-  setActionLoading(true);
-  setLoadingMessage(editingWarehouse ? 'Updating warehouse...' : 'Creating warehouse...');
-
-  try {
-    const payload = {
-      warehouseCode: formData.warehouseCode,
-      warehouseName: formData.warehouseName,
-      address: formData.address,
-      city: formData.city,
-      province: formData.province,
-      area: formData.area || null,
-      region: formData.region || null,
-      isDefault: formData.isDefault
-    };
-
-    if (editingWarehouse) {
-      await api.put(`/warehouse/${editingWarehouse.id}`, payload);
-      toast.success('Warehouse updated successfully');
-    } else {
-      await api.post('/warehouse', payload);
-      toast.success('Warehouse created successfully');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.warehouseCode || formData.warehouseCode === 'WH-' || 
+        !formData.warehouseName || !formData.address || 
+        !formData.city || !formData.province) {
+      toast.error('Please fill in all required fields');
+      return;
     }
 
-    setShowModal(false);
-    resetForm();
-    loadWarehouses();
-    setCurrentPage(1);
-  } catch (error) {
-    toast.error(error.message || 'Failed to save warehouse');
-    console.error(error);
-  } finally {
-    setActionLoading(false);
-    setLoadingMessage('');
-  }
-};
+    setActionLoading(true);
+    setLoadingMessage(editingWarehouse ? 'Updating warehouse...' : 'Creating warehouse...');
+
+    try {
+      const payload = {
+        warehouseCode: formData.warehouseCode,
+        warehouseName: formData.warehouseName,
+        address: formData.address,
+        city: formData.city,
+        province: formData.province,
+        area: formData.area || null,
+        contactPerson: formData.contactPerson || null,
+        contactNumber: formData.contactNumber || null,
+        isDefault: formData.isDefault
+      };
+
+      if (editingWarehouse) {
+        await api.put(`/warehouse/${editingWarehouse.id}`, payload);
+        toast.success('Warehouse updated successfully');
+      } else {
+        await api.post('/warehouse', payload);
+        toast.success('Warehouse created successfully');
+      }
+
+      setShowModal(false);
+      resetForm();
+      loadWarehouses();
+      setCurrentPage(1);
+    } catch (error) {
+      toast.error(error.message || 'Failed to save warehouse');
+      console.error(error);
+    } finally {
+      setActionLoading(false);
+      setLoadingMessage('');
+    }
+  };
 
   const handleEdit = (warehouse) => {
     setEditingWarehouse(warehouse);
@@ -117,43 +146,45 @@ const handleSubmit = async (e) => {
       city: warehouse.city || '',
       province: warehouse.province || '',
       area: warehouse.area || '',
-      region: warehouse.region || '',
+      contactPerson: warehouse.contactPerson || '',
+      contactNumber: warehouse.contactNumber || '',
       isDefault: warehouse.isDefault || false
     });
     setShowModal(true);
   };
 
   const handleDelete = async (id) => {
-  if (!window.confirm('Are you sure you want to delete this warehouse?')) return;
-  
-  setActionLoading(true);
-  setLoadingMessage('Deleting warehouse...');
+    if (!window.confirm('Are you sure you want to delete this warehouse?')) return;
+    
+    setActionLoading(true);
+    setLoadingMessage('Deleting warehouse...');
 
-  try {
-    await api.delete(`/warehouse/${id}`);
-    toast.success('Warehouse deleted successfully');
-    loadWarehouses();
-    if (currentWarehouses.length % itemsPerPage === 1 && currentPage > 1) {
-      setCurrentPage(currentPage - 1);
+    try {
+      await api.delete(`/warehouse/${id}`);
+      toast.success('Warehouse deleted successfully');
+      loadWarehouses();
+      if (currentWarehouses.length % itemsPerPage === 1 && currentPage > 1) {
+        setCurrentPage(currentPage - 1);
+      }
+    } catch (error) {
+      toast.error('Failed to delete warehouse');
+      console.error(error);
+    } finally {
+      setActionLoading(false);
+      setLoadingMessage('');
     }
-  } catch (error) {
-    toast.error('Failed to delete warehouse');
-    console.error(error);
-  } finally {
-    setActionLoading(false);
-    setLoadingMessage('');
-  }
-};
+  };
 
   const resetForm = () => {
     setFormData({
-      warehouseCode: '',
+      warehouseCode: 'WH-',
       warehouseName: '',
       address: '',
       city: '',
       province: '',
       area: '',
-      region: '',
+      contactPerson: '',
+      contactNumber: '',
       isDefault: false
     });
     setEditingWarehouse(null);
@@ -162,7 +193,8 @@ const handleSubmit = async (e) => {
   const filteredWarehouses = warehouses.filter(warehouse =>
     warehouse.warehouseName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     warehouse.warehouseCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    warehouse.city?.toLowerCase().includes(searchTerm.toLowerCase())
+    warehouse.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    warehouse.contactPerson?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Pagination calculations
@@ -197,15 +229,13 @@ const handleSubmit = async (e) => {
     return pageNumbers;
   };
 
-    if (loading) {
-      return (
-        <div className="flex items-center justify-center h-screen">
-          <LoadingOverlay show={true} message="Loading warehouses..." />
-        </div>
-      );
-    }
-
-
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <LoadingOverlay show={true} message="Loading warehouses..." />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -222,7 +252,7 @@ const handleSubmit = async (e) => {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input
             type="text"
-            placeholder="Search by name, code, or city..."
+            placeholder="Search by name, code, city, or contact person..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -281,9 +311,16 @@ const handleSubmit = async (e) => {
                     {warehouse.city}, {warehouse.province}
                   </span>
                 </div>
-                {warehouse.region && (
-                  <div className="text-sm text-gray-500 pl-6">
-                    {warehouse.region}
+                {warehouse.contactPerson && (
+                  <div className="flex items-center gap-2 text-sm pt-2 border-t border-gray-100">
+                    <User size={16} className="text-gray-400 flex-shrink-0" />
+                    <span className="text-gray-600">{warehouse.contactPerson}</span>
+                  </div>
+                )}
+                {warehouse.contactNumber && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Phone size={16} className="text-gray-400 flex-shrink-0" />
+                    <span className="text-gray-600">{warehouse.contactNumber}</span>
                   </div>
                 )}
               </div>
@@ -312,14 +349,11 @@ const handleSubmit = async (e) => {
       {/* Pagination */}
       {filteredWarehouses.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          {/* Results count */}
           <div className="text-sm text-gray-700">
             Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredWarehouses.length)} of {filteredWarehouses.length} results
           </div>
 
-          {/* Pagination controls */}
           <div className="flex items-center gap-2">
-            {/* Previous button */}
             <button
               onClick={prevPage}
               disabled={currentPage === 1}
@@ -332,7 +366,6 @@ const handleSubmit = async (e) => {
               <ChevronLeft size={16} />
             </button>
 
-            {/* Page numbers */}
             <div className="flex items-center gap-1">
               {getPageNumbers().map((number) => (
                 <button
@@ -349,7 +382,6 @@ const handleSubmit = async (e) => {
               ))}
             </div>
 
-            {/* Next button */}
             <button
               onClick={nextPage}
               disabled={currentPage === totalPages}
@@ -403,8 +435,9 @@ const handleSubmit = async (e) => {
                       onChange={handleInputChange}
                       required
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="e.g., WH-001"
+                      placeholder="WH-001"
                     />
+                    <p className="text-xs text-gray-500 mt-1">Format: WH-XXX (auto-formatted)</p>
                   </div>
 
                   <div>
@@ -420,6 +453,45 @@ const handleSubmit = async (e) => {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Enter warehouse name"
                     />
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <User size={20} />
+                  Contact Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Contact Person
+                    </label>
+                    <input
+                      type="text"
+                      name="contactPerson"
+                      value={formData.contactPerson}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter contact person name"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Contact Number
+                    </label>
+                    <input
+                      type="text"
+                      name="contactNumber"
+                      value={formData.contactNumber}
+                      onChange={handleInputChange}
+                      maxLength={14}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="0000-000-0000"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Format: 0000-000-0000 (auto-formatted)</p>
                   </div>
                 </div>
               </div>
@@ -490,20 +562,6 @@ const handleSubmit = async (e) => {
                         placeholder="e.g., Metro Manila"
                       />
                     </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Region
-                      </label>
-                      <input
-                        type="text"
-                        name="region"
-                        value={formData.region}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="e.g., NCR, Region VII"
-                      />
-                    </div>
                   </div>
                 </div>
               </div>
@@ -555,4 +613,3 @@ const handleSubmit = async (e) => {
 };
 
 export default WarehouseManagement;
-

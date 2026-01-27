@@ -1,15 +1,18 @@
 // src/components/common/VariationSearchableDropdown.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, ChevronDown } from 'lucide-react';
+import { Search, ChevronDown, Package } from 'lucide-react';
 
-const VariationSearchableDropdown = ({ 
-  options, 
-  value, 
-  onChange, 
-  placeholder, 
-  required = false, 
-  formData, 
-  index 
+const VariationSearchableDropdown = ({
+  options,
+  value,
+  onChange,
+  placeholder,
+  required = false,
+  formData,
+  index,
+  warehouseStocks = {},
+  branchStocks = {},
+  loadingStocks = {}
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,31 +35,91 @@ const VariationSearchableDropdown = ({
       option.subLabel?.toLowerCase().includes(searchLower) ||
       option.fullName?.toLowerCase().includes(searchLower) ||
       option.upc?.toLowerCase().includes(searchLower) ||
-      option.sku?.toLowerCase().includes(searchLower)
+      option.sku?.toLowerCase().includes(searchLower) ||
+      (option.upc && option.upc.toLowerCase().includes(searchLower)) ||
+      (option.sku && option.sku.toLowerCase().includes(searchLower))
     );
   });
 
   const selectedOption = options.find(opt => {
-    if (opt.id === value) {
-      return true;
-    }
-
     const currentItem = formData?.items?.[index];
     if (currentItem) {
       const productMatch = currentItem.productId === opt.parentProductId;
       const variationMatch = currentItem.variationId === opt.variationId;
       return productMatch && variationMatch;
     }
-
-    return false;
+    return opt.id === value;
   });
+
+  // Function to get stock information for an option - FIXED
+  const getStockInfo = (option) => {
+    if (!option) return null;
+
+    // Determine which location is selected
+    let locationId = null;
+    let locationType = null;
+    
+    if (formData?.fromWarehouseId) {
+      locationId = formData.fromWarehouseId;
+      locationType = 'warehouse';
+    } else if (formData?.fromBranchId) {
+      locationId = formData.fromBranchId;
+      locationType = 'branch';
+    } else if (formData?.toWarehouseId) {
+      locationId = formData.toWarehouseId;
+      locationType = 'warehouse';
+    } else if (formData?.toBranchId) {
+      locationId = formData.toBranchId;
+      locationType = 'branch';
+    }
+
+    if (!locationId) return null;
+
+    const stockKey = option.variationId
+      ? `${index}_${option.parentProductId}_${option.variationId}_${locationId}`
+      : `${index}_${option.parentProductId}_${locationId}`;
+
+    // Get stock from correct location type
+    if (locationType === 'warehouse') {
+      return warehouseStocks[stockKey];
+    } else if (locationType === 'branch') {
+      return branchStocks[stockKey];
+    }
+
+    return null;
+  };
+
+  const stockInfo = selectedOption ? getStockInfo(selectedOption) : null;
+  
+  // Determine which location is selected for loading key
+  let locationId = null;
+  if (formData?.fromWarehouseId) {
+    locationId = formData.fromWarehouseId;
+  } else if (formData?.fromBranchId) {
+    locationId = formData.fromBranchId;
+  } else if (formData?.toWarehouseId) {
+    locationId = formData.toWarehouseId;
+  } else if (formData?.toBranchId) {
+    locationId = formData.toBranchId;
+  }
+
+  const isLoading = selectedOption ? loadingStocks[`${index}_${selectedOption.parentProductId}_${selectedOption.variationId || ''}_${locationId || ''}`] : false;
+
+  // Get location name for display
+  const getLocationName = () => {
+    if (formData?.fromWarehouseId) return 'Source Warehouse';
+    if (formData?.fromBranchId) return 'Source Branch';
+    if (formData?.toWarehouseId) return 'Destination Warehouse';
+    if (formData?.toBranchId) return 'Destination Branch';
+    return 'Location';
+  };
 
   return (
     <div ref={dropdownRef} className="relative">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-left flex items-center justify-between bg-white"
+        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition text-left flex items-center justify-between bg-white"
       >
         <div className="flex-1 min-w-0">
           {selectedOption ? (
@@ -113,13 +176,12 @@ const VariationSearchableDropdown = ({
                       }
                     }}
                     disabled={isAlreadySelected}
-                    className={`w-full px-4 py-3 text-left border-b border-gray-100 transition text-sm ${
-                      isAlreadySelected
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : value === option.id
+                    className={`w-full px-4 py-3 text-left border-b border-gray-100 transition text-sm ${isAlreadySelected
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : value === option.id
                         ? 'bg-blue-50 text-blue-700 font-medium'
                         : 'text-gray-900 hover:bg-blue-50'
-                    }`}
+                      }`}
                   >
                     <div className="flex flex-col">
                       <div className="font-medium">{option.name}</div>
@@ -141,36 +203,99 @@ const VariationSearchableDropdown = ({
       {selectedOption && (
         <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
           <div className="text-xs space-y-2">
-            <div className="flex justify-between items-start">
-              <div>
-                <span className="text-gray-500">Product:</span>
-                <span className="ml-2 font-medium">{selectedOption.fullName}</span>
+            {/* Product Details Grid - 2 columns */}
+            <div className="grid grid-cols-2 gap-y-1 gap-x-4">
+              {/* Top row: Product | Variant */}
+              <div className="flex items-center">
+                <span className="text-gray-500 w-16 flex-shrink-0">Product:</span>
+                <span className="font-medium truncate ml-1">{selectedOption.fullName}</span>
               </div>
-              {selectedOption.price && selectedOption.price > 0 && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  ₱{selectedOption.price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                </span>
+
+              {selectedOption.subLabel && selectedOption.subLabel !== 'No variations' && (
+                <div className="flex items-center">
+                  <span className="text-gray-500 w-16 flex-shrink-0">Variant:</span>
+                  <span className="font-medium text-blue-600 truncate ml-1">{selectedOption.subLabel}</span>
+                </div>
               )}
+
+              {/* Bottom row: SKU | UPC */}
+              <div className="flex items-center">
+                <span className="text-gray-500 w-16 flex-shrink-0">SKU:</span>
+                <span className="font-medium truncate ml-1">{selectedOption.sku || 'N/A'}</span>
+              </div>
+
+              <div className="flex items-center">
+                <span className="text-gray-500 w-16 flex-shrink-0">UPC:</span>
+                <span className="font-medium truncate ml-1">{selectedOption.upc || 'N/A'}</span>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-gray-500">SKU:</span>
-                <span className="ml-2 font-medium">{selectedOption.sku || 'N/A'}</span>
-              </div>
-              <div>
-                <span className="text-gray-500">UPC:</span>
-                <span className="ml-2 font-medium">{selectedOption.upc || 'N/A'}</span>
-              </div>
-            </div>
+            {/* Stock Information Section - FIXED */}
+            {(formData?.fromWarehouseId || formData?.fromBranchId || formData?.toWarehouseId || formData?.toBranchId) && (stockInfo || isLoading) && (
+              <div className="pt-2 border-t border-gray-200">
+                {/* Stock Header with icon */}
+                <div className="flex items-center gap-1 mb-2">
+                  <Package size={12} className="text-gray-500" />
+                  <span className="text-gray-700 font-medium">{getLocationName()} Stock</span>
+                </div>
 
-            {selectedOption.subLabel && selectedOption.subLabel !== 'No variations' && (
-              <div>
-                <span className="text-gray-500">Variation:</span>
-                <span className="ml-2 font-medium text-blue-600">{selectedOption.subLabel}</span>
+                {/* Stock Data Grid - Available | Total */}
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  {/* Available Stock */}
+                  <div className="flex items-center justify-between p-2 bg-white rounded border border-gray-200">
+                    <span className="text-gray-600 text-xs">Available:</span>
+                    {isLoading ? (
+                      <div className="flex items-center gap-1 text-blue-600 text-xs">
+                        <div className="w-2 h-2 border border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    ) : stockInfo ? (
+                      <span className="font-semibold text-green-600">
+                        {stockInfo.availableQuantity ?? stockInfo.quantity ?? 0}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">No data</span>
+                    )}
+                  </div>
+
+                  {/* Total Stock */}
+                  <div className="flex items-center justify-between p-2 bg-white rounded border border-gray-200">
+                    <span className="text-gray-600 text-xs">Total:</span>
+                    {isLoading ? (
+                      <div className="flex items-center gap-1 text-blue-600 text-xs">
+                        <div className="w-2 h-2 border border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    ) : stockInfo ? (
+                      <span className="font-semibold text-gray-700">
+                        {stockInfo.quantity || 0}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">No data</span>
+                    )}
+                  </div>
+                </div>
+
+                {stockInfo?.reservedQuantity > 0 && (
+                  <div className="flex items-center justify-between p-1.5 rounded border border-orange-200">
+                    <span className="text-gray-600 text-xs">Reserved:</span>
+                    <span className="font-semibold text-orange-600">
+                      {stockInfo.reservedQuantity}
+                    </span>
+                  </div>
+                )}
+
               </div>
             )}
 
+            {/* Show message when no location is selected */}
+            {!(formData?.fromWarehouseId || formData?.fromBranchId || formData?.toWarehouseId || formData?.toBranchId) && (
+              <div className="pt-2 border-t border-gray-200">
+                <div className="text-xs text-yellow-600 italic">
+                  Select a location to see stock information
+                </div>
+              </div>
+            )}
+
+            {/* Product Type Badge */}
             <div className="pt-1">
               {selectedOption.isVariation ? (
                 <span className="inline-flex px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">

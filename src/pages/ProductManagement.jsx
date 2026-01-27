@@ -5,7 +5,7 @@ import {
   Check, AlertCircle
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
-import { api } from '../services/api';
+import { api, API_BASE_URL } from '../services/api';
 import { LoadingOverlay } from './LoadingOverlay';
 
 
@@ -443,6 +443,226 @@ const MultiCompanyPriceSelector = ({ companies, selectedPrices, onChange, assign
 };
 
 
+const ProductRow = ({ product, onEdit, onDelete }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getDaysSinceCreation = (dateString) => {
+    if (!dateString) return null;
+    const created = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - created);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const hasVariations = product.variations && product.variations.length > 0;
+  const daysSinceCreation = getDaysSinceCreation(product.createdAt);
+
+  return (
+    <>
+      {/* Parent Row */}
+      <tr className="hover:bg-gray-50">
+        <td className="px-6 py-4">
+          {hasVariations && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="p-1 hover:bg-gray-200 rounded transition"
+            >
+              <ChevronDown
+                size={18}
+                className={`transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+              />
+            </button>
+          )}
+        </td>
+
+        <td className="px-6 py-4">
+          <div className="flex items-center gap-3">
+            {product.imageUrl ? (
+              <img
+                src={`${API_BASE_URL}${product.imageUrl}`}
+                alt={product.productName}
+                className="w-12 h-12 object-cover rounded-lg border border-gray-200"
+              />
+            ) : (
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Package size={24} className="text-blue-600" />
+              </div>
+            )}
+            <div>
+              <div className="font-medium text-gray-900">{product.productName}</div>
+              {product.brand && <div className="text-sm text-gray-500">{product.brand}</div>}
+              {!hasVariations && product.sku && (
+                <div className="text-xs text-gray-400 mt-1">SKU: {product.sku}</div>
+              )}
+            </div>
+          </div>
+        </td>
+
+        <td className="px-6 py-4 text-sm text-gray-600">
+          {product.category || '-'}
+        </td>
+
+        <td className="px-6 py-4 text-sm text-gray-600">
+          {product.supplier?.name || '-'}
+        </td>
+
+        <td className="px-6 py-4">
+          {hasVariations ? (
+            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+              {product.variations.length} variation{product.variations.length > 1 ? 's' : ''}
+            </span>
+          ) : (
+            <div className="space-y-1">
+              {product.companyBasePrices && product.companyBasePrices.length > 0 ? (
+                <div className="text-sm font-medium text-green-600">
+                  ₱{Number(product.companyBasePrices[0].basePrice).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                </div>
+              ) : (
+                <span className="text-xs text-gray-400">No price set</span>
+              )}
+            </div>
+          )}
+        </td>
+
+        <td className="px-6 py-4">
+          {product.createdAt ? (
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2 text-sm text-gray-900">
+                <Calendar size={14} className="text-gray-400" />
+                <span>{formatDate(product.createdAt)}</span>
+              </div>
+              {daysSinceCreation !== null && (
+                <span className="text-xs text-gray-500 mt-1">
+                  {daysSinceCreation === 0
+                    ? 'Today'
+                    : daysSinceCreation === 1
+                      ? '1 day ago'
+                      : `${daysSinceCreation} days ago`}
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="text-sm text-gray-400">-</span>
+          )}
+        </td>
+
+        <td className="px-6 py-4 text-right">
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={() => onEdit(product)}
+              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+            >
+              <Edit2 size={18} />
+            </button>
+            <button
+              onClick={() => onDelete(product.id)}
+              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
+        </td>
+      </tr>
+
+      {/* Expanded Variations */}
+      {isExpanded && hasVariations && (
+        <tr>
+          <td colSpan="7" className="bg-gray-50 px-6 py-4">
+            <div className="pl-12">
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Image</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Variation</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">SKU</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">UPC</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Weight</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Dimensions</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Company Prices</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Unit Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {product.variations.map((variation, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          {variation.imageUrl ? (
+                            <img
+                              src={`${API_BASE_URL}${variation.imageUrl}`}
+                              alt={variation.combinationDisplay}
+                              className="w-10 h-10 object-cover rounded border border-gray-200"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center">
+                              <Package size={16} className="text-gray-400" />
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {variation.combinationDisplay?.split('-').map((attr, i) => (
+                              <span key={i} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
+                                {attr}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{variation.sku || '-'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{variation.upc || '-'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {variation.weight ? `${variation.weight} kg` : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {variation.dimensions || '-'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="space-y-1">
+                            {variation.companyPrices && variation.companyPrices.length > 0 ? (
+                              variation.companyPrices.slice(0, 2).map((cp, idx) => (
+                                <div key={idx} className="text-xs">
+                                  <span className="font-medium text-green-600">
+                                    ₱{Number(cp.price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                  </span>
+                                  <span className="text-gray-500 ml-1">({cp.company?.companyName})</span>
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-xs text-gray-400">No prices set</span>
+                            )}
+                            {variation.companyPrices && variation.companyPrices.length > 2 && (
+                              <div className="text-xs text-gray-500">+{variation.companyPrices.length - 2} more</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                          {product.unitCost ? `₱${Number(product.unitCost).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+};
+
+
 
 
 const ProductManagement = () => {
@@ -454,6 +674,7 @@ const ProductManagement = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [formData, setFormData] = useState({
     productName: '',
     category: '',
@@ -475,7 +696,6 @@ const ProductManagement = () => {
     brand: '',
     shelfLife: '',
     unitCost: '',
-    unitCost: '',
     variations: []
   });
   const [actionLoading, setActionLoading] = useState(false);
@@ -485,6 +705,8 @@ const ProductManagement = () => {
   const [variationTypes, setVariationTypes] = useState([]);
   const [variationCombinations, setVariationCombinations] = useState([]);
   const variationInputRefs = useRef({});
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingVariationImage, setUploadingVariationImage] = useState({});
 
 
 
@@ -576,7 +798,83 @@ const ProductManagement = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === 'upc') {
+      const numericValue = value.replace(/\D/g, '').slice(0, 13);
+      setFormData(prev => ({ ...prev, [name]: numericValue }));
+      return;
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+
+  const handleSupplierChange = (supplierId) => {
+    const supplier = suppliers.find(s => s.id === parseInt(supplierId));
+    setSelectedSupplier(supplier);
+
+    setFormData(prev => ({
+      ...prev,
+      supplierId: supplierId,
+      countryOfOrigin: supplier?.country || prev.countryOfOrigin
+    }));
+  };
+
+
+  const handleImageUpload = async (file, isVariation = false, variationIndex = null) => {
+    if (!file) {
+      toast.error('Please select a file');
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Set loading state
+    if (isVariation) {
+      setUploadingVariationImage(prev => ({ ...prev, [variationIndex]: true }));
+    } else {
+      setUploadingImage(true);
+    }
+
+    try {
+      const response = await api.upload('/upload/image', formData);
+
+      if (response.success) {
+        const imageUrl = response.data.data.url;
+
+        if (isVariation) {
+          updateVariationCombination(variationIndex, 'imageUrl', imageUrl);
+        } else {
+          setFormData(prev => ({ ...prev, imageUrl: imageUrl }));
+        }
+
+        toast.success('Image uploaded successfully');
+      } else {
+        toast.error(response.error || 'Failed to upload image');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload image');
+    } finally {
+      if (isVariation) {
+        setUploadingVariationImage(prev => ({ ...prev, [variationIndex]: false }));
+      } else {
+        setUploadingImage(false);
+      }
+    }
   };
 
 
@@ -769,6 +1067,7 @@ const ProductManagement = () => {
             upc: combo.upc || null,
             weight: combo.weight ? parseFloat(combo.weight) : null,
             dimensions: null,
+            imageUrl: combo.imageUrl || null,
             companyPrices: []
           };
 
@@ -870,6 +1169,7 @@ const ProductManagement = () => {
         materials: formData.materials || null,
         brand: formData.brand || null,
         shelfLife: formData.shelfLife || null,
+        imageUrl: formData.imageUrl || null,
         variations: normalizedVariations,
         companyPrices: companyPricesArray,
         companyBasePrices: companyBasePricesArray
@@ -999,6 +1299,7 @@ const ProductManagement = () => {
       brand: product.brand || '',
       shelfLife: product.shelfLife || '',
       unitCost: product.unitCost || '',
+      imageUrl: product.imageUrl || '',
       variations: []
     });
 
@@ -1072,6 +1373,7 @@ const ProductManagement = () => {
             length: dims[0] || '',
             width: dims[1] || '',
             height: dims[2] || '',
+            imageUrl: v.imageUrl || '',
             companyPrices: companyPricesMap
           };
         });
@@ -1237,12 +1539,11 @@ const ProductManagement = () => {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">UPC</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unit Cost</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company Price</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12"></th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Variations</th>
                 <th
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition"
                   onClick={() => handleSort('createdAt')}
@@ -1260,207 +1561,19 @@ const ProductManagement = () => {
             <tbody className="divide-y divide-gray-200">
               {currentProducts.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
                     {filteredProducts.length === 0 ? 'No products found' : 'No products on this page'}
                   </td>
                 </tr>
               ) : (
-                currentProducts.map((product) => {
-                  // Helper function to format date
-                  const formatDate = (dateString) => {
-                    if (!dateString) return '-';
-                    const date = new Date(dateString);
-                    return date.toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric'
-                    });
-                  };
-
-
-                  const getDaysSinceCreation = (dateString) => {
-                    if (!dateString) return null;
-                    const created = new Date(dateString);
-                    const now = new Date();
-                    const diffTime = Math.abs(now - created);
-                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                    return diffDays;
-                  };
-
-                  const daysSinceCreation = getDaysSinceCreation(product.createdAt);
-
-                  return (
-                    <tr key={product.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-blue-100 rounded-lg">
-                            <Package size={20} className="text-blue-600" />
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-900">{product.productName}</div>
-                            {product.brand && <div className="text-sm text-gray-500">{product.brand}</div>}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {product.variations && product.variations.length > 0 ? (
-                          <div className="space-y-1">
-                            {product.variations.slice(0, 2).map((v, idx) => (
-                              <div key={idx} className="text-xs text-gray-600">{v.sku || '-'}</div>
-                            ))}
-                            {product.variations.length > 2 && (
-                              <div className="text-xs text-gray-500">+{product.variations.length - 2} more</div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-900">{product.sku || '-'}</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {product.variations && product.variations.length > 0 ? (
-                          <div className="space-y-1">
-                            {product.variations.slice(0, 2).map((v, idx) => (
-                              <div key={idx} className="text-xs text-gray-600">{v.upc || '-'}</div>
-                            ))}
-                            {product.variations.length > 2 && (
-                              <div className="text-xs text-gray-500">+{product.variations.length - 2} more</div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-900">{product.upc || '-'}</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium text-green-600">
-                        {product.unitCost != null
-                          ? `₱${Number(product.unitCost).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                          : '-'}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        {product.variations && product.variations.length > 0 ? (
-                          <div className="space-y-1">
-                            {product.variations[0].companyPrices && product.variations[0].companyPrices.length > 0 ? (
-                              <>
-                                {product.variations[0].companyPrices.slice(0, 2).map((cp, idx) => (
-                                  <div key={idx} className="text-xs">
-                                    <span className="font-medium text-blue-600">
-                                      ₱{Number(cp.price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                                    </span>
-                                    <span className="text-gray-500 ml-1">({cp.company?.companyName})</span>
-                                  </div>
-                                ))}
-                                {product.variations[0].companyPrices.length > 2 && (
-                                  <div className="text-xs text-gray-500">+{product.variations[0].companyPrices.length - 2} more</div>
-                                )}
-                              </>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="space-y-1">
-                            {product.companyBasePrices && product.companyBasePrices.length > 0 ? (
-                              <>
-                                {product.companyBasePrices.slice(0, 2).map((cbp, idx) => (
-                                  <div key={idx} className="text-xs">
-                                    <span className="font-medium text-blue-600">
-                                      ₱{Number(cbp.basePrice).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                                    </span>
-                                    <span className="text-gray-500 ml-1">({cbp.company?.companyName})</span>
-                                  </div>
-                                ))}
-                                {product.companyBasePrices.length > 2 && (
-                                  <div className="text-xs text-gray-500">+{product.companyBasePrices.length - 2} more</div>
-                                )}
-                              </>
-                            ) : (
-                              <span className="text-gray-400">No base prices set</span>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {product.supplier?.name || '-'}
-                      </td>
-
-                      <td className="px-6 py-4">
-                        {product.createdAt ? (
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-2 text-sm text-gray-900">
-                              <Calendar size={14} className="text-gray-400" />
-                              <span>{formatDate(product.createdAt)}</span>
-                            </div>
-                            {daysSinceCreation !== null && (
-                              <span className="text-xs text-gray-500 mt-1">
-                                {daysSinceCreation === 0
-                                  ? 'Today'
-                                  : daysSinceCreation === 1
-                                    ? '1 day ago'
-                                    : `${daysSinceCreation} days ago`}
-                              </span>
-                            )}
-
-                            {product.shelfLife && product.createdAt && (
-                              (() => {
-                                const shelfLife = product.shelfLife.toLowerCase().trim();
-                                const parts = shelfLife.split(/\s+/);
-                                if (parts.length >= 2) {
-                                  const amount = parseInt(parts[0]);
-                                  const unit = parts[1];
-
-                                  let expiryDate = new Date(product.createdAt);
-                                  if (unit.startsWith('month')) {
-                                    expiryDate.setMonth(expiryDate.getMonth() + amount);
-                                  } else if (unit.startsWith('year')) {
-                                    expiryDate.setFullYear(expiryDate.getFullYear() + amount);
-                                  } else if (unit.startsWith('day')) {
-                                    expiryDate.setDate(expiryDate.getDate() + amount);
-                                  }
-
-                                  const now = new Date();
-                                  const daysUntilExpiry = Math.floor((expiryDate - now) / (1000 * 60 * 60 * 24));
-
-                                  if (daysUntilExpiry < 0) {
-                                    return (
-                                      <span className="text-xs text-red-600 font-medium mt-1">
-                                        ⚠️ Expired
-                                      </span>
-                                    );
-                                  } else if (daysUntilExpiry <= 30) {
-                                    return (
-                                      <span className="text-xs text-amber-600 font-medium mt-1">
-                                        ⚠️ Expires in {daysUntilExpiry} days
-                                      </span>
-                                    );
-                                  }
-                                }
-                                return null;
-                              })()
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-400">-</span>
-                        )}
-                      </td>
-
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleEdit(product)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                          >
-                            <Edit2 size={18} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(product.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                currentProducts.map((product) => (
+                  <ProductRow
+                    key={product.id}
+                    product={product}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
+                ))
               )}
             </tbody>
           </table>
@@ -1557,6 +1670,80 @@ const ProductManagement = () => {
                     />
                   </div>
 
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Product Image
+                    </label>
+
+                    {/* Upload Area */}
+                    {!formData.imageUrl ? (
+                      <div className="relative">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleImageUpload(e.target.files[0])}
+                          className="hidden"
+                          id="product-image-upload"
+                          disabled={uploadingImage}
+                        />
+                        <label
+                          htmlFor="product-image-upload"
+                          className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer transition ${uploadingImage
+                            ? 'border-blue-400 bg-blue-50'
+                            : 'border-gray-300 hover:border-blue-500 bg-gray-50 hover:bg-gray-100'
+                            }`}
+                        >
+                          {uploadingImage ? (
+                            <div className="flex flex-col items-center">
+                              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-2"></div>
+                              <p className="text-sm text-blue-600 font-medium">Uploading...</p>
+                            </div>
+                          ) : (
+                            <>
+                              <Package size={40} className="text-gray-400 mb-2" />
+                              <p className="text-sm text-gray-600 font-medium">Click to upload product image</p>
+                              <p className="text-xs text-gray-500 mt-1">PNG, JPG up to 5MB</p>
+                            </>
+                          )}
+                        </label>
+                      </div>
+                    ) : (
+                      /* Image Preview with Remove Button */
+                      <div className="relative inline-block">
+                        <img
+                          src={`${API_BASE_URL}${formData.imageUrl}`}
+                          alt="Product"
+                          className="h-40 w-40 object-cover rounded-lg border-2 border-gray-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
+                          className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition shadow-lg"
+                        >
+                          <X size={16} />
+                        </button>
+                        {/* Change Image Button */}
+                        <div className="mt-2">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleImageUpload(e.target.files[0])}
+                            className="hidden"
+                            id="product-image-change"
+                            disabled={uploadingImage}
+                          />
+                          <label
+                            htmlFor="product-image-change"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition"
+                          >
+                            <Edit2 size={12} />
+                            Change Image
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Category
@@ -1596,7 +1783,7 @@ const ProductManagement = () => {
                     <SearchableDropdown
                       options={suppliers}
                       value={formData.supplierId}
-                      onChange={(value) => setFormData({ ...formData, supplierId: value })}
+                      onChange={handleSupplierChange}
                       placeholder="Select supplier"
                       displayKey="name"
                       valueKey="id"
@@ -1614,6 +1801,11 @@ const ProductManagement = () => {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Enter country"
                     />
+                    {selectedSupplier?.country && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        Auto-filled from supplier: {selectedSupplier.country}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -1676,6 +1868,7 @@ const ProductManagement = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         UPC <span className="text-red-500">*</span>
+                        <span className="text-xs text-gray-500 ml-2">(13 digits)</span>
                       </label>
                       <input
                         type="text"
@@ -1683,9 +1876,16 @@ const ProductManagement = () => {
                         value={formData.upc}
                         onChange={handleInputChange}
                         required={variationCombinations.length === 0}
+                        maxLength={13}
+                        pattern="\d{13}"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Enter UPC"
+                        placeholder="Enter 13-digit UPC"
                       />
+                      {formData.upc && formData.upc.length !== 13 && (
+                        <p className="text-xs text-red-600 mt-1">
+                          UPC must be exactly 13 digits ({formData.upc.length}/13)
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -1805,7 +2005,7 @@ const ProductManagement = () => {
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <span style={{ fontSize: '20px' }}>₱</span>
-                    Company Base Prices
+                    Company Selling Price
                     <span className="text-xs font-normal text-gray-500 ml-2">
                       (For products without variations)
                     </span>
@@ -1838,7 +2038,7 @@ const ProductManagement = () => {
                   <div className="flex items-center gap-2 text-gray-600">
                     <AlertCircle size={18} />
                     <div>
-                      <p className="text-sm font-medium">Company Base Prices Disabled</p>
+                      <p className="text-sm font-medium">Company Selling Price Disabled</p>
                       <p className="text-xs mt-1">
                         This product has variations. Please set company prices for each variation in the table below.
                       </p>
@@ -2101,6 +2301,7 @@ const ProductManagement = () => {
                           <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-48">Variation</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-32">Image</th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-40">SKU</th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-40">UPC</th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-32">Weight (kg)</th>
@@ -2111,7 +2312,7 @@ const ProductManagement = () => {
                           <tbody className="divide-y divide-gray-200">
                             {variationCombinations.map((combo, comboIndex) => (
                               <tr key={comboIndex} className="hover:bg-gray-50">
-
+                                {/* Variation Attributes */}
                                 <td className="px-4 py-3 w-48">
                                   <div className="flex flex-wrap gap-1">
                                     {Object.entries(combo.attributes).map(([type, value]) => (
@@ -2122,7 +2323,51 @@ const ProductManagement = () => {
                                   </div>
                                 </td>
 
+                                {/* Image Upload */}
+                                <td className="px-4 py-3 w-32">
+                                  {!combo.imageUrl ? (
+                                    <div className="relative">
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => handleImageUpload(e.target.files[0], true, comboIndex)}
+                                        className="hidden"
+                                        id={`variation-image-${comboIndex}`}
+                                        disabled={uploadingVariationImage[comboIndex]}
+                                      />
+                                      <label
+                                        htmlFor={`variation-image-${comboIndex}`}
+                                        className={`flex flex-col items-center justify-center w-20 h-20 border-2 border-dashed rounded-lg cursor-pointer transition ${uploadingVariationImage[comboIndex]
+                                          ? 'border-blue-400 bg-blue-50'
+                                          : 'border-gray-300 hover:border-blue-500 bg-gray-50'
+                                          }`}
+                                      >
+                                        {uploadingVariationImage[comboIndex] ? (
+                                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                                        ) : (
+                                          <Package size={20} className="text-gray-400" />
+                                        )}
+                                      </label>
+                                    </div>
+                                  ) : (
+                                    <div className="relative inline-block">
+                                      <img
+                                        src={`${API_BASE_URL}${combo.imageUrl}`}
+                                        alt="Variation"
+                                        className="h-16 w-16 object-cover rounded border border-gray-200"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => updateVariationCombination(comboIndex, 'imageUrl', '')}
+                                        className="absolute -top-1 -right-1 p-0.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition"
+                                      >
+                                        <X size={12} />
+                                      </button>
+                                    </div>
+                                  )}
+                                </td>
 
+                                {/* SKU */}
                                 <td className="px-4 py-3 w-40">
                                   <input
                                     type="text"
@@ -2134,7 +2379,7 @@ const ProductManagement = () => {
                                   />
                                 </td>
 
-
+                                {/* UPC */}
                                 <td className="px-4 py-3 w-40">
                                   <input
                                     type="text"
@@ -2142,11 +2387,12 @@ const ProductManagement = () => {
                                     onChange={(e) => updateVariationCombination(comboIndex, 'upc', e.target.value)}
                                     placeholder="Enter UPC *"
                                     required
+                                    maxLength={13}
                                     className="w-full min-w-[150px] px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                   />
                                 </td>
 
-
+                                {/* Weight */}
                                 <td className="px-4 py-3 w-32">
                                   <input
                                     type="number"
@@ -2160,7 +2406,7 @@ const ProductManagement = () => {
                                   />
                                 </td>
 
-
+                                {/* Dimensions */}
                                 <td className="px-4 py-3 w-64">
                                   <div className="flex items-center gap-2">
                                     <input
@@ -2195,7 +2441,7 @@ const ProductManagement = () => {
                                   </div>
                                 </td>
 
-
+                                {/* Company Prices */}
                                 <td className="px-4 py-3 min-w-[400px]">
                                   <div className="space-y-2">
                                     {companies.map((company) => (

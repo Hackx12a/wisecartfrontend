@@ -16,7 +16,6 @@ const BranchCompanyModal = ({ onClose, onSave, companies, branches, editingData 
     branchCity: '',
     branchProvince: '',
     area: '',
-    region: '',
     tin: '',
     companyName: '',
     companyTin: '',
@@ -26,13 +25,25 @@ const BranchCompanyModal = ({ onClose, onSave, companies, branches, editingData 
     existingCompanyId: '',
   });
 
+  // Format TIN: 000-000-000-00000
+  const formatTIN = (value) => {
+    const numbers = value.replace(/\D/g, '');
+
+    if (numbers.length <= 3) return numbers;
+    if (numbers.length <= 6) return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+    if (numbers.length <= 9) return `${numbers.slice(0, 3)}-${numbers.slice(3, 6)}-${numbers.slice(6)}`;
+    if (numbers.length <= 14) return `${numbers.slice(0, 3)}-${numbers.slice(3, 6)}-${numbers.slice(6, 9)}-${numbers.slice(9, 14)}`;
+
+    return `${numbers.slice(0, 3)}-${numbers.slice(3, 6)}-${numbers.slice(6, 9)}-${numbers.slice(9, 14)}`;
+  };
+
   useEffect(() => {
     // Format companies for dropdown
     const formattedCompanies = companies.map(c => {
       const branchCount = c.branches ? c.branches.length : 0;
       return {
         id: c.id,
-        name: `${c.companyName} (TIN: ${c.tin}) - ${branchCount} branch(es)`,
+        name: `${c.companyName} (TIN: ${c.tin || 'N/A'}) - ${branchCount} branch(es)`,
         branchCount: branchCount
       };
     });
@@ -40,6 +51,12 @@ const BranchCompanyModal = ({ onClose, onSave, companies, branches, editingData 
 
     if (editingData) {
       const { branch, company } = editingData;
+
+      // Detect if this is company-only edit mode
+      if (branch.id === 'company-only-edit') {
+        setCompanyMode('edit-company-only');
+      }
+
       setFormData({
         branchCode: branch.branchCode || '',
         branchName: branch.branchName || '',
@@ -47,7 +64,6 @@ const BranchCompanyModal = ({ onClose, onSave, companies, branches, editingData 
         branchCity: branch.city || branch.branchCity || '',
         branchProvince: branch.province || branch.branchProvince || '',
         area: branch.area || '',
-        region: branch.region || '',
         tin: branch.tin || '',
         companyName: company?.companyName || '',
         companyTin: company?.tin || '',
@@ -98,6 +114,19 @@ const BranchCompanyModal = ({ onClose, onSave, companies, branches, editingData 
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+
+    // Auto-capitalize branch name
+    if (name === 'branchName') {
+      setFormData(prev => ({ ...prev, [name]: value.toUpperCase() }));
+      return;
+    }
+
+    // Format TIN fields
+    if (name === 'tin' || name === 'companyTin') {
+      setFormData(prev => ({ ...prev, [name]: formatTIN(value) }));
+      return;
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -131,7 +160,6 @@ const BranchCompanyModal = ({ onClose, onSave, companies, branches, editingData 
     if (!formData.branchCity?.trim()) missingBranchFields.push('City');
     if (!formData.branchProvince?.trim()) missingBranchFields.push('Province');
     if (!formData.area?.trim()) missingBranchFields.push('Area');
-    if (!formData.region?.trim()) missingBranchFields.push('Region');
 
     if (missingBranchFields.length > 0) {
       toast.error(`Please fill in: ${missingBranchFields.join(', ')}`);
@@ -162,7 +190,7 @@ const BranchCompanyModal = ({ onClose, onSave, companies, branches, editingData 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -188,7 +216,6 @@ const BranchCompanyModal = ({ onClose, onSave, companies, branches, editingData 
           toast.error(result.error || 'Failed to update company');
         }
       } else {
-        // Handle branch creation/update
         const payload = {
           branchCode: formData.branchCode.trim(),
           branchName: formData.branchName.trim(),
@@ -197,12 +224,10 @@ const BranchCompanyModal = ({ onClose, onSave, companies, branches, editingData 
           city: formData.branchCity.trim(),
           province: formData.branchProvince.trim(),
           area: formData.area.trim(),
-          region: formData.region.trim(),
         };
 
         let result;
-        if (editingData) {
-          // Update existing branch
+        if (editingData && editingData.branch.id !== 'company-only-edit') {
           if (companyMode === 'view') {
             result = await api.put(`/branches/${editingData.branch.id}`, payload);
           } else if (companyMode === 'edit') {
@@ -250,7 +275,7 @@ const BranchCompanyModal = ({ onClose, onSave, companies, branches, editingData 
     }
   };
 
-  const modalTitle = editingData 
+  const modalTitle = editingData
     ? (companyMode === 'edit-company-only' ? 'Edit Company' : 'Edit Branch & Company')
     : 'Add New Branch & Company';
 
@@ -303,9 +328,10 @@ const BranchCompanyModal = ({ onClose, onSave, companies, branches, editingData 
                     value={formData.branchName}
                     onChange={handleInputChange}
                     required={companyMode !== 'edit-company-only'}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter branch name"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
+                    placeholder="ENTER BRANCH NAME"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Branch name will be auto-capitalized</p>
                 </div>
 
                 <div className="md:col-span-2">
@@ -367,21 +393,6 @@ const BranchCompanyModal = ({ onClose, onSave, companies, branches, editingData 
                     placeholder="Enter area"
                   />
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Region <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="region"
-                    value={formData.region}
-                    onChange={handleInputChange}
-                    required={companyMode !== 'edit-company-only'}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter region"
-                  />
-                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Branch TIN <span className="text-red-500">*</span>
@@ -392,9 +403,11 @@ const BranchCompanyModal = ({ onClose, onSave, companies, branches, editingData 
                     value={formData.tin}
                     onChange={handleInputChange}
                     required={companyMode !== 'edit-company-only'}
+                    maxLength={17}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter Branch TIN"
+                    placeholder="000-000-000-00000"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Format: 000-000-000-00000</p>
                 </div>
               </div>
             </div>
@@ -457,7 +470,7 @@ const BranchCompanyModal = ({ onClose, onSave, companies, branches, editingData 
               </div>
             )}
 
-            {/* Existing company Dropdown */}
+
             {companyMode === 'existing' && !editingData && (
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -490,8 +503,8 @@ const BranchCompanyModal = ({ onClose, onSave, companies, branches, editingData 
                       value={formData.companyName}
                       onChange={handleInputChange}
                       required={companyMode !== 'view'}
-                      disabled={companyMode === 'view'}
-                      className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${companyMode === 'view' ? 'bg-gray-100 cursor-not-allowed' : ''
+                      disabled={companyMode === 'view' || (companyMode === 'existing' && formData.existingCompanyId)}
+                      className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${companyMode === 'view' || (companyMode === 'existing' && formData.existingCompanyId) ? 'bg-gray-100 cursor-not-allowed' : ''
                         }`}
                       placeholder="Enter company name"
                     />
@@ -506,11 +519,13 @@ const BranchCompanyModal = ({ onClose, onSave, companies, branches, editingData 
                       name="companyTin"
                       value={formData.companyTin}
                       onChange={handleInputChange}
-                      disabled={companyMode === 'view'}
-                      className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${companyMode === 'view' ? 'bg-gray-100 cursor-not-allowed' : ''
+                      disabled={companyMode === 'view' || (companyMode === 'existing' && formData.existingCompanyId)}
+                      maxLength={17}
+                      className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${companyMode === 'view' || (companyMode === 'existing' && formData.existingCompanyId) ? 'bg-gray-100 cursor-not-allowed' : ''
                         }`}
-                      placeholder="Enter company TIN (optional)"
+                      placeholder="000-000-000-00000"
                     />
+                    <p className="text-xs text-gray-500 mt-1">Format: 000-000-000-00000</p>
                   </div>
 
                   <div className="md:col-span-2">
@@ -523,8 +538,8 @@ const BranchCompanyModal = ({ onClose, onSave, companies, branches, editingData 
                       value={formData.companyAddress}
                       onChange={handleInputChange}
                       required={companyMode !== 'view'}
-                      disabled={companyMode === 'view'}
-                      className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${companyMode === 'view' ? 'bg-gray-100 cursor-not-allowed' : ''
+                      disabled={companyMode === 'view' || (companyMode === 'existing' && formData.existingCompanyId)}
+                      className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${companyMode === 'view' || (companyMode === 'existing' && formData.existingCompanyId) ? 'bg-gray-100 cursor-not-allowed' : ''
                         }`}
                       placeholder="Enter company address"
                     />
@@ -540,8 +555,8 @@ const BranchCompanyModal = ({ onClose, onSave, companies, branches, editingData 
                       value={formData.companyCity}
                       onChange={handleInputChange}
                       required={companyMode !== 'view'}
-                      disabled={companyMode === 'view'}
-                      className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${companyMode === 'view' ? 'bg-gray-100 cursor-not-allowed' : ''
+                      disabled={companyMode === 'view' || (companyMode === 'existing' && formData.existingCompanyId)}
+                      className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${companyMode === 'view' || (companyMode === 'existing' && formData.existingCompanyId) ? 'bg-gray-100 cursor-not-allowed' : ''
                         }`}
                       placeholder="Enter city"
                     />
@@ -557,8 +572,8 @@ const BranchCompanyModal = ({ onClose, onSave, companies, branches, editingData 
                       value={formData.companyProvince}
                       onChange={handleInputChange}
                       required={companyMode !== 'view'}
-                      disabled={companyMode === 'view'}
-                      className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${companyMode === 'view' ? 'bg-gray-100 cursor-not-allowed' : ''
+                      disabled={companyMode === 'view' || (companyMode === 'existing' && formData.existingCompanyId)}
+                      className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${companyMode === 'view' || (companyMode === 'existing' && formData.existingCompanyId) ? 'bg-gray-100 cursor-not-allowed' : ''
                         }`}
                       placeholder="Enter province"
                     />

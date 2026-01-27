@@ -38,12 +38,14 @@ const DeliveryFormModal = ({
     const [loadingStocks, setLoadingStocks] = useState({});
     const [stockErrors, setStockErrors] = useState({});
     const [showBranchDetails, setShowBranchDetails] = useState(true);
+    const [showWarehouseDetails, setShowWarehouseDetails] = useState(true);
+    const [selectedProductForAdd, setSelectedProductForAdd] = useState('');
+    const [branchStocks, setBranchStocks] = useState({});
 
-    // In your DeliveryFormModal.jsx, update the useEffect section:
 
-    // In src/components/modals/DeliveryFormModal.jsx, update the useEffect for edit mode:
 
     useEffect(() => {
+
         if (mode === 'create') {
             const now = new Date();
             const localISOString = formatDateForInput(now.toISOString());
@@ -64,16 +66,52 @@ const DeliveryFormModal = ({
                 dateDelivered: ''
             });
             setBranchInfo(null);
+            setWarehouseStocks({});
+            setLoadingStocks({});
         } else if (mode === 'edit' && delivery) {
-            // Safely access delivery items
-            const items = delivery.items || [];
-            const selectedWarehouseId = items.length > 0 && items[0]?.warehouse?.id
-                ? items[0].warehouse.id
-                : '';
 
-            // Load delivery data
-            setFormData({
-                branchId: delivery.branch?.id || delivery.branchId || '',
+            setWarehouseStocks({});
+            setLoadingStocks({});
+
+            const items = delivery.items || [];
+
+            let selectedWarehouseId = '';
+            if (items.length > 0 && items[0].warehouse) {
+                selectedWarehouseId = items[0].warehouse.id;
+            }
+
+            const processedItems = items.map((item, index) => {
+                const productId = item.product?.id;
+                let variationId = null;
+
+                if (item.variationId !== null && item.variationId !== undefined) {
+                    variationId = item.variationId;
+                } else if (item.variation?.id !== null && item.variation?.id !== undefined) {
+                    variationId = item.variation.id;
+                }
+
+                const formattedProductId = variationId
+                    ? `${productId}_${variationId}`
+                    : `prod_${productId}`;
+
+                const processedItem = {
+                    productId: productId,
+                    variationId: variationId,
+                    quantity: item.quantity || item.preparedQty || 0,
+                    preparedQty: item.preparedQty || 0,
+                    deliveredQty: item.deliveredQty || 0,
+                    uom: item.uom || '',
+                    warehouseId: item.warehouse?.id || selectedWarehouseId,
+                    originalPreparedQty: item.preparedQty || 0,
+                    formattedProductId: formattedProductId
+                };
+
+                return processedItem;
+            });
+
+            // Prepare form data object
+            const editFormData = {
+                branchId: delivery.branch?.id || '',
                 date: delivery.date ? formatDateForInput(delivery.date) : formatDateForInput(new Date()),
                 deliveryReceiptNumber: delivery.deliveryReceiptNumber || '',
                 purchaseOrderNumber: delivery.purchaseOrderNumber || '',
@@ -83,42 +121,77 @@ const DeliveryFormModal = ({
                 customStatus: delivery.customStatus || '',
                 remarks: delivery.remarks || '',
                 selectedWarehouseId: selectedWarehouseId,
-                datePrepared: delivery.datePrepared ? formatDateForInput(delivery.datePrepared) : formatDateForInput(delivery.date || new Date()),
-                dateDelivered: delivery.dateDelivered ? formatDateForInput(delivery.dateDelivered) : '',
-                items: items.map(item => ({
-                    productId: item.product?.id || item.productId || '',
-                    variationId: item.variationId || item.variation?.id || null,
-                    quantity: item.quantity || 0,
-                    preparedQty: item.preparedQty || '',
-                    deliveredQty: item.deliveredQty || '',
-                    uom: item.uom || '',
-                    warehouseId: item.warehouse?.id || '',
-                    originalPreparedQty: item.preparedQty || 0,
-                    // Store the formatted ID for the dropdown
-                    formattedProductId: item.formattedProductId || (item.variationId
-                        ? `${item.product?.id || item.productId}_${item.variationId}`
-                        : `prod_${item.product?.id || item.productId}`)
-                }))
-            });
+                datePrepared: delivery.datePrepared
+                    ? formatDateForInput(delivery.datePrepared)
+                    : formatDateForInput(delivery.date || new Date()),
+                dateDelivered: delivery.dateDelivered
+                    ? formatDateForInput(delivery.dateDelivered)
+                    : '',
+                items: processedItems
+            };
 
-            if (delivery.branch && delivery.branch.company) {
-                setBranchInfo({
-                    companyName: delivery.branch.company.companyName || '',
-                    tin: delivery.branch.company.tin || '',
-                    fullAddress: `${delivery.branch.company.address || ''}, ${delivery.branch.company.city || ''}, ${delivery.branch.company.province || ''}`.trim(),
-                    branchName: delivery.branch.branchName || '',
-                    branchCode: delivery.branch.branchCode || '',
-                    branchAddress: `${delivery.branch.address || ''}, ${delivery.branch.city || ''}, ${delivery.branch.province || ''}`.trim(),
-                    branchTin: delivery.branch.tin || '',
-                    branchContactNumber: delivery.branch.contactNumber || ''
-                });
-            } else {
-                setBranchInfo(null);
+            setFormData(editFormData);
+
+            // Set branch info
+            if (delivery.branch) {
+                const company = delivery.branch.company || delivery.company;
+
+                if (company) {
+                    const branchInfoData = {
+                        companyName: company.companyName || '',
+                        tin: delivery.branch.tin || company.tin || '',
+                        fullAddress: `${company.address || ''}, ${company.city || ''}, ${company.province || ''}`.trim(),
+                        branchName: delivery.branch.branchName || '',
+                        branchCode: delivery.branch.branchCode || '',
+                        branchAddress: `${delivery.branch.address || ''}, ${delivery.branch.city || ''}, ${delivery.branch.province || ''}`.trim(),
+                        branchTin: delivery.branch.tin || '',
+                        branchContactNumber: delivery.branch.contactNumber || ''
+                    };
+
+                    setBranchInfo(branchInfoData);
+                }
+            }
+
+
+            if (processedItems.length > 0) {
+
+
+                setTimeout(() => {
+                    processedItems.forEach((item, index) => {
+                        if (item.warehouseId && item.productId) {
+
+                            loadWarehouseStock(
+                                item.warehouseId,
+                                item.productId,
+                                item.variationId,
+                                index
+                            );
+                        } else {
+                            console.warn(`⚠️ Item ${index} missing warehouse or product:`, {
+                                warehouse: item.warehouseId,
+                                product: item.productId
+                            });
+                        }
+                    });
+                }, 300);
             }
         }
     }, [mode, delivery]);
 
+    useEffect(() => {
+        if (selectedProductForAdd && formData.selectedWarehouseId && products.length > 0) {
+            const selectedOption = productOptions.find(opt => opt.id === selectedProductForAdd);
 
+            if (selectedOption) {
+                loadWarehouseStock(
+                    formData.selectedWarehouseId,
+                    selectedOption.parentProductId,
+                    selectedOption.variationId,
+                    -1
+                );
+            }
+        }
+    }, [selectedProductForAdd, formData.selectedWarehouseId, products]);
 
     const branchOptions = branches ? branches.map(b => ({
         id: b.id,
@@ -284,6 +357,61 @@ const DeliveryFormModal = ({
         setFormData({ ...formData, items: formData.items.filter((_, i) => i !== index) });
     };
 
+    const handleAddProductToTable = () => {
+        if (!selectedProductForAdd) {
+            alert('Please select a product first');
+            return;
+        }
+
+        if (!formData.selectedWarehouseId) {
+            alert('Please select a warehouse first');
+            return;
+        }
+
+        const selectedOption = productOptions.find(opt => opt.id === selectedProductForAdd);
+        if (!selectedOption) {
+            alert('Selected product not found');
+            return;
+        }
+
+        // Check if product already exists in items
+        const exists = formData.items.some(item =>
+            item.productId === selectedOption.parentProductId &&
+            item.variationId === selectedOption.variationId
+        );
+
+        if (exists) {
+            alert('This product is already in the delivery list');
+            return;
+        }
+
+        // Add the product to items
+        const newItem = {
+            productId: selectedOption.parentProductId,
+            variationId: selectedOption.variationId || null,
+            preparedQty: '',
+            deliveredQty: '',
+            uom: '',
+            warehouseId: formData.selectedWarehouseId,
+            originalPreparedQty: 0
+        };
+
+        const newItems = [...formData.items, newItem];
+        setFormData({ ...formData, items: newItems });
+
+        const newIndex = newItems.length - 1;
+        setTimeout(() => {
+            loadWarehouseStock(
+                formData.selectedWarehouseId,
+                selectedOption.parentProductId,
+                selectedOption.variationId,
+                newIndex
+            );
+        }, 100);
+
+        setSelectedProductForAdd('');
+    };
+
     const handleBranchChange = (branchId) => {
         setFormData({ ...formData, branchId });
         if (branchId) {
@@ -324,7 +452,7 @@ const DeliveryFormModal = ({
 
     return (
         <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-6">
-            <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
+            <div className="bg-white rounded-2xl max-w-[65vw] w-full max-h-[95vh] overflow-y-auto shadow-2xl">
                 <div className="p-8 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white rounded-t-2xl z-10">
                     <h2 className="text-2xl font-bold text-gray-900">
                         {mode === 'create' ? 'Create New Delivery' : 'Edit Delivery'}
@@ -340,84 +468,167 @@ const DeliveryFormModal = ({
 
                 <form onSubmit={handleSubmit} className="p-8">
                     <div className="space-y-6">
-                        {/* Branch Selection */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-3">
-                                Branch *
-                                {(formData.status === 'IN_TRANSIT' || formData.status === 'DELIVERED' || formData.status === 'CANCELLED') && (
-                                    <span className="ml-2 text-xs text-orange-600">(Locked - Cannot change in {formData.status} status)</span>
-                                )}
-                            </label>
-                            <SearchableDropdown
-                                options={branchOptions}
-                                value={formData.branchId}
-                                onChange={handleBranchChange}
-                                placeholder="Select Branch"
-                                displayKey="name"
-                                valueKey="id"
-                                required
-                                disabled={formData.status === 'IN_TRANSIT' || formData.status === 'DELIVERED' || formData.status === 'CANCELLED'}
-                            />
-                        </div>
 
-                        {/* Branch Details */}
-                        {branchInfo && (
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className={`bg-green-50 rounded-lg border border-green-200 transition-all duration-300 ${showBranchDetails ? 'h-auto' : 'h-[60px]'}`}>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowBranchDetails(!showBranchDetails)}
-                                        className="w-full p-4 flex items-center justify-between hover:bg-green-100 transition rounded-lg"
-                                    >
-                                        <h3 className="text-sm font-bold text-green-900 flex items-center gap-2">
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            </svg>
-                                            Branch Details
-                                        </h3>
-                                        <ChevronDown
-                                            size={20}
-                                            className={`text-green-600 transition-transform ${showBranchDetails ? 'rotate-180' : ''}`}
-                                        />
-                                    </button>
+                        {/* Row 1: Branch and Warehouse Selection */}
+                        <div className="grid grid-cols-2 gap-6">
+                            {/* Branch Selection */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-3">
+                                    Branch *
+                                    {(formData.status === 'IN_TRANSIT' || formData.status === 'DELIVERED' || formData.status === 'CANCELLED') && (
+                                        <span className="ml-2 text-xs text-orange-600">(Locked - Cannot change in {formData.status} status)</span>
+                                    )}
+                                </label>
+                                <SearchableDropdown
+                                    options={branchOptions}
+                                    value={formData.branchId}
+                                    onChange={handleBranchChange}
+                                    placeholder="Select Branch"
+                                    displayKey="name"
+                                    valueKey="id"
+                                    required
+                                    disabled={formData.status === 'IN_TRANSIT' || formData.status === 'DELIVERED' || formData.status === 'CANCELLED'}
+                                />
 
-                                    <div className={`overflow-hidden transition-all duration-300 ${showBranchDetails ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                                {/* Branch Details - Moved here, right below the branch dropdown */}
+                                {branchInfo && (
+                                    <div className="mt-4 bg-green-50 rounded-lg border border-green-200 p-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowBranchDetails(!showBranchDetails)}
+                                            className="w-full flex items-center justify-between hover:bg-green-100 transition rounded-lg p-2 -m-2 mb-2"
+                                        >
+                                            <h3 className="text-sm font-bold text-green-900 flex items-center gap-2">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                </svg>
+                                                Branch Details
+                                            </h3>
+                                            <ChevronDown
+                                                size={20}
+                                                className={`text-green-600 transition-transform ${showBranchDetails ? 'rotate-180' : ''}`}
+                                            />
+                                        </button>
+
                                         {showBranchDetails && (
-                                            <div className="px-4 pb-4 space-y-2">
-                                                <div className="flex items-start">
-                                                    <span className="text-xs text-green-600 font-medium min-w-20">Branch:</span>
-                                                    <span className="text-sm text-green-900 font-semibold ml-2">{branchInfo.branchName}</span>
+                                            <div className="space-y-1 mt-2">
+                                                <div className="flex items-start gap-2">
+                                                    <span className="text-xs text-green-600 font-medium w-20 flex-shrink-0">Company:</span>
+                                                    <span className="text-sm text-green-900 font-semibold flex-1">{branchInfo.companyName}</span>
                                                 </div>
-                                                <div className="flex items-start">
-                                                    <span className="text-xs text-green-600 font-medium min-w-20">Code:</span>
-                                                    <span className="text-sm text-green-900 ml-2">{branchInfo.branchCode}</span>
+                                                <div className="flex items-start gap-2">
+                                                    <span className="text-xs text-green-600 font-medium w-20 flex-shrink-0">Branch:</span>
+                                                    <span className="text-sm text-green-900 font-semibold flex-1">{branchInfo.branchName} ({branchInfo.branchCode})</span>
                                                 </div>
                                                 {branchInfo.branchTin && (
-                                                    <div className="flex items-start">
-                                                        <span className="text-xs text-green-600 font-medium min-w-20">TIN:</span>
-                                                        <span className="text-sm text-green-900 ml-2">{branchInfo.branchTin}</span>
+                                                    <div className="flex items-start gap-2">
+                                                        <span className="text-xs text-green-600 font-medium w-20 flex-shrink-0">TIN:</span>
+                                                        <span className="text-sm text-green-900 flex-1">{branchInfo.branchTin}</span>
                                                     </div>
                                                 )}
-                                                <div className="flex items-start">
-                                                    <span className="text-xs text-green-600 font-medium min-w-20">Address:</span>
-                                                    <span className="text-sm text-green-900 ml-2">{branchInfo.branchAddress}</span>
+                                                <div className="flex items-start gap-2">
+                                                    <span className="text-xs text-green-600 font-medium w-20 flex-shrink-0">Address:</span>
+                                                    <span className="text-sm text-green-900 flex-1">{branchInfo.branchAddress}</span>
                                                 </div>
                                                 {branchInfo.branchContactNumber && (
-                                                    <div className="flex items-start">
-                                                        <span className="text-xs text-green-600 font-medium min-w-20">Contact:</span>
-                                                        <span className="text-sm text-green-900 ml-2">{branchInfo.branchContactNumber}</span>
+                                                    <div className="flex items-start gap-2">
+                                                        <span className="text-xs text-green-600 font-medium w-20 flex-shrink-0">Contact:</span>
+                                                        <span className="text-sm text-green-900 flex-1">{branchInfo.branchContactNumber}</span>
                                                     </div>
                                                 )}
                                             </div>
                                         )}
                                     </div>
-                                </div>
+                                )}
                             </div>
-                        )}
 
-                        {/* Delivery Receipt & Purchase Order */}
-                        <div className="grid grid-cols-2 gap-6">
+                            {/* Warehouse Selection */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-3">
+                                    Warehouse (applies to all items) *
+                                    {formData.status === 'PREPARING' ? (
+                                        <span className="ml-2 text-xs text-green-600">(Editable)</span>
+                                    ) : (
+                                        <span className="ml-2 text-xs text-orange-600">(Locked in {formData.status} status)</span>
+                                    )}
+                                </label>
+                                <SearchableDropdown
+                                    options={warehouseOptions}
+                                    value={formData.selectedWarehouseId}
+                                    onChange={(value) => {
+                                        const newItems = formData.items.map(item => ({
+                                            ...item,
+                                            warehouseId: value
+                                        }));
+                                        setFormData({
+                                            ...formData,
+                                            selectedWarehouseId: value,
+                                            items: newItems
+                                        });
+                                    }}
+                                    placeholder="Select Warehouse"
+                                    displayKey="name"
+                                    valueKey="id"
+                                    required
+                                    disabled={formData.status === 'IN_TRANSIT' || formData.status === 'DELIVERED'}
+                                />
+
+                                {/* Warehouse Details - Moved here, right below the warehouse dropdown */}
+                                {formData.selectedWarehouseId && (
+                                    <div className="mt-4 bg-blue-50 rounded-lg border border-blue-200 p-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowWarehouseDetails(!showWarehouseDetails)}
+                                            className="w-full flex items-center justify-between hover:bg-blue-100 transition rounded-lg p-2 -m-2 mb-2"
+                                        >
+                                            <h3 className="text-sm font-bold text-blue-900 flex items-center gap-2">
+                                                <Package size={16} />
+                                                Warehouse Details
+                                            </h3>
+                                            <ChevronDown
+                                                size={20}
+                                                className={`text-blue-600 transition-transform ${showWarehouseDetails ? 'rotate-180' : ''}`}
+                                            />
+                                        </button>
+
+                                        {showWarehouseDetails && (
+                                            <div className="space-y-1 mt-2">
+                                                {(() => {
+                                                    const selectedWarehouse = warehouses.find(w => w.id === parseInt(formData.selectedWarehouseId));
+                                                    return selectedWarehouse ? (
+                                                        <>
+                                                            <div className="flex items-start gap-2">
+                                                                <span className="text-xs text-blue-600 font-medium w-20 flex-shrink-0">Warehouse:</span>
+                                                                <span className="text-sm text-blue-900 font-semibold flex-1">{selectedWarehouse.warehouseName}</span>
+                                                            </div>
+                                                            <div className="flex items-start gap-2">
+                                                                <span className="text-xs text-blue-600 font-medium w-20 flex-shrink-0">Code:</span>
+                                                                <span className="text-sm text-blue-900 flex-1">{selectedWarehouse.warehouseCode}</span>
+                                                            </div>
+                                                            {selectedWarehouse.address && (
+                                                                <div className="flex items-start gap-2">
+                                                                    <span className="text-xs text-blue-600 font-medium w-20 flex-shrink-0">Address:</span>
+                                                                    <span className="text-sm text-blue-900 flex-1">
+                                                                        {`${selectedWarehouse.address || ''}, ${selectedWarehouse.city || ''}, ${selectedWarehouse.province || ''}`.trim()}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        <div className="text-sm text-blue-700 italic">Select a warehouse to view details</div>
+                                                    );
+                                                })()}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+
+                        {/* Row 2: Delivery Receipt #, Purchase Order #, Transmittal */}
+                        <div className="grid grid-cols-3 gap-6">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-3">Delivery Receipt # *</label>
                                 <input
@@ -437,25 +648,12 @@ const DeliveryFormModal = ({
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                 />
                             </div>
-                        </div>
-
-                        {/* Transmittal & Prepared By */}
-                        <div className="grid grid-cols-2 gap-6">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-3">Transmittal</label>
                                 <input
                                     type="text"
                                     value={formData.transmittal}
                                     onChange={(e) => setFormData({ ...formData, transmittal: e.target.value })}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-3">Prepared By</label>
-                                <input
-                                    type="text"
-                                    value={formData.preparedBy}
-                                    onChange={(e) => setFormData({ ...formData, preparedBy: e.target.value })}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                 />
                             </div>
@@ -502,17 +700,6 @@ const DeliveryFormModal = ({
                                                 status: newStatus,
                                                 dateDelivered: ''
                                             });
-                                        } else {
-                                            const updatedItems = formData.items.map(item => ({
-                                                ...item,
-                                                deliveredQty: ''
-                                            }));
-                                            setFormData({
-                                                ...formData,
-                                                status: newStatus,
-                                                dateDelivered: '',
-                                                items: updatedItems
-                                            });
                                         }
                                     }}
                                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition ${getStatusDropdownBgColor(formData.status)}`}
@@ -537,27 +724,232 @@ const DeliveryFormModal = ({
                             </div>
                         )}
 
-                        {/* Remarks */}
+                        {/* Product Selection with Add Button */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-3">Remarks</label>
-                            <textarea
-                                value={formData.remarks}
-                                onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                                rows="3"
-                            />
+                            <label className="block text-sm font-medium text-gray-700 mb-3">Add Products *</label>
+                            <div className="flex gap-3 items-start">
+                                <div className="flex-1">
+                                    <VariationSearchableDropdown
+                                        options={productOptions}
+                                        value={selectedProductForAdd}
+                                        onChange={(value) => setSelectedProductForAdd(value)}
+                                        placeholder="Select Product to Add..."
+                                        required={false}
+                                        formData={{
+                                            ...formData,
+                                            fromWarehouseId: formData.selectedWarehouseId,
+                                            items: formData.items,
+                                            selectedWarehouseId: formData.selectedWarehouseId,
+                                            selectedWarehouseName: warehouses.find(w => w.id === parseInt(formData.selectedWarehouseId))?.warehouseName
+                                        }}
+                                        index={-1}
+                                        warehouseStocks={warehouseStocks}
+                                        branchStocks={branchStocks}
+                                        loadingStocks={loadingStocks}
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleAddProductToTable}
+                                    className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm font-medium"
+                                >
+                                    <Plus size={18} />
+                                    Add Product
+                                </button>
+                            </div>
                         </div>
 
-                        {/* Date Prepared & Date Delivered */}
+                        {/* Items Table */}
+                        <div>
+                            {formData.items.length === 0 ? (
+                                <div className="text-center py-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                                    <Package size={48} className="mx-auto mb-3 text-gray-400" />
+                                    <p className="font-medium text-gray-500">No products added yet</p>
+                                    <p className="text-sm text-gray-400">Select a product above and click "Add Product" to start</p>
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto rounded-lg border border-gray-200">
+                                    <table className="w-full">
+                                        <thead className="bg-gray-50 border-b border-gray-200">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase w-1/4">Product Name</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Variation</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">SKU</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">UPC</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">UOM</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Stock</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Prepared Qty</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Delivered Qty</th>
+                                                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200 bg-white">
+                                            {formData.items.map((item, i) => {
+                                                const selectedOption = productOptions.find(opt =>
+                                                    opt.parentProductId === item.productId &&
+                                                    (item.variationId ? opt.variationId === item.variationId : !opt.variationId)
+                                                );
+
+                                                const stockKey = item.variationId
+                                                    ? `${i}_${item.productId}_${item.variationId}_${item.warehouseId}`
+                                                    : `${i}_${item.productId}_${item.warehouseId}`;
+
+                                                const stockInfo = warehouseStocks[stockKey];
+                                                const isLoadingStock = loadingStocks[stockKey];
+
+                                                const effectiveAvailable = mode === 'edit'
+                                                    ? (stockInfo?.availableQuantity || 0) + (item.originalPreparedQty || 0)
+                                                    : (stockInfo?.availableQuantity || 0);
+
+                                                const hasInsufficientStock = stockInfo && item.preparedQty > effectiveAvailable;
+                                                const isDelivered = formData.status === 'DELIVERED';
+                                                const isPreparing = formData.status === 'PREPARING';
+
+                                                return (
+                                                    <tr key={`item-${i}`} className="hover:bg-gray-50">
+                                                        {/* Product Name */}
+                                                        <td className="px-4 py-3">
+                                                            {selectedOption ? (
+                                                                <div className="font-semibold text-gray-900 text-sm line-clamp-2">
+                                                                    {selectedOption.fullName}
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-gray-500 italic text-sm">Product not found</div>
+                                                            )}
+                                                        </td>
+
+                                                        <td className="px-2 py-3">
+                                                            {selectedOption?.subLabel && selectedOption.subLabel !== 'No variations' ? (
+                                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                                    {selectedOption.subLabel}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-xs text-gray-500">None</span>
+                                                            )}
+                                                        </td>
+
+                                                        {/* SKU */}
+                                                        <td className="px-4 py-3">
+                                                            <span className="text-sm text-gray-900">{selectedOption?.sku || 'N/A'}</span>
+                                                        </td>
+
+                                                        {/* UPC */}
+                                                        <td className="px-4 py-3">
+                                                            <span className="text-sm text-gray-900">{selectedOption?.upc || 'N/A'}</span>
+                                                        </td>
+
+                                                        {/* UOM */}
+                                                        <td className="px-4 py-3">
+                                                            <input
+                                                                type="text"
+                                                                value={item.uom || ''}
+                                                                onChange={(e) => handleItemChange(i, 'uom', e.target.value)}
+                                                                className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                                                                placeholder="pcs"
+                                                                disabled={isDelivered}
+                                                            />
+                                                        </td>
+
+                                                        {/* Stock */}
+                                                        <td className="px-4 py-3">
+                                                            {isLoadingStock ? (
+                                                                <div className="flex items-center gap-2 text-blue-600 text-xs">
+                                                                    <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                                                    Loading...
+                                                                </div>
+                                                            ) : stockInfo ? (
+                                                                <div className="text-sm space-y-1">
+                                                                    <div className={`font-bold ${hasInsufficientStock ? 'text-red-600' : 'text-green-600'}`}>
+                                                                        Available: {stockInfo.availableQuantity || 0}
+                                                                    </div>
+                                                                    <div className="text-xs text-gray-500">
+                                                                        Total: {stockInfo.quantity || 0}
+                                                                    </div>
+                                                                    {mode === 'edit' && item.originalPreparedQty > 0 && (
+                                                                        <div className="text-xs text-blue-600">
+                                                                            Effective: {effectiveAvailable}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-xs text-gray-400 italic">No data</span>
+                                                            )}
+                                                        </td>
+
+                                                        {/* Prepared Qty */}
+                                                        <td className="px-4 py-3">
+                                                            <input
+                                                                type="number"
+                                                                value={item.preparedQty || ''}
+                                                                onChange={(e) => handleItemChange(i, 'preparedQty', e.target.value)}
+                                                                className={`w-24 px-3 py-2 border rounded-lg text-sm font-medium ${hasInsufficientStock
+                                                                    ? 'border-red-300 bg-red-50'
+                                                                    : 'border-blue-300 bg-blue-50'
+                                                                    }`}
+                                                                min="1"
+                                                                disabled={isDelivered}
+                                                                required
+                                                            />
+                                                            {hasInsufficientStock && (
+                                                                <div className="text-xs text-red-600 mt-1">Exceeds stock!</div>
+                                                            )}
+                                                        </td>
+
+                                                        {/* Delivered Qty */}
+                                                        <td className="px-4 py-3">
+                                                            <input
+                                                                type="number"
+                                                                value={item.deliveredQty || ''}
+                                                                onChange={(e) => handleItemChange(i, 'deliveredQty', e.target.value)}
+                                                                className={`w-24 px-3 py-2 border rounded-lg text-sm font-medium ${isDelivered
+                                                                    ? 'border-green-300 bg-green-50'
+                                                                    : 'border-gray-300 bg-gray-100 cursor-not-allowed'
+                                                                    }`}
+                                                                min="0"
+                                                                disabled={!isDelivered}
+                                                                required={isDelivered}
+                                                            />
+                                                        </td>
+
+                                                        {/* Action */}
+                                                        <td className="px-4 py-3 text-center">
+                                                            {isPreparing && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleRemoveItem(i)}
+                                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                                                    title="Remove item"
+                                                                >
+                                                                    <Trash2 size={18} />
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Row 4: Prepared By, Date Prepared */}
                         <div className="grid grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-3">Prepared By *</label>
+                                <input
+                                    type="text"
+                                    value={formData.preparedBy}
+                                    onChange={(e) => setFormData({ ...formData, preparedBy: e.target.value })}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                    required
+                                />
+                            </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-3">
                                     Date Prepared *
                                     {mode === 'edit' && formData.status !== 'PREPARING' && (
-                                        <span className="ml-2 text-xs text-orange-600">(Locked - cannot change after PREPARING status)</span>
-                                    )}
-                                    {mode === 'edit' && formData.status === 'PREPARING' && (
-                                        <span className="ml-2 text-xs text-green-600">(Editable in PREPARING status)</span>
+                                        <span className="ml-2 text-xs text-orange-600">(Locked)</span>
                                     )}
                                 </label>
                                 <input
@@ -566,22 +958,14 @@ const DeliveryFormModal = ({
                                         formData.datePrepared
                                             ? (() => {
                                                 let cleanDate = formData.datePrepared.replace('Z', '').split('.')[0].split('+')[0];
-                                                if (cleanDate.length > 16) {
-                                                    cleanDate = cleanDate.substring(0, 16);
-                                                }
+                                                if (cleanDate.length > 16) cleanDate = cleanDate.substring(0, 16);
                                                 return cleanDate;
                                             })()
                                             : ''
                                     }
                                     onChange={(e) => {
                                         if (mode === 'create' || (mode === 'edit' && formData.status === 'PREPARING')) {
-                                            const localDateTimeStr = e.target.value;
-                                            const isoWithoutZ = localDateTimeStr + ':00';
-
-                                            setFormData({
-                                                ...formData,
-                                                datePrepared: isoWithoutZ
-                                            });
+                                            setFormData({ ...formData, datePrepared: e.target.value + ':00' });
                                         }
                                     }}
                                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-blue-500 transition ${mode === 'edit' && formData.status !== 'PREPARING'
@@ -592,16 +976,13 @@ const DeliveryFormModal = ({
                                     required
                                 />
                             </div>
+                        </div>
 
+                        {/* Date Delivered */}
+                        {formData.status === 'DELIVERED' && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-3">
-                                    Date Delivered
-                                    {formData.status !== 'DELIVERED' && (
-                                        <span className="ml-2 text-xs text-orange-600">(Enabled only when status is DELIVERED)</span>
-                                    )}
-                                    {formData.status === 'DELIVERED' && (
-                                        <span className="ml-2 text-xs text-orange-600">(Required for DELIVERED status)</span>
-                                    )}
+                                    Date Delivered *
                                 </label>
                                 <input
                                     type="datetime-local"
@@ -609,287 +990,28 @@ const DeliveryFormModal = ({
                                         formData.dateDelivered
                                             ? (() => {
                                                 let cleanDate = formData.dateDelivered.replace('Z', '').split('.')[0].split('+')[0];
-                                                if (cleanDate.length > 16) {
-                                                    cleanDate = cleanDate.substring(0, 16);
-                                                }
+                                                if (cleanDate.length > 16) cleanDate = cleanDate.substring(0, 16);
                                                 return cleanDate;
                                             })()
-                                            : formData.status === 'DELIVERED'
-                                                ? (() => {
-                                                    const now = new Date();
-                                                    const year = now.getFullYear();
-                                                    const month = String(now.getMonth() + 1).padStart(2, '0');
-                                                    const day = String(now.getDate()).padStart(2, '0');
-                                                    const hours = String(now.getHours()).padStart(2, '0');
-                                                    const minutes = String(now.getMinutes()).padStart(2, '0');
-                                                    return `${year}-${month}-${day}T${hours}:${minutes}`;
-                                                })()
-                                                : ''
+                                            : ''
                                     }
-                                    onChange={(e) => {
-                                        const localDateTimeStr = e.target.value;
-                                        const isoWithoutZ = localDateTimeStr + ':00';
-                                        setFormData({
-                                            ...formData,
-                                            dateDelivered: isoWithoutZ
-                                        });
-                                    }}
-                                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-blue-500 transition ${formData.status === 'DELIVERED'
-                                        ? 'border-gray-300 focus:ring-blue-500 bg-white'
-                                        : 'border-gray-200 bg-gray-100 cursor-not-allowed'
-                                        }`}
-                                    disabled={formData.status !== 'DELIVERED'}
-                                    required={formData.status === 'DELIVERED'}
+                                    onChange={(e) => setFormData({ ...formData, dateDelivered: e.target.value + ':00' })}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-white"
+                                    required
                                 />
                             </div>
-                        </div>
+                        )}
 
-                        {/* Warehouse Selection */}
-                        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                            <label className="block text-sm font-medium text-gray-700 mb-3">
-                                Select Warehouse (applies to all items) *
-                                {formData.status === 'PREPARING' ? (
-                                    <span className="ml-2 text-xs text-green-600">(Editable)</span>
-                                ) : (
-                                    <span className="ml-2 text-xs text-orange-600">(Locked in {formData.status} status)</span>
-                                )}
-                            </label>
-                            <SearchableDropdown
-                                options={warehouseOptions}
-                                value={formData.selectedWarehouseId}
-                                onChange={(value) => {
-                                    const newItems = formData.items.map(item => ({
-                                        ...item,
-                                        warehouseId: value
-                                    }));
-                                    setFormData({
-                                        ...formData,
-                                        selectedWarehouseId: value,
-                                        items: newItems
-                                    });
-                                }}
-                                placeholder="Select Warehouse"
-                                displayKey="name"
-                                valueKey="id"
-                                required
-                                disabled={formData.status === 'IN_TRANSIT' || formData.status === 'DELIVERED'}
-                            />
-                        </div>
-
-                        {/* Items Section */}
+                        {/* Remarks */}
                         <div>
-                            <div className="flex justify-between items-center mb-3">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Items *</label>
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        Warehouse selection is required for all items
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={handleAddItem}
-                                    className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition font-medium"
-                                >
-                                    <Plus size={16} />
-                                    Add Product
-                                </button>
-                            </div>
-
-                            {formData.items.length === 0 && (
-                                <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
-                                    <p className="text-gray-500">No items added yet. Click "Add Product" to start.</p>
-                                </div>
-                            )}
-
-                            {formData.items.map((item, i) => {
-                                const stockKey = item.variationId
-                                    ? `${i}_${item.productId}_${item.variationId}_${item.warehouseId}`
-                                    : `${i}_${item.productId}_${item.warehouseId}`;
-
-                                const stockInfo = warehouseStocks[stockKey];
-                                const isLoadingStock = loadingStocks[stockKey];
-
-                                const effectiveAvailable = mode === 'edit'
-                                    ? (stockInfo?.availableQuantity || 0) + (item.originalPreparedQty || 0)
-                                    : (stockInfo?.availableQuantity || 0);
-
-                                const hasInsufficientStock = stockInfo && item.preparedQty > effectiveAvailable;
-
-                                const isDelivered = formData.status === 'DELIVERED';
-                                const isInTransit = formData.status === 'IN_TRANSIT';
-                                const isPreparing = formData.status === 'PREPARING';
-
-                                return (
-                                    <div key={i} className="border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50">
-                                        {/* Product Selection */}
-                                        <div className="mb-4">
-                                            <label className="block text-xs font-medium text-gray-700 mb-2">
-                                                Product *
-                                            </label>
-
-                                            <VariationSearchableDropdown
-                                                options={productOptions}
-                                                value={item.formattedProductId || (
-                                                    item.variationId
-                                                        ? `${item.productId}_${item.variationId}`
-                                                        : `prod_${item.productId}`
-                                                )}
-                                                onChange={(value) => handleItemChange(i, 'productId', value)}
-                                                placeholder="Select Product Variation"
-                                                required
-                                                formData={formData}
-                                                index={i}
-                                                disabled={isDelivered || isInTransit}
-                                            />
-                                        </div>
-
-                                        {/* Warehouse Display */}
-                                        <div className="mb-3 p-3 bg-blue-50 rounded border border-blue-200">
-                                            <div className="flex items-center gap-2 text-sm">
-                                                <Package size={16} className="text-blue-600" />
-                                                <span className="font-medium text-blue-900">Warehouse:</span>
-                                                <span className="text-blue-700">
-                                                    {warehouseOptions.find(w => w.id === item.warehouseId)?.name || 'Not selected'}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Two-Quantity System */}
-                                        <div className="grid gap-4 mb-3" style={{ gridTemplateColumns: '1fr 2fr 1fr' }}>
-                                            <div>
-                                                <label className="block text-xs font-medium text-gray-700 mb-2">
-                                                    Prepared Qty (For Reservation) *
-                                                </label>
-                                                <input
-                                                    type="number"
-                                                    value={item.preparedQty || ''}
-                                                    onChange={(e) => handleItemChange(i, 'preparedQty', e.target.value)}
-                                                    className="w-full px-3 py-2 border border-blue-300 bg-blue-50 rounded-lg focus:ring-2 focus:ring-blue-500 transition text-sm font-medium"
-                                                    min="0"
-                                                    disabled={isDelivered}
-                                                    placeholder="Enter prepared quantity"
-                                                    required
-                                                />
-                                                {(item.preparedQty === '' || item.preparedQty === 0 || item.preparedQty < 1) && (
-                                                    <p className="text-red-500 text-xs mt-1">Prepared quantity required (min 1)</p>
-                                                )}
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    This quantity will be reserved from warehouse stock
-                                                </p>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-xs font-medium text-gray-700 mb-2">
-                                                        Delivered Qty (Actual Received) *
-                                                    </label>
-                                                    <input
-                                                        type="number"
-                                                        value={item.deliveredQty || ''}
-                                                        onChange={(e) => handleItemChange(i, 'deliveredQty', e.target.value)}
-                                                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 transition text-sm font-medium ${isDelivered
-                                                            ? 'border-green-300 bg-green-50 focus:ring-green-500'
-                                                            : 'border-gray-300 bg-gray-100 cursor-not-allowed'
-                                                            }`}
-                                                        min="0"
-                                                        max={(stockInfo?.availableQuantity || 0) + (item.preparedQty || 0)}
-                                                        disabled={!isDelivered}
-                                                        placeholder={isDelivered ? "Enter delivered quantity" : "Set when delivered"}
-                                                        required={isDelivered}
-                                                    />
-                                                    {isDelivered && (item.deliveredQty === '' || item.deliveredQty === 0 || item.deliveredQty < 1) && (
-                                                        <p className="text-red-500 text-xs mt-1">Delivered quantity required (min 1)</p>
-                                                    )}
-                                                    {isDelivered && item.deliveredQty > ((stockInfo?.availableQuantity || 0) + (item.preparedQty || 0)) && (
-                                                        <p className="text-red-500 text-xs mt-1">
-                                                            Cannot exceed available + prepared quantity ({(stockInfo?.availableQuantity || 0) + (item.preparedQty || 0)})
-                                                        </p>
-                                                    )}
-                                                    <p className="text-xs text-gray-500 mt-1">
-                                                        {isDelivered
-                                                            ? `Max: ${(stockInfo?.availableQuantity || 0) + (item.preparedQty || 0)} (Available: ${stockInfo?.availableQuantity || 0} + Prepared: ${item.preparedQty || 0})`
-                                                            : "Enter this after changing status to DELIVERED"}
-                                                    </p>
-                                                </div>
-
-                                                {/* UOM */}
-                                                <div>
-                                                    <label className="block text-xs font-medium text-gray-700 mb-2">
-                                                        UOM (Unit of Measure)
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={item.uom || ''}
-                                                        onChange={(e) => handleItemChange(i, 'uom', e.target.value)}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition text-sm"
-                                                        placeholder="pcs, box, kg, etc."
-                                                        disabled={isDelivered || isInTransit}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Stock Information */}
-                                        {isLoadingStock && (
-                                            <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
-                                                <div className="flex items-center gap-2 text-blue-600 text-xs">
-                                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                                    </svg>
-                                                    <span>Loading stock information...</span>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {!isLoadingStock && stockInfo && (
-                                            <div className={`mt-2 p-2 rounded border ${hasInsufficientStock ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'
-                                                }`}>
-                                                <div className={`text-xs ${hasInsufficientStock ? 'text-red-700' : 'text-blue-700'}`}>
-                                                    <div className="space-y-1">
-                                                        <div className="font-semibold text-sm">
-                                                            Available Stock: {stockInfo.availableQuantity || 0}
-                                                        </div>
-                                                        <div className="text-xs text-gray-500">
-                                                            Total: {stockInfo.quantity || 0} | Reserved: {stockInfo.reservedQuantity || 0}
-                                                        </div>
-                                                        {mode === 'edit' && item.originalPreparedQty > 0 && (
-                                                            <div className="text-xs text-blue-600">
-                                                                Originally Reserved: {item.originalPreparedQty}
-                                                                <div className="font-semibold text-green-700">
-                                                                    Effective Available: {(stockInfo.availableQuantity || 0) + (item.originalPreparedQty || 0)}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                {hasInsufficientStock && mode === 'edit' && (
-                                                    <div className="text-orange-600 text-xs mt-1 font-medium">
-                                                        ℹ️ Note: Your originally reserved {item.originalPreparedQty} units are included in available stock for editing
-                                                    </div>
-                                                )}
-                                                {hasInsufficientStock && mode !== 'edit' && (
-                                                    <div className="text-red-600 text-xs mt-1 font-medium">
-                                                        ⚠️ Prepared quantity exceeds available stock!
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        {/* Remove Button - Only in PREPARING status */}
-                                        {isPreparing && (
-                                            <button
-                                                type="button"
-                                                onClick={() => handleRemoveItem(i)}
-                                                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition text-sm font-medium mt-4"
-                                            >
-                                                <Trash2 size={16} />
-                                                Remove Item
-                                            </button>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                            <label className="block text-sm font-medium text-gray-700 mb-3">Remarks</label>
+                            <textarea
+                                value={formData.remarks}
+                                onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                rows="3"
+                                placeholder="Add any additional notes or comments..."
+                            />
                         </div>
                     </div>
 

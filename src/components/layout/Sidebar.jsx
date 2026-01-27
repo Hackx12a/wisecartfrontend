@@ -15,7 +15,7 @@ const mainMenuItems = [
 
 const dataEntryItems = [
   { to: '/warehouse', label: 'Warehouse', icon: Warehouse },
-  { to: '/branches', label: 'Branches & Clients', icon: Users },
+  { to: '/branches', label: 'Branches & Companies', icon: Users },
   { to: '/products', label: 'Products', icon: Package },
   { to: '/supplier', label: 'Supplier', icon: Factory },
 ];

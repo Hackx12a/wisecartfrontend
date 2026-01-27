@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Plus, Edit2, Trash2, Search, X, Building2, MapPin, User, Phone, Mail, CreditCard, DollarSign
+    Plus, Edit2, Trash2, Search, X, Building2, MapPin, User, Phone, Mail, CreditCard, DollarSign, Package
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { api } from '../services/api';
@@ -17,6 +17,7 @@ const SupplierManagement = () => {
         name: '',
         tin: '',
         type: 'MANUFACTURER',
+        productServices: '',
         address: '',
         city: '',
         province: '',
@@ -36,13 +37,15 @@ const SupplierManagement = () => {
         swiftCode: '',
         beneficiaryName: '',
         beneficiaryAddress: '',
+        alipayAccount: '',
+        paypalAccount: '',
+        weixinAccount: '',
         otherPaymentDetails: ''
     });
 
     useEffect(() => {
         loadSuppliers();
     }, []);
-
 
     const loadSuppliers = async () => {
         setLoading(true);
@@ -103,6 +106,7 @@ const SupplierManagement = () => {
             name: supplier.name || '',
             tin: supplier.tin || '',
             type: supplier.type || 'MANUFACTURER',
+            productServices: supplier.productServices || '',
             address: supplier.address || '',
             city: supplier.city || '',
             province: supplier.province || '',
@@ -122,6 +126,9 @@ const SupplierManagement = () => {
             swiftCode: supplier.swiftCode || '',
             beneficiaryName: supplier.beneficiaryName || '',
             beneficiaryAddress: supplier.beneficiaryAddress || '',
+            alipayAccount: supplier.alipayAccount || '',
+            paypalAccount: supplier.paypalAccount || '',
+            weixinAccount: supplier.weixinAccount || '',
             otherPaymentDetails: supplier.otherPaymentDetails || ''
         });
         setShowModal(true);
@@ -149,6 +156,7 @@ const SupplierManagement = () => {
             name: '',
             tin: '',
             type: 'MANUFACTURER',
+            productServices: '',
             address: '',
             city: '',
             province: '',
@@ -168,14 +176,29 @@ const SupplierManagement = () => {
             swiftCode: '',
             beneficiaryName: '',
             beneficiaryAddress: '',
+            alipayAccount: '',
+            paypalAccount: '',
+            weixinAccount: '',
             otherPaymentDetails: ''
         });
         setEditingSupplier(null);
     };
 
+    const getPaymentMethodDisplay = (method) => {
+        switch(method) {
+            case 'TELEGRAPHIC_TRANSFER': return 'T/T';
+            case 'ALIPAY': return 'Alipay';
+            case 'PAYPAL': return 'PayPal';
+            case 'WEIXIN': return 'Weixin/WeChat Pay';
+            case 'OTHER': return 'Other';
+            default: return '-';
+        }
+    };
+
     const filteredSuppliers = Array.isArray(suppliers) ? suppliers.filter(supplier =>
         supplier.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        supplier.contactPerson?.toLowerCase().includes(searchTerm.toLowerCase())
+        supplier.contactPerson?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        supplier.productServices?.toLowerCase().includes(searchTerm.toLowerCase())
     ) : [];
 
     return (
@@ -196,7 +219,7 @@ const SupplierManagement = () => {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                     <input
                         type="text"
-                        placeholder="Search by name or contact person..."
+                        placeholder="Search by name, contact person, or products/services..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -223,9 +246,9 @@ const SupplierManagement = () => {
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Products/Services</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact Person</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact No.</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment Mode</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                             </tr>
@@ -251,13 +274,16 @@ const SupplierManagement = () => {
                                                 {supplier.type}
                                             </span>
                                         </td>
+                                        <td className="px-6 py-4 text-gray-900">
+                                            <div className="max-w-xs truncate" title={supplier.productServices}>
+                                                {supplier.productServices || '-'}
+                                            </div>
+                                        </td>
                                         <td className="px-6 py-4 text-gray-900">{supplier.contactPerson || '-'}</td>
                                         <td className="px-6 py-4 text-gray-900">{supplier.contactNo || '-'}</td>
-                                        <td className="px-6 py-4 text-gray-900">{supplier.email || '-'}</td>
                                         <td className="px-6 py-4">
                                             <span className="text-sm text-gray-600">
-                                                {supplier.modeOfPayment === 'TELEGRAPHIC_TRANSFER' ? 'T/T' :
-                                                    supplier.modeOfPayment === 'OTHER' ? 'Other' : '-'}
+                                                {getPaymentMethodDisplay(supplier.modeOfPayment)}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
@@ -311,7 +337,7 @@ const SupplierManagement = () => {
                                     Basic Information
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
+                                    <div className="md:col-span-2">
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             Name <span className="text-red-500">*</span>
                                         </label>
@@ -350,6 +376,23 @@ const SupplierManagement = () => {
                                             <option value="MANUFACTURER">Manufacturer</option>
                                             <option value="FORWARDER">Forwarder</option>
                                         </select>
+                                    </div>
+
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <div className="flex items-center gap-2">
+                                                <Package size={16} />
+                                                Products/Services
+                                            </div>
+                                        </label>
+                                        <textarea
+                                            value={formData.productServices}
+                                            onChange={(e) => setFormData({ ...formData, productServices: e.target.value })}
+                                            disabled={actionLoading}
+                                            rows="3"
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                                            placeholder="Describe the products or services this supplier provides..."
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -529,11 +572,15 @@ const SupplierManagement = () => {
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                                     >
                                         <option value="">Select payment method</option>
-                                        <option value="TELEGRAPHIC_TRANSFER">Telegraphic Transfer</option>
+                                        <option value="TELEGRAPHIC_TRANSFER">Telegraphic Transfer (T/T)</option>
+                                        <option value="ALIPAY">Alipay</option>
+                                        <option value="PAYPAL">PayPal</option>
+                                        <option value="WEIXIN">Weixin/WeChat Pay</option>
                                         <option value="OTHER">Other</option>
                                     </select>
                                 </div>
 
+                                {/* Telegraphic Transfer */}
                                 {formData.modeOfPayment === 'TELEGRAPHIC_TRANSFER' && (
                                     <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                                         <h4 className="font-medium text-gray-900 mb-3">Telegraphic Transfer Details</h4>
@@ -618,6 +665,109 @@ const SupplierManagement = () => {
                                     </div>
                                 )}
 
+                                {/* Alipay */}
+                                {formData.modeOfPayment === 'ALIPAY' && (
+                                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                        <h4 className="font-medium text-gray-900 mb-3">Alipay Details</h4>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Alipay Account <span className="text-red-500">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.alipayAccount}
+                                                    onChange={(e) => setFormData({ ...formData, alipayAccount: e.target.value })}
+                                                    required={formData.modeOfPayment === 'ALIPAY'}
+                                                    disabled={actionLoading}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                                                    placeholder="Enter Alipay account (email or phone)"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
+                                                <textarea
+                                                    value={formData.otherPaymentDetails}
+                                                    onChange={(e) => setFormData({ ...formData, otherPaymentDetails: e.target.value })}
+                                                    rows="2"
+                                                    disabled={actionLoading}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                                                    placeholder="Enter any additional details..."
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* PayPal */}
+                                {formData.modeOfPayment === 'PAYPAL' && (
+                                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                        <h4 className="font-medium text-gray-900 mb-3">PayPal Details</h4>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    PayPal Email <span className="text-red-500">*</span>
+                                                </label>
+                                                <input
+                                                    type="email"
+                                                    value={formData.paypalAccount}
+                                                    onChange={(e) => setFormData({ ...formData, paypalAccount: e.target.value })}
+                                                    required={formData.modeOfPayment === 'PAYPAL'}
+                                                    disabled={actionLoading}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                                                    placeholder="Enter PayPal email address"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
+                                                <textarea
+                                                    value={formData.otherPaymentDetails}
+                                                    onChange={(e) => setFormData({ ...formData, otherPaymentDetails: e.target.value })}
+                                                    rows="2"
+                                                    disabled={actionLoading}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                                                    placeholder="Enter any additional details..."
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Weixin/WeChat Pay */}
+                                {formData.modeOfPayment === 'WEIXIN' && (
+                                    <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                                        <h4 className="font-medium text-gray-900 mb-3">Weixin/WeChat Pay Details</h4>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    WeChat Pay Account <span className="text-red-500">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.weixinAccount}
+                                                    onChange={(e) => setFormData({ ...formData, weixinAccount: e.target.value })}
+                                                    required={formData.modeOfPayment === 'WEIXIN'}
+                                                    disabled={actionLoading}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                                                    placeholder="Enter WeChat ID or phone number"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
+                                                <textarea
+                                                    value={formData.otherPaymentDetails}
+                                                    onChange={(e) => setFormData({ ...formData, otherPaymentDetails: e.target.value })}
+                                                    rows="2"
+                                                    disabled={actionLoading}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                                                    placeholder="Enter any additional details..."
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Other Payment Method */}
                                 {formData.modeOfPayment === 'OTHER' && (
                                     <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                                         <h4 className="font-medium text-gray-900 mb-3">Other Payment Details</h4>
@@ -639,7 +789,8 @@ const SupplierManagement = () => {
                                     type="button"
                                     onClick={() => { setShowModal(false); resetForm(); }}
                                     disabled={actionLoading}
-                                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"                                >
+                                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
                                     Cancel
                                 </button>
                                 <button

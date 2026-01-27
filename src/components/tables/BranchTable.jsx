@@ -77,7 +77,7 @@ const BranchTable = ({ branches, searchTerm, onView, onEdit, onDelete }) => {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     {branch.branchName}
-                    <div className="text-xs text-gray-500">Branch TIN: {branch.tin}</div>
+                    <div className="text-xs text-gray-500">TIN: {branch.tin}</div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
                     <div>{branch.city}, {branch.province}</div>
@@ -93,7 +93,7 @@ const BranchTable = ({ branches, searchTerm, onView, onEdit, onDelete }) => {
                       <div>
                         <div className="font-medium">{branch.company.companyName}</div>
                         {branch.company.tin && (
-                          <div className="text-xs text-gray-500">Company TIN: {branch.company.tin}</div>
+                          <div className="text-xs text-gray-500">TIN: {branch.company.tin}</div>
                         )}
                       </div>
                     ) : '-'}

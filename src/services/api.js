@@ -1,9 +1,7 @@
 import { toast } from 'react-hot-toast';
 
-// API Base URL - automatically uses production or development
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://wisecart.ph/api';
 
-// Ultra-friendly rate limit configuration
 const RATE_LIMIT_CONFIG = {
     maxRetries: 3,
     baseDelay: 500,
@@ -556,4 +554,5 @@ export const api = {
     },
 };
 
+export { API_BASE_URL };
 export default api;

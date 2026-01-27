@@ -7,7 +7,7 @@ import DeliveryFilters from '../../components/filters/DeliveryFilters';
 import DeliveryFormModal from '../../components/modals/DeliveryFormModal';
 import DeliveryViewModal from '../../components/modals/DeliveryViewModal';
 import DeliveryReceiptModal from '../../components/modals/DeliveryReceiptModal';
-import  {useDeliveries}  from '../../hooks/useDeliveries';
+import { useDeliveries } from '../../hooks/useDeliveries';
 import { api } from '../../services/api';
 import '../../styles/deliveryReceipt.css'
 
@@ -67,13 +67,41 @@ const DeliveryManagement = () => {
   const currentDeliveries = filteredDeliveries.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredDeliveries.length / itemsPerPage);
 
-  const handleOpenModal = (mode, delivery = null) => {
+  const handleOpenModal = async (mode, delivery = null) => {
     if (mode === 'edit' && delivery?.status === 'DELIVERED') {
       alert('Cannot edit a delivery that has already been DELIVERED.');
       return;
     }
-    
-    setModalState({ show: true, mode, delivery });
+
+    if (mode === 'create') {
+      setModalState({ show: true, mode: 'create', delivery: null });
+    } else if (mode === 'edit' && delivery) {
+      try {
+        setActionLoading(true);
+        setLoadingMessage('Loading delivery details...');
+
+        const response = await getDeliveryDetails(delivery.id);
+
+        if (response.success) {
+          setModalState({
+            show: true,
+            mode: 'edit',
+            delivery: response.data
+          });
+        } else {
+          alert(response.error || 'Failed to load delivery details');
+        }
+      } catch (error) {
+        console.error('❌ Error loading delivery:', error);
+        alert('Failed to load delivery details: ' + error.message);
+      } finally {
+        setActionLoading(false);
+        setLoadingMessage('');
+      }
+    } else if (mode === 'view' && delivery) {
+      // View mode already has its own handler (handleViewDelivery)
+      setModalState({ show: true, mode: 'view', delivery });
+    }
   };
 
   const handleCloseModal = () => {
@@ -84,13 +112,13 @@ const DeliveryManagement = () => {
     try {
       setActionLoading(true);
       setLoadingMessage('Loading delivery details...');
-      
+
       const response = await getDeliveryDetails(delivery.id);
       if (response.success) {
-        setModalState({ 
-          show: true, 
-          mode: 'view', 
-          delivery: response.data 
+        setModalState({
+          show: true,
+          mode: 'view',
+          delivery: response.data
         });
       } else {
         alert(response.error || 'Failed to load delivery details');
@@ -304,7 +332,7 @@ const DeliveryManagement = () => {
   return (
     <>
       <LoadingOverlay show={actionLoading} message={loadingMessage || 'Loading...'} />
-      
+
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-[1600px] mx-auto">
           <div className="mb-8">
@@ -334,7 +362,7 @@ const DeliveryManagement = () => {
           <DeliveryTable
             deliveries={currentDeliveries}
             onView={handleViewDelivery}
-            onEdit={(delivery) => handleOpenModal('edit', delivery)}
+            onEdit={handleOpenModal.bind(null, 'edit')}
             onDelete={handleDeleteDelivery}
             onPrint={handleGenerateReceipt}
             onPageChange={setCurrentPage}

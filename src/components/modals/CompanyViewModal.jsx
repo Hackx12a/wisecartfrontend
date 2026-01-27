@@ -17,7 +17,6 @@ const CompanyViewModal = ({ company, branches, onClose }) => {
       branch.city,
       branch.province,
       branch.area,
-      branch.region
     ].filter(part => part && part.toString().trim() !== '');
 
     if (addressParts.length > 0) {

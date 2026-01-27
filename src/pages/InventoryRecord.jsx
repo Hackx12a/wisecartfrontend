@@ -3,11 +3,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, Plus, Edit2, Trash2, Eye, Check, X, ChevronDown, ChevronLeft, ChevronRight, Package, Calendar, User, MessageSquare, Warehouse, Store, AlertCircle } from 'lucide-react';
 import { api } from '../services/api';
 import { LoadingOverlay } from './LoadingOverlay';
+import VariationSearchableDropdown from '../components/common/VariationSearchableDropdown';
 
 const SearchableDropdown = ({ options, value, onChange, placeholder, displayKey, valueKey, required = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef(null);
+
+
+
 
 
   useEffect(() => {
@@ -99,192 +103,6 @@ const SearchableDropdown = ({ options, value, onChange, placeholder, displayKey,
 const isAdmin = () => {
   const userRole = localStorage.getItem('userRole') || 'USER';
   return userRole === 'ADMIN';
-};
-
-
-
-const VariationSearchableDropdown = ({ options, value, onChange, placeholder, required = false, formData, index }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const dropdownRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const filteredOptions = options.filter(option => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      option.name?.toLowerCase().includes(searchLower) ||
-      option.subLabel?.toLowerCase().includes(searchLower) ||
-      option.fullName?.toLowerCase().includes(searchLower) ||
-      option.upc?.toLowerCase().includes(searchLower) ||
-      option.sku?.toLowerCase().includes(searchLower) ||
-      (option.upc && option.upc.toLowerCase().includes(searchLower)) ||
-      (option.sku && option.sku.toLowerCase().includes(searchLower))
-    );
-  });
-
-
-  const selectedOption = options.find(opt => {
-    if (formData?.items?.[index]?.productId === opt.originalProductId &&
-      formData?.items?.[index]?.variationId === opt.originalVariationId) {
-      return true;
-    }
-    return opt.id === value;
-  });
-
-
-
-  return (
-    <div ref={dropdownRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-left flex items-center justify-between bg-white"
-      >
-        <div className="flex-1 min-w-0">
-          {selectedOption ? (
-            <div className="text-gray-900 font-medium truncate">
-              {selectedOption.name}
-            </div>
-          ) : (
-            <span className="text-gray-500">{placeholder}</span>
-          )}
-        </div>
-        <ChevronDown size={20} className={`text-gray-400 transition-transform ml-2 flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
-
-      {isOpen && (
-        <div className="absolute z-50 w-full mt-2 bg-white border border-gray-300 rounded-lg shadow-lg max-h-96 overflow-hidden">
-          <div className="p-3 border-b border-gray-200">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input
-                type="text"
-                placeholder="Search by name, UPC, SKU, or variation..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                autoFocus
-              />
-            </div>
-          </div>
-          <div className="overflow-y-auto max-h-80">
-            {filteredOptions.length === 0 ? (
-              <div className="px-4 py-6 text-center">
-                <div className="text-gray-500 text-sm mb-2">No products found</div>
-                <div className="text-xs text-gray-400">Try searching by ID, UPC, SKU, or product name</div>
-              </div>
-            ) : (
-              filteredOptions.map((option, optionIndex) => {
-                const isAlreadySelected = formData?.items?.some((item, idx) => {
-                  if (idx === index) return false;
-
-                  return (
-                    item.productId === option.originalProductId &&
-                    item.variationId === option.originalVariationId
-                  );
-                });
-
-                return (
-                  <button
-                    key={`${option.id}-${optionIndex}`}
-                    type="button"
-                    onClick={() => {
-                      if (!isAlreadySelected) {
-                        onChange(option.id);
-                        setIsOpen(false);
-                        setSearchTerm('');
-                      }
-                    }}
-                    disabled={isAlreadySelected}
-                    className={`w-full px-4 py-3 text-left border-b border-gray-100 transition text-sm ${isAlreadySelected
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : value === option.id
-                        ? 'bg-blue-50 text-blue-700 font-medium'
-                        : 'text-gray-900 hover:bg-blue-50'
-                      }`}
-                  >
-                    <div className="flex flex-col">
-                      <div className="font-medium">{option.name}</div>
-                      {option.subLabel && option.subLabel !== 'No variations' && (
-                        <div className="text-xs text-gray-600 mt-0.5">Variation: {option.subLabel}</div>
-                      )}
-                      {isAlreadySelected && (
-                        <div className="text-xs text-red-500 mt-1">Already selected</div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
-
-      {selectedOption && (
-        <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-          <div className="text-xs space-y-2">
-            {/* Product Name Row */}
-            <div className="flex justify-between items-start">
-              <div>
-                <span className="text-gray-500">Product:</span>
-                <span className="ml-2 font-medium">{selectedOption.fullName}</span>
-              </div>
-              {selectedOption.price && selectedOption.price > 0 && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  ₱{selectedOption.price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                </span>
-              )}
-            </div>
-
-            {/* SKU and UPC Row */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-gray-500">SKU:</span>
-                <span className="ml-2 font-medium">{selectedOption.sku || 'N/A'}</span>
-              </div>
-              <div>
-                <span className="text-gray-500">UPC:</span>
-                <span className="ml-2 font-medium">{selectedOption.upc || 'N/A'}</span>
-              </div>
-            </div>
-
-            {/* Variation Row (if exists) */}
-            {selectedOption.subLabel && selectedOption.subLabel !== 'No variations' && (
-              <div>
-                <span className="text-gray-500">Variation:</span>
-                <span className="ml-2 font-medium text-blue-600">{selectedOption.subLabel}</span>
-              </div>
-            )}
-
-
-            {/* Badge Row */}
-            <div className="pt-1">
-              {selectedOption.isVariation ? (
-                <span className="inline-flex px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
-                  Product with Variations
-                </span>
-              ) : (
-                <span className="inline-flex px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
-                  Product (No Variations)
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-    </div>
-
-  );
 };
 
 
@@ -491,7 +309,8 @@ const InventoryRecordsManagement = () => {
   const [startDateFilter, setStartDateFilter] = useState('');
   const [endDateFilter, setEndDateFilter] = useState('');
   const [loadingStocks, setLoadingStocks] = useState({});
-
+  const [selectedProductForAdd, setSelectedProductForAdd] = useState('');
+  const [tempQuantity, setTempQuantity] = useState(1);
   const [formData, setFormData] = useState({
     inventoryType: 'STOCK_IN',
     fromWarehouseId: '',
@@ -506,6 +325,79 @@ const InventoryRecordsManagement = () => {
   });
 
 
+  const handleAddProductToTable = () => {
+    if (!selectedProductForAdd) {
+      alert('Please select a product first');
+      return;
+    }
+
+    const selectedOption = productOptions.find(opt => opt.id === selectedProductForAdd);
+
+    if (!selectedOption) {
+      alert('Product not found');
+      return;
+    }
+
+    const isDuplicate = formData.items.some((item) => {
+      return (
+        item.productId === selectedOption.parentProductId &&
+        item.variationId === selectedOption.variationId
+      );
+    });
+
+    if (isDuplicate) {
+      alert('⚠️ This product variation is already added!\n\nPlease select a different variation or update the quantity of the existing item.');
+      return;
+    }
+
+    // ✅ NEW: Check stock availability before adding
+    if (formData.inventoryType !== 'STOCK_IN') {
+      const hasLocation = formData.fromWarehouseId || formData.fromBranchId ||
+        formData.toWarehouseId || formData.toBranchId;
+
+      if (hasLocation) {
+        // Get the stock info for this product at index -1 (preview)
+        const stockInfo = getItemStockInfo(-1, selectedOption.parentProductId, selectedOption.variationId);
+
+        if (stockInfo) {
+          const availableQty = stockInfo.availableQuantity ?? stockInfo.quantity ?? 0;
+
+          if (availableQty === 0) {
+            alert('❌ Cannot add this product!\n\n' +
+              `Product: ${selectedOption.fullName}\n` +
+              `Available Stock: ${availableQty}\n\n` +
+              'This product has no available stock at the selected location.\n' +
+              'Please select a different product or location.');
+            return;
+          }
+        }
+      }
+    }
+
+    const newItem = {
+      productId: selectedOption.parentProductId,
+      variationId: selectedOption.variationId,
+      quantity: 1
+    };
+
+    const newItems = [...formData.items, newItem];
+    setFormData({ ...formData, items: newItems });
+
+    const hasLocation = formData.fromWarehouseId || formData.fromBranchId ||
+      formData.toWarehouseId || formData.toBranchId;
+
+    if (hasLocation) {
+      setTimeout(() => {
+        loadLocationStock(
+          selectedOption.originalProductId,
+          selectedOption.originalVariationId,
+          newItems.length - 1
+        );
+      }, 0);
+    }
+
+    setSelectedProductForAdd('');
+  };
 
 
   const getCurrentUser = () => {
@@ -538,6 +430,39 @@ const InventoryRecordsManagement = () => {
     loadData();
   }, [statusFilter]);
 
+  useEffect(() => {
+    if (selectedProductForAdd && products.length > 0) {
+      // Find the selected product option
+      const selectedOption = products.flatMap(p => {
+        if (p.variations && p.variations.length > 0) {
+          return p.variations.map(v => ({
+            id: `${p.id}_${v.id}`,
+            originalProductId: p.id,
+            originalVariationId: v.id,
+          }));
+        } else {
+          return [{
+            id: `prod_${p.id}`,
+            originalProductId: p.id,
+            originalVariationId: null,
+          }];
+        }
+      }).find(opt => opt.id === selectedProductForAdd);
+
+      if (selectedOption) {
+        const hasLocation = formData.fromWarehouseId || formData.fromBranchId ||
+          formData.toWarehouseId || formData.toBranchId;
+
+        if (hasLocation) {
+          loadLocationStock(
+            selectedOption.originalProductId,
+            selectedOption.originalVariationId,
+            -1
+          );
+        }
+      }
+    }
+  }, [selectedProductForAdd, formData.fromWarehouseId, formData.fromBranchId, formData.toWarehouseId, formData.toBranchId, products]);
 
   useEffect(() => {
     const hasLocation = formData.fromWarehouseId || formData.fromBranchId ||
@@ -607,6 +532,7 @@ const InventoryRecordsManagement = () => {
   const loadLocationStock = async (productId, variationId, itemIndex) => {
     const loadingKey = `${itemIndex}_${productId}_${variationId}`;
     setLoadingStocks(prev => ({ ...prev, [loadingKey]: true }));
+
     try {
       let locationId = null;
       let locationType = null;
@@ -624,6 +550,7 @@ const InventoryRecordsManagement = () => {
         locationId = formData.toBranchId;
         locationType = 'branch';
       }
+
       if (!locationId || !productId || !locationType) {
         setLoadingStocks(prev => {
           const newState = { ...prev };
@@ -637,10 +564,21 @@ const InventoryRecordsManagement = () => {
         ? `${itemIndex}_${productId}_${variationId}_${locationId}`
         : `${itemIndex}_${productId}_${locationId}`;
 
+      // Check if stock already exists and clear loading state
       if (locationType === 'warehouse' && warehouseStocks[stockKey]) {
+        setLoadingStocks(prev => {
+          const newState = { ...prev };
+          delete newState[loadingKey];
+          return newState;
+        });
         return;
       }
       if (locationType === 'branch' && branchStocks[stockKey]) {
+        setLoadingStocks(prev => {
+          const newState = { ...prev };
+          delete newState[loadingKey];
+          return newState;
+        });
         return;
       }
 
@@ -655,6 +593,7 @@ const InventoryRecordsManagement = () => {
           ? `/stocks/branches/${locationId}/products/${productId}/variations/${variationId}`
           : `/stocks/branches/${locationId}/products/${productId}`;
       }
+
 
       const stockRes = await api.get(endpoint);
 
@@ -674,7 +613,7 @@ const InventoryRecordsManagement = () => {
         }
       }
     } catch (error) {
-      console.error('Failed to load stock:', error);
+      console.error('❌ Failed to load stock:', error);
     } finally {
       setLoadingStocks(prev => {
         const newState = { ...prev };
@@ -719,6 +658,14 @@ const InventoryRecordsManagement = () => {
 
     return null;
   };
+
+
+  useEffect(() => {
+    window.__getItemStockInfo = getItemStockInfo;
+    return () => {
+      delete window.__getItemStockInfo;
+    };
+  }, [warehouseStocks, branchStocks, formData.fromWarehouseId, formData.fromBranchId, formData.toWarehouseId, formData.toBranchId]);
 
 
   const checkCanModify = async (inventoryId) => {
@@ -875,8 +822,8 @@ const InventoryRecordsManagement = () => {
           if (idx === index) return false;
 
           return (
-            item.productId === selectedOption.originalProductId &&
-            item.variationId === selectedOption.originalVariationId
+            item.productId === selectedOption.parentProductId &&
+            item.variationId === selectedOption.variationId
           );
         });
 
@@ -887,8 +834,8 @@ const InventoryRecordsManagement = () => {
 
         newItems[index] = {
           ...newItems[index],
-          productId: selectedOption.originalProductId,
-          variationId: selectedOption.originalVariationId,
+          productId: selectedOption.parentProductId,
+          variationId: selectedOption.variationId,
         };
 
         setFormData({ ...formData, items: newItems });
@@ -909,7 +856,33 @@ const InventoryRecordsManagement = () => {
         return;
       }
     } else if (field === 'quantity') {
-      newItems[index][field] = parseInt(value) || 1;
+      const newQuantity = parseInt(value) || 1;
+
+      // ✅ NEW: Validate quantity against available stock
+      if (formData.inventoryType !== 'STOCK_IN') {
+        const item = newItems[index];
+        const stockInfo = getItemStockInfo(index, item.productId, item.variationId);
+
+        if (stockInfo) {
+          const availableQty = stockInfo.availableQuantity ?? stockInfo.quantity ?? 0;
+
+          if (newQuantity > availableQty) {
+            const selectedOption = productOptions.find(opt =>
+              opt.originalProductId === item.productId &&
+              opt.originalVariationId === item.variationId
+            );
+
+            alert('❌ Quantity Exceeds Available Stock!\n\n' +
+              `Product: ${selectedOption?.fullName || 'Unknown'}\n` +
+              `Available Stock: ${availableQty}\n` +
+              `Requested Quantity: ${newQuantity}\n\n` +
+              'Please enter a quantity that does not exceed the available stock.');
+            return;
+          }
+        }
+      }
+
+      newItems[index][field] = newQuantity;
     }
 
     setFormData({ ...formData, items: newItems });
@@ -976,6 +949,44 @@ const InventoryRecordsManagement = () => {
       alert('Error: Duplicate items detected!\n\n' +
         duplicates.map(d => `Product ${d.productId}, Variation ${d.variationId}`).join('\n'));
       return;
+    }
+
+    // ✅ NEW: Final validation for stock availability
+    if (formData.inventoryType !== 'STOCK_IN') {
+      const stockErrors = [];
+
+      for (let i = 0; i < formData.items.length; i++) {
+        const item = formData.items[i];
+        const stockInfo = getItemStockInfo(i, item.productId, item.variationId);
+
+        if (stockInfo) {
+          const availableQty = stockInfo.availableQuantity ?? stockInfo.quantity ?? 0;
+
+          if (item.quantity > availableQty) {
+            const selectedOption = productOptions.find(opt =>
+              opt.originalProductId === item.productId &&
+              opt.originalVariationId === item.variationId
+            );
+
+            stockErrors.push({
+              product: selectedOption?.fullName || `Product ${item.productId}`,
+              requested: item.quantity,
+              available: availableQty
+            });
+          }
+        }
+      }
+
+      if (stockErrors.length > 0) {
+        const errorMessage = '❌ Cannot submit - Stock availability issues:\n\n' +
+          stockErrors.map(err =>
+            `• ${err.product}\n  Requested: ${err.requested} | Available: ${err.available}`
+          ).join('\n\n') +
+          '\n\nPlease adjust quantities or remove items with insufficient stock.';
+
+        alert(errorMessage);
+        return;
+      }
     }
 
     try {
@@ -1332,10 +1343,10 @@ const InventoryRecordsManagement = () => {
 
         return {
           id: uniqueId,
+          parentProductId: p.id,
+          variationId: v.id,
           originalProductId: p.id,
           originalVariationId: v.id,
-          parentProductId: p.id,
-          variationOriginalId: v.id,
           name: displayName,
           subLabel: v.combinationDisplay || 'Variation',
           fullName: p.productName,
@@ -1350,15 +1361,14 @@ const InventoryRecordsManagement = () => {
       const truncatedName = truncateProductName(p.productName);
       const upc = p.upc || 'No UPC';
       const sku = p.sku || 'No SKU';
-
       const displayName = `${upc || sku} - ${truncatedName}`;
 
       return [{
         id: uniqueId,
+        parentProductId: p.id,
+        variationId: null,
         originalProductId: p.id,
         originalVariationId: null,
-        parentProductId: p.id,
-        variationOriginalId: null,
         name: displayName,
         subLabel: 'No variations',
         fullName: p.productName,
@@ -1850,12 +1860,11 @@ const InventoryRecordsManagement = () => {
                       </div>
                     </div>
 
-                    {/* Items */}
                     <div>
-                      <div className="flex justify-between items-center mb-4">
-                        <label className="block text-lg font-semibold">
+                      <div className="mb-4">
+                        <label className="block text-lg font-semibold mb-4">
                           <Package className="inline mr-2" size={20} />
-                          Items *
+                          Add Products *
                           {(formData.toWarehouseId || formData.toBranchId || formData.fromWarehouseId || formData.fromBranchId) && (
                             <span className="ml-2 text-sm font-normal text-blue-600">
                               (
@@ -1867,142 +1876,206 @@ const InventoryRecordsManagement = () => {
                             </span>
                           )}
                         </label>
-                        <button
-                          type="button"
-                          onClick={handleAddItem}
-                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                        >
-                          <Plus size={16} /> Add Product
-                        </button>
-                      </div>
 
-                      {/* Location Required Warning */}
-                      {!formData.toWarehouseId && !formData.toBranchId && !(formData.fromWarehouseId || formData.fromBranchId) && (
-                        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                          <div className="flex items-start gap-2">
-                            <AlertCircle className="text-yellow-600 mt-0.5" size={18} />
-                            <div>
-                              <p className="text-sm text-yellow-800 font-medium">Select a location first</p>
-                              <p className="text-xs text-yellow-700">Please select a source or destination location to see available stock levels</p>
+                        {/* Location Required Warning */}
+                        {!formData.toWarehouseId && !formData.toBranchId && !(formData.fromWarehouseId || formData.fromBranchId) && (
+                          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <div className="flex items-start gap-2">
+                              <AlertCircle className="text-yellow-600 mt-0.5" size={18} />
+                              <div>
+                                <p className="text-sm text-yellow-800 font-medium">Select a location first</p>
+                                <p className="text-xs text-yellow-700">Please select a source or destination location to see available stock levels</p>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
+                        {/* Product Selection Row */}
+                        <div className="flex gap-3 items-start mb-4">
+                          <div className="flex-1">
+                            <VariationSearchableDropdown
+                              options={productOptions}
+                              value={selectedProductForAdd}
+                              onChange={(value) => setSelectedProductForAdd(value)}
+                              placeholder="Select Product to Add..."
+                              required={false}
+                              formData={formData}
+                              index={-1}
+                              warehouseStocks={warehouseStocks}
+                              branchStocks={branchStocks}
+                              loadingStocks={loadingStocks}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleAddProductToTable}
+                            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm font-medium"
+                          >
+                            <Plus size={18} />
+                            Add Product
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Items Table with Separate Columns */}
                       {formData.items.length === 0 ? (
-                        <div className="text-center py-10 bg-gray-50 rounded-lg text-gray-500">
-                          No products yet. Click "Add Product" to start.
+                        <div className="text-center py-10 bg-gray-50 rounded-lg text-gray-500 border-2 border-dashed border-gray-300">
+                          <Package size={48} className="mx-auto mb-3 text-gray-400" />
+                          <p className="font-medium">No products added yet</p>
+                          <p className="text-sm">Select a product above and click "Add Product" to start</p>
                         </div>
                       ) : (
-                        <div className="space-y-4">
-                          {formData.items.map((item, i) => {
-                            const stockInfo = getItemStockInfo(i, item.productId, item.variationId);
-                            const selectedLocation = formData.fromWarehouseId || formData.fromBranchId || formData.toWarehouseId || formData.toBranchId;
+                        <div className="overflow-x-auto rounded-lg border border-gray-200">
+                          <table className="w-full">
+                            <thead className="bg-gray-50 border-b border-gray-200">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Product Name</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">SKU / UPC</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Variation</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Stock</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase w-28">Quantity</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase w-20">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 bg-white">
+                              {formData.items.map((item, i) => {
+                                const selectedOption = productOptions.find(opt =>
+                                  opt.parentProductId === item.productId &&
+                                  opt.variationId === item.variationId
+                                );
+                                const stockInfo = getItemStockInfo(i, item.productId, item.variationId);
+                                const selectedLocation = formData.fromWarehouseId || formData.fromBranchId || formData.toWarehouseId || formData.toBranchId;
 
-                            return (
-                              <div key={`item-${i}-${item.productId || 'new'}-${item.variationId || 'none'}-${Date.now()}`}>
-                                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                                  <div className="md:col-span-8">
-                                    <label className="block text-xs font-medium text-gray-700 mb-2">Product *</label>
-                                    <VariationSearchableDropdown
-                                      options={productOptions}
-                                      value={item.productId}
-                                      onChange={(value) => handleItemChange(i, 'productId', value)}
-                                      placeholder="Select Product Variation"
-                                      required
-                                      formData={formData}
-                                      index={i}
-                                    />
-                                    {selectedLocation && item.productId && stockInfo && (
-                                      <div className="mt-2 p-2 bg-white rounded border border-blue-100">
-                                        <div className="text-xs text-gray-700">
-                                          <div className="flex items-center justify-between mb-1">
-                                            <span className="font-medium">Available Stock:</span>
-                                            <span className={`font-bold ${item.quantity > (stockInfo.availableQuantity ?? stockInfo.quantity) ? 'text-red-600' : 'text-green-600'}`}>
-                                              {stockInfo.availableQuantity ?? stockInfo.quantity ?? 0} units
+                                return (
+                                  <tr key={`item-${i}-${item.productId || 'new'}-${item.variationId || 'none'}`} className="hover:bg-gray-50">
+                                    {/* Product Name */}
+                                    <td className="px-4 py-3">
+                                      {selectedOption ? (
+                                        <div className="font-semibold text-gray-900">
+                                          {selectedOption.fullName}
+                                        </div>
+                                      ) : (
+                                        <div className="text-gray-500 italic">Product not found</div>
+                                      )}
+                                    </td>
+
+                                    {/* SKU / UPC */}
+                                    <td className="px-4 py-3">
+                                      {selectedOption && (
+                                        <div className="text-sm space-y-1">
+                                          <div>
+                                            <span className="text-gray-600">SKU:</span>
+                                            <span className="ml-1 font-medium text-gray-900">{selectedOption.sku || 'N/A'}</span>
+                                          </div>
+                                          <div>
+                                            <span className="text-gray-600">UPC:</span>
+                                            <span className="ml-1 font-medium text-gray-900">{selectedOption.upc || 'N/A'}</span>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </td>
+
+                                    {/* Variation */}
+                                    <td className="px-4 py-3">
+                                      {selectedOption && selectedOption.subLabel && selectedOption.subLabel !== 'No variations' ? (
+                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                          {selectedOption.subLabel}
+                                        </span>
+                                      ) : (
+                                        <span className="text-sm text-gray-500">None</span>
+                                      )}
+                                    </td>
+
+                                    {/* Stock (Available / Total) */}
+                                    <td className="px-4 py-3">
+                                      {selectedLocation && stockInfo ? (
+                                        <div className="text-sm space-y-1">
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-gray-600">Available:</span>
+                                            <span className={`font-bold ${item.quantity > (stockInfo.availableQuantity ?? stockInfo.quantity) && formData.inventoryType !== 'STOCK_IN' ? 'text-red-600' : 'text-green-600'}`}>
+                                              {stockInfo.availableQuantity ?? stockInfo.quantity ?? 0}
                                             </span>
                                           </div>
-                                          <div className="flex items-center justify-between text-xs text-gray-500">
-                                            <span>Total:</span>
-                                            <span>{stockInfo.quantity || 0}</span>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-gray-600">Total:</span>
+                                            <span className="font-semibold text-gray-900">{stockInfo.quantity || 0}</span>
                                           </div>
                                           {stockInfo.reservedQuantity > 0 && (
-                                            <div className="flex items-center justify-between text-xs text-gray-500">
-                                              <span>Reserved:</span>
-                                              <span>{stockInfo.reservedQuantity || 0}</span>
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-gray-600">Reserved:</span>
+                                              <span className="font-semibold text-orange-600">{stockInfo.reservedQuantity}</span>
+                                            </div>
+                                          )}
+                                          {item.quantity > (stockInfo.availableQuantity ?? stockInfo.quantity) && formData.inventoryType !== 'STOCK_IN' && (
+                                            <div className="flex items-center gap-1 text-red-600 text-xs font-medium mt-1">
+                                              <AlertCircle size={12} />
+                                              Exceeds stock!
                                             </div>
                                           )}
                                         </div>
-
-                                        {item.quantity > (stockInfo.availableQuantity ?? stockInfo.quantity) && formData.inventoryType !== 'STOCK_IN' && (
-                                          <div className="mt-1 flex items-center gap-1 text-red-600 text-xs font-medium">
-                                            <AlertCircle size={12} />
-                                            Quantity exceeds available stock!
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-
-
-                                    {selectedLocation && item.productId && !stockInfo && loadingStocks[`${i}_${item.productId}_${item.variationId}`] && (
-                                      <div className="mt-2">
+                                      ) : selectedLocation && loadingStocks[`${i}_${item.productId}_${item.variationId}`] ? (
                                         <div className="text-xs text-blue-600 italic flex items-center gap-2">
                                           <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                                          Loading stock information...
+                                          Loading...
                                         </div>
-                                      </div>
-                                    )}
-
-
-                                    {selectedLocation && item.productId && !stockInfo && (
-                                      <div className="mt-2">
-                                        <div className="text-xs text-gray-500 italic">Loading stock information...</div>
-                                      </div>
-                                    )}
-
-                                    {/* No location selected */}
-                                    {!selectedLocation && item.productId && (
-                                      <div className="mt-2">
-                                        <div className="text-xs text-yellow-600 italic">
-                                          Select a location to see stock availability
+                                      ) : !selectedLocation ? (
+                                        <div className="text-xs text-yellow-700 italic">
+                                          Select location
                                         </div>
-                                      </div>
-                                    )}
-                                  </div>
+                                      ) : (
+                                        <div className="text-xs text-gray-500 italic">
+                                          No data
+                                        </div>
+                                      )}
+                                    </td>
 
-                                  <div className="md:col-span-3">
-                                    <label className="block text-xs font-medium text-gray-700 mb-2">Quantity *</label>
-                                    <input
-                                      type="number"
-                                      min="1"
-                                      value={item.quantity || ''}
-                                      onChange={e => handleItemChange(i, 'quantity', e.target.value)}
-                                      required
-                                      className={`w-full px-4 py-3 border rounded-lg ${stockInfo && item.quantity > (stockInfo.availableQuantity ?? stockInfo.quantity) && formData.inventoryType !== 'STOCK_IN'
-                                        ? 'border-red-300 bg-red-50'
-                                        : ''
-                                        }`}
-                                    />
-                                    {stockInfo && item.quantity > (stockInfo.availableQuantity ?? stockInfo.quantity) && formData.inventoryType !== 'STOCK_IN' && (
-                                      <div className="text-xs text-red-500 mt-1">
-                                        Max available: {stockInfo.availableQuantity ?? stockInfo.quantity}
-                                      </div>
-                                    )}
-                                  </div>
+                                    {/* Product Type */}
+                                    <td className="px-4 py-3">
+                                      {selectedOption && (
+                                        selectedOption.isVariation ? (
+                                          <span className="inline-flex px-2 py-1 text-xs rounded-full bg-blue-50 text-blue-700 font-medium">
+                                            With Variations
+                                          </span>
+                                        ) : (
+                                          <span className="inline-flex px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700 font-medium">
+                                            No Variations
+                                          </span>
+                                        )
+                                      )}
+                                    </td>
 
-                                  <div className="md:col-span-1 flex items-end">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveItem(i)}
-                                      className="p-3 text-red-600 hover:bg-red-50 rounded-lg"
-                                    >
-                                      <Trash2 size={18} />
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
+                                    {/* Quantity */}
+                                    <td className="px-4 py-3">
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        value={item.quantity || ''}
+                                        onChange={e => handleItemChange(i, 'quantity', e.target.value)}
+                                        required
+                                        className={`w-full px-3 py-2 border rounded-lg text-center font-semibold ${stockInfo && item.quantity > (stockInfo.availableQuantity ?? stockInfo.quantity) && formData.inventoryType !== 'STOCK_IN'
+                                          ? 'border-red-300 bg-red-50 text-red-900'
+                                          : 'border-gray-300'
+                                          }`}
+                                      />
+                                    </td>
+
+                                    {/* Action */}
+                                    <td className="px-4 py-3 text-center">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveItem(i)}
+                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                        title="Remove item"
+                                      >
+                                        <Trash2 size={18} />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
                         </div>
                       )}
                     </div>
@@ -2179,17 +2252,43 @@ const InventoryRecordsManagement = () => {
                         </thead>
                         <tbody className="divide-y divide-gray-200">
                           {selectedInventory.items && selectedInventory.items.length > 0 ? (
-                            selectedInventory.items.map((item, i) => (
-                              <tr key={`view-item-${item.id || i}-${item.product?.id || 'unknown'}`} className="hover:bg-gray-50 transition">
-                                <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                                  <div>{item.product.productName}</div>
-                                  <div className="text-xs text-gray-500">{item.product.sku || item.product.upc}</div>
-                                </td>
-                                <td className="px-6 py-4 text-sm text-gray-900">
-                                  {item.quantity.toLocaleString()}
-                                </td>
-                              </tr>
-                            ))
+                            selectedInventory.items.map((item, i) => {
+                              // ✅ Check if this item has a variation
+                              const hasVariation = item.variationId != null;
+
+                              return (
+                                <tr key={`view-item-${item.id || i}-${item.product?.id || 'unknown'}`} className="hover:bg-gray-50 transition">
+                                  <td className="px-6 py-4 text-sm">
+                                    {/* ✅ Product Name */}
+                                    <div className="font-medium text-gray-900 mb-1">
+                                      {item.product.productName}
+                                    </div>
+
+                                    {/* ✅ Show Variation Info if exists */}
+                                    {hasVariation && item.variation && (
+                                      <div className="text-xs text-blue-600 font-medium mb-2 flex items-center gap-1">
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-100">
+                                          Variation: {item.variation}
+                                        </span>
+                                      </div>
+                                    )}
+
+                                    {/* ✅ SKU and UPC in a grid */}
+                                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+                                      <div>
+                                        <span className="font-medium">SKU:</span> {item.sku || 'N/A'}
+                                      </div>
+                                      <div>
+                                        <span className="font-medium">UPC:</span> {item.upc || 'N/A'}
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-gray-900 font-semibold">
+                                    {item.quantity.toLocaleString()}
+                                  </td>
+                                </tr>
+                              );
+                            })
                           ) : (
                             <tr>
                               <td colSpan="2" className="px-6 py-12 text-center text-gray-500 italic">

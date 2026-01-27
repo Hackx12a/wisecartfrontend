@@ -52,10 +52,6 @@ const BranchViewModal = ({ branch, onClose, onEdit }) => {
                 <p className="text-gray-900">{branch.area || 'N/A'}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Region</label>
-                <p className="text-gray-900">{branch.region || 'N/A'}</p>
-              </div>
-              <div>
                 <label className="block text-sm font-medium text-gray-500 mb-1">Branch TIN</label>
                 <p className="text-gray-900">{branch.tin || 'N/A'}</p>
               </div>
