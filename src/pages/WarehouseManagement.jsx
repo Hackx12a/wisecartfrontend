@@ -10,7 +10,7 @@ const WarehouseManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingWarehouse, setEditingWarehouse] = useState(null);
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(9);
@@ -64,7 +64,7 @@ const WarehouseManagement = () => {
   const formatPhoneNumber = (value) => {
     // Remove all non-numeric characters
     const numbers = value.replace(/\D/g, '');
-    
+
     // Format as: 0000-000-0000 (Philippine format)
     if (numbers.length <= 4) return numbers;
     if (numbers.length <= 7) return `${numbers.slice(0, 4)}-${numbers.slice(4)}`;
@@ -73,29 +73,29 @@ const WarehouseManagement = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+
     if (name === 'warehouseCode') {
       setFormData(prev => ({ ...prev, [name]: formatWarehouseCode(value) }));
       return;
     }
-    
+
     if (name === 'contactNumber') {
       setFormData(prev => ({ ...prev, [name]: formatPhoneNumber(value) }));
       return;
     }
-    
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: type === 'checkbox' ? checked : value 
+
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!formData.warehouseCode || formData.warehouseCode === 'WH-' || 
-        !formData.warehouseName || !formData.address || 
-        !formData.city || !formData.province) {
+
+    if (!formData.warehouseCode || formData.warehouseCode === 'WH-' ||
+      !formData.warehouseName || !formData.address ||
+      !formData.city || !formData.province) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -155,7 +155,7 @@ const WarehouseManagement = () => {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this warehouse?')) return;
-    
+
     setActionLoading(true);
     setLoadingMessage('Deleting warehouse...');
 
@@ -212,7 +212,7 @@ const WarehouseManagement = () => {
   const getPageNumbers = () => {
     const pageNumbers = [];
     const maxVisiblePages = 5;
-    
+
     if (totalPages <= maxVisiblePages) {
       for (let i = 1; i <= totalPages; i++) {
         pageNumbers.push(i);
@@ -220,12 +220,12 @@ const WarehouseManagement = () => {
     } else {
       const startPage = Math.max(1, currentPage - 2);
       const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-      
+
       for (let i = startPage; i <= endPage; i++) {
         pageNumbers.push(i);
       }
     }
-    
+
     return pageNumbers;
   };
 
@@ -238,7 +238,7 @@ const WarehouseManagement = () => {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 max-w-full mx-auto px-8">
       <LoadingOverlay show={actionLoading} message={loadingMessage} />
       <Toaster position="top-right" />
       <div className="mb-6">
@@ -357,11 +357,10 @@ const WarehouseManagement = () => {
             <button
               onClick={prevPage}
               disabled={currentPage === 1}
-              className={`p-2 rounded-lg border ${
-                currentPage === 1 
-                  ? 'text-gray-400 cursor-not-allowed border-gray-200' 
-                  : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-              }`}
+              className={`p-2 rounded-lg border ${currentPage === 1
+                ? 'text-gray-400 cursor-not-allowed border-gray-200'
+                : 'text-gray-700 hover:bg-gray-50 border-gray-300'
+                }`}
             >
               <ChevronLeft size={16} />
             </button>
@@ -371,11 +370,10 @@ const WarehouseManagement = () => {
                 <button
                   key={number}
                   onClick={() => paginate(number)}
-                  className={`min-w-[40px] px-3 py-2 text-sm rounded-lg border ${
-                    currentPage === number
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-                  }`}
+                  className={`min-w-[40px] px-3 py-2 text-sm rounded-lg border ${currentPage === number
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'text-gray-700 hover:bg-gray-50 border-gray-300'
+                    }`}
                 >
                   {number}
                 </button>
@@ -385,11 +383,10 @@ const WarehouseManagement = () => {
             <button
               onClick={nextPage}
               disabled={currentPage === totalPages}
-              className={`p-2 rounded-lg border ${
-                currentPage === totalPages
-                  ? 'text-gray-400 cursor-not-allowed border-gray-200'
-                  : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-              }`}
+              className={`p-2 rounded-lg border ${currentPage === totalPages
+                ? 'text-gray-400 cursor-not-allowed border-gray-200'
+                : 'text-gray-700 hover:bg-gray-50 border-gray-300'
+                }`}
             >
               <ChevronRight size={16} />
             </button>

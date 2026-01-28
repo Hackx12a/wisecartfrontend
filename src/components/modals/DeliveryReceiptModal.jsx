@@ -78,16 +78,16 @@ const DeliveryReceiptModal = ({
               <div className="text-3xl font-bold text-gray-900 tracking-widest receipt-title">
                 DELIVERY RECEIPT
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 print:hidden">
                 <span className="font-bold text-gray-900 text-lg">No.:</span>
-                <div className="text-black-900 text-lg w-48 border-b-2 border-gray-900 print:border-b-2 print:border-gray-900">
+                <div className="text-black-900 text-lg w-48 border-b-2 border-gray-900">
                   <input
                     type="text"
                     value={receipt.deliveryReceiptNumberDisplay || receipt.deliveryReceiptNumber || ''}
-                    onChange={(e) => setReceipt({...receipt, deliveryReceiptNumberDisplay: e.target.value})}
-                    className="w-full bg-transparent border-none focus:outline-none focus:border-blue-500 text-lg text-center print-hidden"
+                    onChange={(e) => setReceipt({ ...receipt, deliveryReceiptNumberDisplay: e.target.value })}
+                    className="w-full bg-transparent border-none focus:outline-none focus:border-blue-500 text-lg text-center"
+                    placeholder=""
                   />
-                  <span className="print-only">{receipt.deliveryReceiptNumberDisplay || receipt.deliveryReceiptNumber || ''}</span>
                 </div>
               </div>
             </div>
@@ -117,7 +117,7 @@ const DeliveryReceiptModal = ({
                   <div className="flex-1">
                     <textarea
                       value={receipt.businessStyle || ''}
-                      onChange={(e) => setReceipt({...receipt, businessStyle: e.target.value})}
+                      onChange={(e) => setReceipt({ ...receipt, businessStyle: e.target.value })}
                       rows={1}
                       className="text-black-900 text-sm w-full border-b border-gray-300 px-2 focus:outline-none focus:border-blue-500 bg-transparent print:hidden break-words resize-none overflow-hidden"
                       style={{ minHeight: '1.5rem' }}
@@ -157,7 +157,7 @@ const DeliveryReceiptModal = ({
                   <div className="flex-1" style={{ minWidth: '100px' }}>
                     <textarea
                       value={receipt.termsOfPayment || ''}
-                      onChange={(e) => setReceipt({...receipt, termsOfPayment: e.target.value})}
+                      onChange={(e) => setReceipt({ ...receipt, termsOfPayment: e.target.value })}
                       rows={1}
                       className="text-black-900 w-full border-b border-gray-300 text-sm px-2 focus:outline-none focus:border-blue-500 bg-transparent print:hidden resize-none overflow-hidden break-words"
                       style={{ minHeight: '1.5rem', minWidth: '100px' }}
@@ -179,7 +179,7 @@ const DeliveryReceiptModal = ({
                   <div className="w-32">
                     <textarea
                       value={receipt.purchaseOrderNumber || ''}
-                      onChange={(e) => setReceipt({...receipt, purchaseOrderNumber: e.target.value})}
+                      onChange={(e) => setReceipt({ ...receipt, purchaseOrderNumber: e.target.value })}
                       rows={1}
                       className="text-black-900 w-full border-b border-gray-300 text-sm px-2 focus:outline-none focus:border-blue-500 bg-transparent print:hidden resize-none overflow-hidden break-words"
                       style={{ minHeight: '1.5rem' }}
@@ -216,7 +216,7 @@ const DeliveryReceiptModal = ({
                       <input
                         type="text"
                         value={receipt.extraHeader || 'EXTRA'}
-                        onChange={(e) => setReceipt({...receipt, extraHeader: e.target.value})}
+                        onChange={(e) => setReceipt({ ...receipt, extraHeader: e.target.value })}
                         className="w-full bg-transparent font-bold text-xs uppercase px-0 py-0.5 border-none focus:outline-none focus:border-blue-500 print-hidden"
                       />
                     )}
@@ -273,7 +273,7 @@ const DeliveryReceiptModal = ({
                           onChange={(e) => {
                             const newItems = [...receipt.items];
                             newItems[i] = { ...newItems[i], extra: e.target.value };
-                            setReceipt({...receipt, items: newItems});
+                            setReceipt({ ...receipt, items: newItems });
                           }}
                           className="w-full bg-transparent border-b border-gray-300 text-xs px-0 py-0.5 focus:outline-none focus:border-blue-500 print:border-0 print:p-0 print-hidden"
                         />
@@ -314,7 +314,7 @@ const DeliveryReceiptModal = ({
                     <input
                       type="text"
                       value={receipt.preparedBy || ''}
-                      onChange={(e) => setReceipt({...receipt, preparedBy: e.target.value})}
+                      onChange={(e) => setReceipt({ ...receipt, preparedBy: e.target.value })}
                       className="text-black-900 text-sm w-full border-b border-gray-300 px-2 focus:outline-none focus:border-blue-500 bg-transparent print:hidden"
                     />
                     <div className="hidden print:block text-black-900 text-sm w-full px-2">

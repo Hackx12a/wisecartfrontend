@@ -1339,7 +1339,7 @@ const InventoryRecordsManagement = () => {
         const truncatedName = truncateProductName(p.productName);
         const upc = v.upc || p.upc || 'No UPC';
         const sku = v.sku || p.sku || 'No SKU';
-        const displayName = `${upc || sku} - ${truncatedName}`;
+        const displayName = truncatedName;
 
         return {
           id: uniqueId,
@@ -1361,7 +1361,7 @@ const InventoryRecordsManagement = () => {
       const truncatedName = truncateProductName(p.productName);
       const upc = p.upc || 'No UPC';
       const sku = p.sku || 'No SKU';
-      const displayName = `${upc || sku} - ${truncatedName}`;
+      const displayName = truncatedName;
 
       return [{
         id: uniqueId,
@@ -1388,7 +1388,7 @@ const InventoryRecordsManagement = () => {
     <>
       <LoadingOverlay show={loading || actionLoading} message={loadingMessage || ''} />
       <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
+        <div className="p-6 max-w-full mx-auto px-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Inventory Records Management</h1>
             <p className="text-gray-600">Track and manage inventory movements</p>

@@ -288,7 +288,6 @@ const UserManagement = () => {
     const roleStyles = {
       ADMIN: 'bg-purple-100 text-purple-800',
       USER: 'bg-blue-100 text-blue-800',
-      MANAGER: 'bg-green-100 text-green-800'
     };
     
     return (
@@ -592,7 +591,6 @@ const UserManagement = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="USER">User</option>
-                    <option value="MANAGER">Manager</option>
                     <option value="ADMIN">Admin</option>
                   </select>
                 </div>

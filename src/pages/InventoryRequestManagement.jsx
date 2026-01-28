@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
     Plus, Edit2, Trash2, Search, X, Eye, Check,
-    Building2, Package, ArrowRight, Loader2, FileText, ShoppingCart
+    Building2, Package, ArrowRight, Loader2, FileText, ShoppingCart, ChevronDown, ChevronRight
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { api } from '../services/api';
 import LoadingOverlay from '../components/common/LoadingOverlay';
 import PurchaseOrderManagement from './PurchaseOrderManagement';
+
+
 
 const InventoryRequestManagement = () => {
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
@@ -26,12 +28,13 @@ const InventoryRequestManagement = () => {
     const [supplierProducts, setSupplierProducts] = useState([]);
     const [selectedSupplier, setSelectedSupplier] = useState(null);
     const [selectedProduct, setSelectedProduct] = useState(null);
+    const [selectedProductForAdd, setSelectedProductForAdd] = useState('');
+    const [productSearchTerm, setProductSearchTerm] = useState('');
+    const [showProductDropdown, setShowProductDropdown] = useState(false);
+    const [expandedRpqRows, setExpandedRpqRows] = useState({});
     const [irrFormData, setIrrFormData] = useState({
         supplierId: '',
-        productId: '',
-        variationId: '',
-        uom: '',
-        qty: '',
+        items: [],
         remarks: ''
     });
 
@@ -64,6 +67,244 @@ const InventoryRequestManagement = () => {
     useEffect(() => {
         loadInitialData();
     }, []);
+
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (showProductDropdown && !event.target.closest('.relative')) {
+                setShowProductDropdown(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showProductDropdown]);
+
+
+    // Collapsible Product List Component
+    const CollapsibleProductList = ({ items, isExpanded, setIsExpanded }) => {
+        return (
+            <div className="text-sm">
+                <button
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium"
+                >
+                    {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    {items.length} products
+                </button>
+                {isExpanded && (
+                    <div className="mt-2 space-y-1.5 pl-5 border-l-2 border-blue-200">
+                        {items.map((item, idx) => (
+                            <div key={idx}>
+                                <div className="text-gray-900 font-medium">{item.productName}</div>
+                                {item.variation && (
+                                    <div className="text-xs text-gray-500">{item.variation}</div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+
+    const toggleRpqRow = (rpqId) => {
+        setExpandedRpqRows(prev => ({
+            ...prev,
+            [rpqId]: !prev[rpqId]
+        }));
+    };
+
+    const CollapsibleQtyList = ({ items, isExpanded }) => {
+        return (
+            <div className="text-sm">
+                <div className="h-6"></div>
+                <div className={`${isExpanded ? 'mt-2' : ''} space-y-1.5`}>
+                    {items.map((item, idx) => (
+                        <div key={idx} className="font-medium">
+                            {item.qty} {item.uom}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
+
+
+    const IRRTableRow = ({ req, handleDeleteIrr, setViewingIrr, setEditingIrr, setShowIrrModal, setIrrFormData, suppliers, setSelectedSupplier, setLoadingProducts, setSupplierProducts, setButtonLoadingState, setActionLoading, buttonLoading, api }) => {
+        const [isExpanded, setIsExpanded] = useState(false);
+
+        return (
+            <tr key={req.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 font-medium text-gray-900">{req.controlNumber}</td>
+                <td className="px-6 py-4 text-gray-900">{req.requestor}</td>
+                {/* In the RPQ table */}
+                <td className="px-6 py-4">
+                    {req.items && req.items.length > 0 ? (
+                        req.items.length === 1 ? (
+                            <div className="text-sm">
+                                <div className="text-gray-900 font-medium">{req.items[0].productName}</div>
+                                {req.items[0].variation && (
+                                    <div className="text-xs text-gray-500">{req.items[0].variation}</div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="text-sm">
+                                <button
+                                    onClick={() => setIsExpanded(!isExpanded)}
+                                    className="flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium"
+                                >
+                                    {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                    {req.items.length} products
+                                </button>
+                                {isExpanded && (
+                                    <div className="mt-2 space-y-1.5 pl-5 border-l-2 border-blue-200">
+                                        {req.items.map((item, idx) => (
+                                            <div key={idx}>
+                                                <div className="text-gray-900 font-medium">{item.productName}</div>
+                                                {item.variation && (
+                                                    <div className="text-xs text-gray-500">{item.variation}</div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    ) : (
+                        <div className="text-sm text-gray-500">-</div>
+                    )}
+                </td>
+                <td className="px-6 py-4 text-gray-900">
+                    {req.items && req.items.length > 0 ? (
+                        req.items.length === 1 ? (
+                            <div className="text-sm font-medium">
+                                {req.items[0].qty} {req.items[0].uom}
+                            </div>
+                        ) : (
+                            <CollapsibleQtyList items={req.items} isExpanded={isExpanded} />
+                        )
+                    ) : (
+                        '-'
+                    )}
+                </td>
+                <td className="px-6 py-4 text-gray-900">
+                    {req.createdAt ? new Date(req.createdAt).toLocaleDateString() : '-'}
+                </td>
+                <td className="px-6 py-4">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${req.status === 'PROCEEDED_TO_RPQ'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                        {req.status || 'PENDING'}
+                    </span>
+                </td>
+                <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                        <button
+                            onClick={() => setViewingIrr(req)}
+                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                        >
+                            <Eye size={18} />
+                        </button>
+                        <button
+                            onClick={async () => {
+                                const loadKey = `edit-${req.id}`;
+                                setButtonLoadingState(loadKey, true);
+                                setActionLoading(true);
+
+                                try {
+                                    setEditingIrr(req);
+                                    setIrrFormData({
+                                        supplierId: req.supplierId,
+                                        items: req.items && req.items.length > 0 ? req.items.map(item => ({
+                                            productId: item.productId,
+                                            productName: item.productName,
+                                            variationId: item.variationId || null,
+                                            displayName: item.productName,
+                                            sku: item.sku || '',
+                                            upc: item.upc || '',
+                                            variation: item.variation || '',
+                                            uom: item.uom || 'PCS',
+                                            qty: item.qty
+                                        })) : [],
+                                        remarks: req.remarks || ''
+                                    });
+
+                                    if (req.supplierId) {
+                                        const supplier = suppliers.find(s => s.id === req.supplierId);
+                                        setSelectedSupplier(supplier);
+                                        setLoadingProducts(true);
+                                        try {
+                                            const isForwarder = supplier?.type?.toLowerCase() === 'forwarder';
+                                            const endpoint = isForwarder ? '/products' : `/products/by-supplier/${req.supplierId}`;
+                                            const response = await api.get(endpoint);
+
+                                            if (response.success && response.data) {
+                                                const products = response.data.data || response.data;
+                                                const productsArray = Array.isArray(products) ? products : [];
+                                                const flattenedProducts = [];
+                                                productsArray.forEach(product => {
+                                                    if (product.variations && Array.isArray(product.variations) && product.variations.length > 0) {
+                                                        product.variations.forEach(variation => {
+                                                            flattenedProducts.push({
+                                                                ...product,
+                                                                displayName: `${variation.sku || 'N/A'} - ${product.productName} - ${variation.combinationDisplay || variation.sku} - ${variation.upc || 'N/A'}`,
+                                                                variationId: variation.id,
+                                                                isVariation: true
+                                                            });
+                                                        });
+                                                    } else {
+                                                        flattenedProducts.push({
+                                                            ...product,
+                                                            displayName: `${product.sku || 'N/A'} - ${product.productName} - ${product.upc || 'N/A'}`,
+                                                            isVariation: false
+                                                        });
+                                                    }
+                                                });
+                                                setSupplierProducts(flattenedProducts);
+                                            }
+                                        } catch (error) {
+                                            console.error('Error loading products for edit:', error);
+                                            toast.error('Failed to load products');
+                                        } finally {
+                                            setLoadingProducts(false);
+                                        }
+                                    }
+                                    setShowIrrModal(true);
+                                } finally {
+                                    setButtonLoadingState(loadKey, false);
+                                    setActionLoading(false);
+                                }
+                            }}
+                            disabled={req.status === 'PROCEEDED_TO_RPQ' || buttonLoading[`edit-${req.id}`]}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {buttonLoading[`edit-${req.id}`] ? (
+                                <Loader2 size={18} className="animate-spin" />
+                            ) : (
+                                <Edit2 size={18} />
+                            )}
+                        </button>
+                        <button
+                            onClick={() => handleDeleteIrr(req.id)}
+                            disabled={req.status === 'PROCEEDED_TO_RPQ' || buttonLoading[`delete-irr-${req.id}`]}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {buttonLoading[`delete-irr-${req.id}`] ? (
+                                <Loader2 size={18} className="animate-spin" />
+                            ) : (
+                                <Trash2 size={18} />
+                            )}
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        );
+    };
+
 
     const loadInitialData = async () => {
         setLoading(true);
@@ -150,6 +391,83 @@ const InventoryRequestManagement = () => {
         });
     };
 
+
+    const handleAddProductToTable = () => {
+        if (!selectedProductForAdd) {
+            toast.error('Please select a product first');
+            return;
+        }
+
+        const selectedProd = supplierProducts.find(p => {
+            if (selectedProductForAdd.includes('_')) {
+                const [prodId, varId] = selectedProductForAdd.split('_');
+                return p.id === parseInt(prodId) && p.variationId === parseInt(varId);
+            }
+            return p.id === parseInt(selectedProductForAdd);
+        });
+
+        if (!selectedProd) {
+            toast.error('Product not found');
+            return;
+        }
+
+        // Check if product already exists
+        const exists = irrFormData.items.some(item => {
+            if (selectedProd.isVariation) {
+                return item.productId === selectedProd.id && item.variationId === selectedProd.variationId;
+            }
+            return item.productId === selectedProd.id;
+        });
+
+        if (exists) {
+            toast.error('This product is already in the list');
+            return;
+        }
+
+        // Add to items array
+        const newItem = {
+            productId: selectedProd.id,
+            productName: selectedProd.productName,
+            variationId: selectedProd.isVariation ? selectedProd.variationId : null,
+            displayName: selectedProd.displayName,
+            sku: selectedProd.isVariation
+                ? selectedProd.variations?.find(v => v.id === selectedProd.variationId)?.sku
+                : selectedProd.sku,
+            upc: selectedProd.isVariation
+                ? selectedProd.variations?.find(v => v.id === selectedProd.variationId)?.upc
+                : selectedProd.upc,
+            variation: selectedProd.isVariation
+                ? selectedProd.variations?.find(v => v.id === selectedProd.variationId)?.combinationDisplay
+                : '',
+            uom: 'PCS',
+            qty: 1
+        };
+
+        setIrrFormData({
+            ...irrFormData,
+            items: [...irrFormData.items, newItem]
+        });
+
+        // Reset search
+        setSelectedProductForAdd('');
+        setProductSearchTerm('');
+        toast.success('Product added to list');
+    };
+
+    const handleRemoveItem = (index) => {
+        const newItems = irrFormData.items.filter((_, i) => i !== index);
+        setIrrFormData({ ...irrFormData, items: newItems });
+        toast.success('Product removed');
+    };
+
+    const handleItemChange = (index, field, value) => {
+        const newItems = [...irrFormData.items];
+        newItems[index][field] = value;
+        setIrrFormData({ ...irrFormData, items: newItems });
+    };
+
+
+
     const generateControlNumber = (type, existingRequests) => {
         const year = new Date().getFullYear();
         const prefix = type === 'IRR' ? 'IRR' : 'RPQ';
@@ -162,70 +480,116 @@ const InventoryRequestManagement = () => {
 
     const handleIrrSubmit = async (e) => {
         e.preventDefault();
-        if (!irrFormData.supplierId || !irrFormData.productId) {
-            toast.error('Please select supplier and product');
+
+        if (!irrFormData.supplierId) {
+            toast.error('Please select a supplier');
             return;
         }
-        if (!irrFormData.qty || parseFloat(irrFormData.qty) <= 0) {
-            toast.error('Please enter valid quantity');
+
+        if (!irrFormData.items || irrFormData.items.length === 0) {
+            toast.error('Please add at least one product');
             return;
+        }
+
+        // Validate all items have quantity
+        for (const item of irrFormData.items) {
+            if (!item.qty || item.qty <= 0) {
+                toast.error('All products must have quantity greater than 0');
+                return;
+            }
         }
 
         setSubmitting(true);
         setActionLoading(true);
+
         try {
-            let sku = '', upc = '', variationDisplay = '';
-            if (selectedProduct.isVariation && selectedProduct.variations) {
-                const variation = selectedProduct.variations.find(v => v.id === selectedProduct.variationId);
-                if (variation) {
-                    sku = variation.sku || '';
-                    upc = variation.upc || '';
-                    variationDisplay = variation.combinationDisplay || '';
+            if (editingIrr) {
+                // For editing, update the existing request
+                const updatePayload = {
+                    supplierId: parseInt(irrFormData.supplierId),
+                    remarks: irrFormData.remarks || '',
+                    items: irrFormData.items.map(item => ({
+                        productId: parseInt(item.productId),
+                        variationId: item.variationId ? parseInt(item.variationId) : null,
+                        productName: item.productName,
+                        sku: item.sku || '',
+                        upc: item.upc || '',
+                        variation: item.variation || '',
+                        uom: item.uom || 'PCS',
+                        qty: parseInt(item.qty)
+                    }))
+                };
+
+
+                const response = await api.put(`/inventory-requests/${editingIrr.id}`, updatePayload);
+
+                if (response.success) {
+                    toast.success('✅ Inventory request updated successfully');
+                    setShowIrrModal(false);
+                    resetIrrForm();
+                    await loadIrrRequests();
+                } else {
+                    toast.error(response.message || 'Failed to update request');
                 }
             } else {
-                sku = selectedProduct.sku || '';
-                upc = selectedProduct.upc || '';
-            }
+                const batchPayload = {
+                    supplierId: parseInt(irrFormData.supplierId),
+                    remarks: irrFormData.remarks || '',
+                    items: irrFormData.items.map(item => ({
+                        productId: parseInt(item.productId),
+                        variationId: item.variationId ? parseInt(item.variationId) : null,
+                        productName: item.productName,
+                        sku: item.sku || '',
+                        upc: item.upc || '',
+                        variation: item.variation || '',
+                        uom: item.uom || 'PCS',
+                        qty: parseInt(item.qty)
+                    }))
+                };
 
-            const payload = {
-                supplierId: parseInt(irrFormData.supplierId),
-                productId: parseInt(irrFormData.productId),
-                variationId: selectedProduct.isVariation ? selectedProduct.variationId : null,
-                controlNumber: editingIrr ? editingIrr.controlNumber : generateControlNumber('IRR', irrRequests),
-                requestor: currentUserName,
-                uom: irrFormData.uom || 'PCS',
-                qty: parseInt(irrFormData.qty),
-                remarks: irrFormData.remarks || '',
-                status: 'PENDING',
-                productName: selectedProduct.productName || '',
-                sku, upc, variation: variationDisplay
-            };
+                const response = await api.post('/inventory-requests/batch', batchPayload);
 
-            let response;
-            if (editingIrr) {
-                response = await api.put(`/inventory-requests/${editingIrr.id}`, payload);
-            } else {
-                response = await api.post('/inventory-requests', payload);
-            }
+                if (response.success) {
+                    const itemCount = response.data?.items?.length
+                        || response.data?.data?.items?.length
+                        || irrFormData.items.length;
 
-            if (response.success) {
-                toast.success(editingIrr ? 'Request updated successfully' : 'Request created successfully');
-                setShowIrrModal(false);
-                resetIrrForm();
-                await loadIrrRequests();
+                    toast.success(`✅ Inventory request created with ${itemCount} product(s)`);
+                    setShowIrrModal(false);
+                    resetIrrForm();
+                    await loadIrrRequests();
+                } else {
+                    console.error('Failed response:', response);
+                    toast.error(response.message || 'Failed to create request');
+                }
             }
         } catch (error) {
-            toast.error('Failed to save request');
+            console.error('Error saving request:', error);
+            console.error('Error response:', error.response);
+            console.error('Error data:', error.response?.data);
+
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to save request';
+            toast.error(`❌ ${errorMessage}`);
         } finally {
             setActionLoading(false);
             setSubmitting(false);
         }
     };
 
+
     const handleSupplierChange = async (supplierId) => {
-        setIrrFormData({ ...irrFormData, supplierId, productId: '', variationId: '' });
+        setIrrFormData({
+            ...irrFormData,
+            supplierId,
+            productId: '',
+            variationId: '',
+            items: []
+        });
         setSelectedProduct(null);
         setSupplierProducts([]);
+        setSelectedProductForAdd('');
+        setProductSearchTerm('');
+        setShowProductDropdown(false);
 
         if (!supplierId) {
             setSelectedSupplier(null);
@@ -237,16 +601,30 @@ const InventoryRequestManagement = () => {
 
         setLoadingProducts(true);
         try {
-            const response = await api.get(`/products/by-supplier/${supplierId}`);
-            if (response.success && response.data && response.data.data) {
-                const products = response.data.data;
+            // Check if supplier is a forwarder
+            const isForwarder = supplier?.type?.toLowerCase() === 'forwarder';
+
+            // If forwarder, get all products, otherwise get products by supplier
+            const endpoint = isForwarder
+                ? '/products'
+                : `/products/by-supplier/${supplierId}`;
+
+            const response = await api.get(endpoint);
+
+            if (response.success && response.data) {
+                // Handle different response structures
+                const products = response.data.data || response.data;
+
+                // Make sure products is an array
+                const productsArray = Array.isArray(products) ? products : [];
+
                 const flattenedProducts = [];
-                products.forEach(product => {
-                    if (product.variations && product.variations.length > 0) {
+                productsArray.forEach(product => {
+                    if (product.variations && Array.isArray(product.variations) && product.variations.length > 0) {
                         product.variations.forEach(variation => {
                             flattenedProducts.push({
                                 ...product,
-                                displayName: `${product.productName} - ${variation.combinationDisplay || variation.sku}`,
+                                displayName: `${variation.sku || 'N/A'} - ${product.productName} - ${variation.combinationDisplay || variation.sku} - ${variation.upc || 'N/A'}`,
                                 variationId: variation.id,
                                 isVariation: true
                             });
@@ -254,7 +632,7 @@ const InventoryRequestManagement = () => {
                     } else {
                         flattenedProducts.push({
                             ...product,
-                            displayName: product.productName,
+                            displayName: `${product.sku || 'N/A'} - ${product.productName} - ${product.upc || 'N/A'}`,
                             isVariation: false
                         });
                     }
@@ -262,22 +640,34 @@ const InventoryRequestManagement = () => {
                 setSupplierProducts(flattenedProducts);
             }
         } catch (error) {
+            console.error('Error loading products:', error);
             toast.error('Failed to load supplier products');
         } finally {
             setLoadingProducts(false);
         }
     };
 
-    const handleProceedToRpq = async (irr) => {
+
+    const handleProceedToRpq = async (irrData) => {
+        const items = irrFormData.items && irrFormData.items.length > 0 ? irrFormData.items : irrData.items;
+        const supplierId = irrFormData.supplierId || irrData.supplierId;
+
+        if (!items || items.length === 0) {
+            toast.error('No items found in this inventory request');
+            return;
+        }
+
         setButtonLoadingState('proceed-rpq', true);
         setActionLoading(true);
+
         try {
-            const supplier = suppliers.find(s => s.id === irr.supplierId);
+            const supplier = suppliers.find(s => s.id === supplierId);
+
+            // Create ONE RPQ with ALL items
             const rpqPayload = {
-                irrId: irr.id,
-                controlNumber: generateControlNumber('RPQ', rpqRequests),
+                irrId: irrData.id,
                 requestor: currentUserName,
-                supplierId: irr.supplierId,
+                supplierId: supplierId,
                 supplierName: supplier?.name || '',
                 supplierInfo: {
                     contactPerson: supplier?.contactPerson || '',
@@ -288,34 +678,44 @@ const InventoryRequestManagement = () => {
                     bankName: supplier?.bankName || '',
                     accountNumber: supplier?.accountNumber || ''
                 },
-                productId: irr.productId,
-                productName: irr.productName || '',
-                sku: irr.sku || '',
-                variation: irr.variation || '',
-                uom: irr.uom || 'PCS',
+                items: items.map(item => ({
+                    productId: item.productId,
+                    variationId: item.variationId || null,
+                    productName: item.productName || '',
+                    sku: item.sku || '',
+                    upc: item.upc || '',
+                    variation: item.variation || '',
+                    uom: item.uom || 'PCS',
+                    qty: item.qty
+                })),
                 mdr: '',
-                qty: irr.qty,
                 initialPaymentAmount: 0,
-                fullPaymentAmount: 0,
+                finalPaymentAmount: 0,
                 paymentInstruction: '',
                 status: 'DRAFT'
             };
 
             const response = await api.post('/quotation-requests', rpqPayload);
             if (response.success) {
-                await api.patch(`/inventory-requests/${irr.id}`, { status: 'PROCEEDED_TO_RPQ' });
-                toast.success('Successfully proceeded to RPQ');
+                await api.patch(`/inventory-requests/${irrData.id}`, { status: 'PROCEEDED_TO_RPQ' });
+
+                toast.success(`✅ Successfully created RPQ with ${items.length} product(s)`);
                 setShowIrrModal(false);
                 resetIrrForm();
                 await Promise.all([loadIrrRequests(), loadRpqRequests()]);
+            } else {
+                toast.error('Failed to create RPQ request');
             }
         } catch (error) {
-            toast.error('Failed to proceed to RPQ');
+            console.error('Error proceeding to RPQ:', error);
+            toast.error(error.response?.data?.message || 'Failed to proceed to RPQ');
         } finally {
             setButtonLoadingState('proceed-rpq', false);
             setActionLoading(false);
         }
     };
+
+
 
     const formatCurrency = (amount) => {
         if (!amount) return '₱0.00';
@@ -329,16 +729,45 @@ const InventoryRequestManagement = () => {
 
     const handleRpqSubmit = async (e) => {
         e.preventDefault();
+
+        // Validate that all items have quantity
+        if (rpqFormData.items && rpqFormData.items.length > 0) {
+            for (const item of rpqFormData.items) {
+                if (!item.qty || item.qty <= 0) {
+                    toast.error('All products must have quantity greater than 0');
+                    return;
+                }
+            }
+        }
+
         setSubmitting(true);
         setActionLoading(true);
         try {
             const payload = {
-                ...rpqFormData,
+                supplierId: rpqFormData.supplierId,
+                supplierName: rpqFormData.supplierName,
+                supplierInfo: rpqFormData.supplierInfo,
+                // Make sure items are included with all properties
+                items: rpqFormData.items.map(item => ({
+                    id: item.id || null, // Include existing item ID if available
+                    productId: item.productId,
+                    variationId: item.variationId || null,
+                    productName: item.productName,
+                    sku: item.sku || '',
+                    upc: item.upc || '',
+                    variation: item.variation || '',
+                    uom: item.uom || 'PCS',
+                    qty: parseInt(item.qty) || 1,
+                    mdr: item.mdr ? parseInt(item.mdr) : null // Include MDR
+                })),
+                mdr: rpqFormData.mdr || '',
                 initialPaymentAmount: parseFloat(rpqFormData.initialPaymentAmount) || 0,
                 finalPaymentAmount: parseFloat(rpqFormData.finalPaymentAmount) || 0,
-                qty: parseInt(rpqFormData.qty),
+                paymentInstruction: rpqFormData.paymentInstruction || '',
                 status: 'PENDING'
             };
+
+            console.log('Submitting RPQ payload:', payload); // For debugging
 
             const response = await api.put(`/quotation-requests/${editingRpq.id}`, payload);
             if (response.success) {
@@ -348,12 +777,15 @@ const InventoryRequestManagement = () => {
                 await loadRpqRequests();
             }
         } catch (error) {
-            toast.error('Failed to update quotation request');
+            console.error('Error updating quotation:', error);
+            console.error('Error response:', error.response?.data);
+            toast.error(error.response?.data?.message || 'Failed to update quotation request');
         } finally {
             setSubmitting(false);
             setActionLoading(false);
         }
     };
+    
 
     const handleConfirmProduct = async (rpq) => {
         if (!window.confirm('Confirm this product quotation?')) return;
@@ -418,11 +850,14 @@ const InventoryRequestManagement = () => {
     };
 
     const resetIrrForm = () => {
-        setIrrFormData({ supplierId: '', productId: '', variationId: '', uom: '', qty: '', remarks: '' });
+        setIrrFormData({ supplierId: '', items: [], remarks: '' });
         setSelectedSupplier(null);
         setSelectedProduct(null);
         setSupplierProducts([]);
         setEditingIrr(null);
+        setSelectedProductForAdd('');
+        setProductSearchTerm('');
+        setShowProductDropdown(false);
     };
 
     const resetRpqForm = () => {
@@ -463,7 +898,7 @@ const InventoryRequestManagement = () => {
     }
 
     return (
-        <div className="p-6 max-w-7xl mx-auto space-y-8">
+        <div className="p-6 max-w-full mx-auto px-8">
             <Toaster position="top-right" />
             <LoadingOverlay show={actionLoading} message="Processing..." />
 
@@ -553,129 +988,23 @@ const InventoryRequestManagement = () => {
                                         </tr>
                                     ) : (
                                         filteredIrrRequests.map((req) => (
-                                            <tr key={req.id} className="hover:bg-gray-50">
-                                                <td className="px-6 py-4 font-medium text-gray-900">{req.controlNumber}</td>
-                                                <td className="px-6 py-4 text-gray-900">{req.requestor}</td>
-                                                <td className="px-6 py-4">
-                                                    <div className="text-sm text-gray-900">{req.productName}</div>
-                                                    {req.variation && (
-                                                        <div className="text-xs text-gray-500">{req.variation}</div>
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4 text-gray-900">{req.qty} {req.uom}</td>
-                                                <td className="px-6 py-4 text-gray-900">
-                                                    {req.createdAt ? new Date(req.createdAt).toLocaleDateString() : '-'}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${req.status === 'PROCEEDED_TO_RPQ'
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : 'bg-yellow-100 text-yellow-800'
-                                                        }`}>
-                                                        {req.status || 'PENDING'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <button
-                                                            onClick={() => setViewingIrr(req)}
-                                                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-                                                        >
-                                                            <Eye size={18} />
-                                                        </button>
-                                                        <button
-                                                            onClick={async () => {
-                                                                const loadKey = `edit-${req.id}`;
-                                                                setButtonLoadingState(loadKey, true);
-                                                                setActionLoading(true);
-
-                                                                try {
-                                                                    setEditingIrr(req);
-                                                                    setIrrFormData({
-                                                                        supplierId: req.supplierId,
-                                                                        productId: req.productId,
-                                                                        variationId: req.variationId || '',
-                                                                        uom: req.uom || '',
-                                                                        qty: req.qty,
-                                                                        remarks: req.remarks || ''
-                                                                    });
-
-                                                                    if (req.supplierId) {
-                                                                        const supplier = suppliers.find(s => s.id === req.supplierId);
-                                                                        setSelectedSupplier(supplier);
-
-                                                                        setLoadingProducts(true);
-                                                                        try {
-                                                                            const response = await api.get(`/products/by-supplier/${req.supplierId}`);
-                                                                            if (response.success && response.data && response.data.data) {
-                                                                                const products = response.data.data;
-
-                                                                                const flattenedProducts = [];
-                                                                                products.forEach(product => {
-                                                                                    if (product.variations && product.variations.length > 0) {
-                                                                                        product.variations.forEach(variation => {
-                                                                                            flattenedProducts.push({
-                                                                                                ...product,
-                                                                                                displayName: `${product.productName} - ${variation.combinationDisplay || variation.sku}`,
-                                                                                                variationId: variation.id,
-                                                                                                isVariation: true
-                                                                                            });
-                                                                                        });
-                                                                                    } else {
-                                                                                        flattenedProducts.push({
-                                                                                            ...product,
-                                                                                            displayName: product.productName,
-                                                                                            isVariation: false
-                                                                                        });
-                                                                                    }
-                                                                                });
-
-                                                                                setSupplierProducts(flattenedProducts);
-
-                                                                                const selectedProd = flattenedProducts.find(p => {
-                                                                                    if (req.variationId) {
-                                                                                        return p.id === req.productId && p.variationId === req.variationId;
-                                                                                    }
-                                                                                    return p.id === req.productId;
-                                                                                });
-
-                                                                                if (selectedProd) {
-                                                                                    setSelectedProduct(selectedProd);
-                                                                                }
-                                                                            }
-                                                                        } finally {
-                                                                            setLoadingProducts(false);
-                                                                        }
-                                                                    }
-
-                                                                    setShowIrrModal(true);
-                                                                } finally {
-                                                                    setButtonLoadingState(loadKey, false);
-                                                                    setActionLoading(false);
-                                                                }
-                                                            }}
-                                                            disabled={req.status === 'PROCEEDED_TO_RPQ' || buttonLoading[`edit-${req.id}`]}
-                                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                                                        >
-                                                            {buttonLoading[`edit-${req.id}`] ? (
-                                                                <Loader2 size={18} className="animate-spin" />
-                                                            ) : (
-                                                                <Edit2 size={18} />
-                                                            )}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteIrr(req.id)}
-                                                            disabled={req.status === 'PROCEEDED_TO_RPQ' || buttonLoading[`delete-irr-${req.id}`]}
-                                                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                                                        >
-                                                            {buttonLoading[`delete-irr-${req.id}`] ? (
-                                                                <Loader2 size={18} className="animate-spin" />
-                                                            ) : (
-                                                                <Trash2 size={18} />
-                                                            )}
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
+                                            <IRRTableRow
+                                                key={req.id}
+                                                req={req}
+                                                handleDeleteIrr={handleDeleteIrr}
+                                                setViewingIrr={setViewingIrr}
+                                                setEditingIrr={setEditingIrr}
+                                                setShowIrrModal={setShowIrrModal}
+                                                setIrrFormData={setIrrFormData}
+                                                suppliers={suppliers}
+                                                setSelectedSupplier={setSelectedSupplier}
+                                                setLoadingProducts={setLoadingProducts}
+                                                setSupplierProducts={setSupplierProducts}
+                                                setButtonLoadingState={setButtonLoadingState}
+                                                setActionLoading={setActionLoading}
+                                                buttonLoading={buttonLoading}
+                                                api={api}
+                                            />
                                         ))
                                     )}
                                 </tbody>
@@ -727,9 +1056,39 @@ const InventoryRequestManagement = () => {
                                                 <td className="px-6 py-4 text-gray-900">{req.requestor}</td>
                                                 <td className="px-6 py-4 text-gray-900">{req.supplierName}</td>
                                                 <td className="px-6 py-4">
-                                                    <div className="text-sm text-gray-900">{req.productName}</div>
-                                                    {req.variation && (
-                                                        <div className="text-xs text-gray-500">{req.variation}</div>
+                                                    {req.items && req.items.length > 0 ? (
+                                                        req.items.length === 1 ? (
+                                                            <div className="text-sm">
+                                                                <div className="text-gray-900 font-medium">{req.items[0].productName}</div>
+                                                                {req.items[0].variation && (
+                                                                    <div className="text-xs text-gray-500 mt-0.5">{req.items[0].variation}</div>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="text-sm">
+                                                                <button
+                                                                    onClick={() => toggleRpqRow(req.id)}
+                                                                    className="flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium"
+                                                                >
+                                                                    {expandedRpqRows[req.id] ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                                                    {req.items.length} products
+                                                                </button>
+                                                                {expandedRpqRows[req.id] && (
+                                                                    <div className="mt-2 space-y-1.5 pl-5 border-l-2 border-blue-200">
+                                                                        {req.items.map((item, idx) => (
+                                                                            <div key={idx}>
+                                                                                <div className="text-gray-900 font-medium">{item.productName}</div>
+                                                                                {item.variation && (
+                                                                                    <div className="text-xs text-gray-500">{item.variation}</div>
+                                                                                )}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )
+                                                    ) : (
+                                                        <div className="text-sm text-gray-500">-</div>
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-900">
@@ -760,13 +1119,8 @@ const InventoryRequestManagement = () => {
                                                                     supplierId: req.supplierId,
                                                                     supplierName: req.supplierName,
                                                                     supplierInfo: req.supplierInfo || {},
-                                                                    productId: req.productId,
-                                                                    productName: req.productName,
-                                                                    sku: req.sku,
-                                                                    variation: req.variation,
-                                                                    uom: req.uom,
+                                                                    items: req.items || [],
                                                                     mdr: req.mdr || '',
-                                                                    qty: req.qty,
                                                                     initialPaymentAmount: req.initialPaymentAmount || '',
                                                                     finalPaymentAmount: req.finalPaymentAmount || '',
                                                                     paymentInstruction: req.paymentInstruction || ''
@@ -866,68 +1220,293 @@ const InventoryRequestManagement = () => {
                                 </div>
                             )}
 
-                            {/* Product Selection */}
-                            {/* Product Selection */}
+                            {/* Product Selection with Add Button */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Product <span className="text-red-500">*</span>
+                                    Add Products <span className="text-red-500">*</span>
                                 </label>
-                                <select
-                                    value={irrFormData.productId}
-                                    onChange={(e) => {
-                                        const selectedIndex = e.target.selectedIndex - 1; // -1 for the placeholder option
-                                        if (selectedIndex >= 0) {
-                                            const product = supplierProducts[selectedIndex];
-                                            handleProductChange(e.target.value, product);
-                                        } else {
-                                            handleProductChange('', null);
-                                        }
-                                    }}
-                                    required
-                                    disabled={!irrFormData.supplierId || loadingProducts}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                >
-                                    <option value="">
-                                        {loadingProducts ? 'Loading products...' : 'Select product'}
-                                    </option>
-                                    {supplierProducts.map((product, index) => (
-                                        <option key={index} value={product.id}>
-                                            {product.displayName}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                                <div className="flex gap-3">
+                                    {/* Searchable Dropdown */}
+                                    <div className="flex-1 relative">
+                                        <input
+                                            type="text"
+                                            value={productSearchTerm}
+                                            onChange={(e) => {
+                                                setProductSearchTerm(e.target.value);
+                                                setShowProductDropdown(true);
+                                            }}
+                                            onFocus={() => setShowProductDropdown(true)}
+                                            disabled={!irrFormData.supplierId || loadingProducts}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                            placeholder={loadingProducts ? 'Loading products...' : 'Search products...'}
+                                        />
 
-                            {/* Product Details */}
-                            {selectedProduct && (
-                                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                    <h3 className="font-semibold text-gray-900 mb-3">Product Details</h3>
-                                    <div className="grid grid-cols-2 gap-3 text-sm">
-                                        <div>
-                                            <span className="text-gray-600">SKU:</span>
-                                            <span className="ml-2 text-gray-900">
-                                                {selectedProduct.isVariation
-                                                    ? selectedProduct.variations?.find(v => v.id === selectedProduct.variationId)?.sku || '-'
-                                                    : selectedProduct.sku || '-'}
-                                            </span>
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-600">UPC:</span>
-                                            <span className="ml-2 text-gray-900">
-                                                {selectedProduct.isVariation
-                                                    ? selectedProduct.variations?.find(v => v.id === selectedProduct.variationId)?.upc || '-'
-                                                    : selectedProduct.upc || '-'}
-                                            </span>
-                                        </div>
-                                        {selectedProduct.isVariation && selectedProduct.variations && (
-                                            <div className="col-span-2">
-                                                <span className="text-gray-600">Variation:</span>
-                                                <span className="ml-2 text-gray-900">
-                                                    {selectedProduct.variations.find(v => v.id === selectedProduct.variationId)?.combinationDisplay || '-'}
-                                                </span>
+                                        {/* Dropdown List */}
+                                        {showProductDropdown && !loadingProducts && irrFormData.supplierId && Array.isArray(supplierProducts) && supplierProducts.length > 0 && (
+                                            <div className="absolute z-50 w-full mt-2 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                                {(() => {
+                                                    // Filter products based on search term
+                                                    const filtered = supplierProducts.filter(product => {
+                                                        if (!productSearchTerm) return true;
+
+                                                        const searchLower = productSearchTerm.toLowerCase();
+                                                        const nameMatch = product.displayName?.toLowerCase().includes(searchLower);
+                                                        const skuMatch = product.sku?.toLowerCase().includes(searchLower);
+                                                        const upcMatch = product.upc?.toLowerCase().includes(searchLower);
+                                                        const brandMatch = product.brand?.toLowerCase().includes(searchLower);
+
+                                                        return nameMatch || skuMatch || upcMatch || brandMatch;
+                                                    });
+
+                                                    if (filtered.length === 0) {
+                                                        return (
+                                                            <div className="px-4 py-6 text-center text-gray-500 text-sm">
+                                                                No products found
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    return filtered.map((product) => {
+                                                        const key = product.isVariation
+                                                            ? `${product.id}_${product.variationId}`
+                                                            : `${product.id}`;
+
+                                                        // Check if product is already added
+                                                        const isAlreadyAdded = Array.isArray(irrFormData.items) && irrFormData.items.some(item => {
+                                                            if (product.isVariation) {
+                                                                return item.productId === product.id && item.variationId === product.variationId;
+                                                            }
+                                                            return item.productId === product.id;
+                                                        });
+
+                                                        return (
+                                                            <button
+                                                                key={key}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    if (!isAlreadyAdded) {
+                                                                        setSelectedProductForAdd(key);
+                                                                        setProductSearchTerm(product.displayName);
+                                                                        setShowProductDropdown(false);
+                                                                    }
+                                                                }}
+                                                                disabled={isAlreadyAdded}
+                                                                className={`w-full px-4 py-2.5 text-left transition border-b border-gray-100 last:border-b-0 ${isAlreadyAdded
+                                                                    ? 'bg-gray-100 cursor-not-allowed opacity-60'
+                                                                    : selectedProductForAdd === key
+                                                                        ? 'bg-blue-50 hover:bg-blue-100'
+                                                                        : 'hover:bg-blue-50'
+                                                                    }`}
+                                                            >
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex-1">
+                                                                        <div className="font-medium text-gray-900 text-sm">
+                                                                            {product.displayName}
+                                                                        </div>
+                                                                        {product.brand && (
+                                                                            <div className="text-xs text-gray-500 mt-1">
+                                                                                Brand: {product.brand}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                                                                        {isAlreadyAdded && (
+                                                                            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                                                                                Added
+                                                                            </span>
+                                                                        )}
+                                                                        {selectedProductForAdd === key && !isAlreadyAdded && (
+                                                                            <Check size={16} className="text-blue-600" />
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </button>
+                                                        );
+                                                    });
+                                                })()}
+                                            </div>
+                                        )}
+
+                                        {/* Show message when no products available */}
+                                        {showProductDropdown && !loadingProducts && irrFormData.supplierId && (!Array.isArray(supplierProducts) || supplierProducts.length === 0) && (
+                                            <div className="absolute z-50 w-full mt-2 bg-white border border-gray-300 rounded-lg shadow-lg">
+                                                <div className="px-4 py-6 text-center text-gray-500 text-sm">
+                                                    No products available for this supplier
+                                                </div>
                                             </div>
                                         )}
                                     </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleAddProductToTable}
+                                        disabled={!selectedProductForAdd}
+                                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                        <Plus size={18} />
+                                        Add Product
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Product Preview Card */}
+                            {selectedProductForAdd && (
+                                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
+                                    <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                        <Eye size={16} className="text-blue-600" />
+                                        Selected Product Preview
+                                    </h4>
+                                    {(() => {
+                                        const selectedProd = supplierProducts.find(p => {
+                                            if (selectedProductForAdd.includes('_')) {
+                                                const [prodId, varId] = selectedProductForAdd.split('_');
+                                                return p.id === parseInt(prodId) && p.variationId === parseInt(varId);
+                                            }
+                                            return p.id === parseInt(selectedProductForAdd);
+                                        });
+
+                                        if (!selectedProd) return null;
+
+                                        const variation = selectedProd.isVariation
+                                            ? selectedProd.variations?.find(v => v.id === selectedProd.variationId)
+                                            : null;
+
+                                        return (
+                                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                                <div>
+                                                    <span className="text-gray-600 font-medium">Product Name:</span>
+                                                    <p className="text-gray-900 font-semibold mt-1">{selectedProd.productName}</p>
+                                                </div>
+
+                                                {selectedProd.isVariation && variation && (
+                                                    <div>
+                                                        <span className="text-gray-600 font-medium">Variation:</span>
+                                                        <p className="text-gray-900 font-semibold mt-1">
+                                                            {variation.combinationDisplay}
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                <div>
+                                                    <span className="text-gray-600 font-medium">SKU:</span>
+                                                    <p className="text-gray-900 mt-1">
+                                                        {selectedProd.isVariation ? variation?.sku : selectedProd.sku || '-'}
+                                                    </p>
+                                                </div>
+
+                                                <div>
+                                                    <span className="text-gray-600 font-medium">UPC:</span>
+                                                    <p className="text-gray-900 mt-1">
+                                                        {selectedProd.isVariation ? variation?.upc : selectedProd.upc || '-'}
+                                                    </p>
+                                                </div>
+
+                                                {selectedProd.brand && (
+                                                    <div>
+                                                        <span className="text-gray-600 font-medium">Brand:</span>
+                                                        <p className="text-gray-900 mt-1">{selectedProd.brand}</p>
+                                                    </div>
+                                                )}
+
+                                                {selectedProd.category && (
+                                                    <div>
+                                                        <span className="text-gray-600 font-medium">Category:</span>
+                                                        <p className="text-gray-900 mt-1">{selectedProd.category}</p>
+                                                    </div>
+                                                )}
+
+                                                {selectedProd.isVariation && variation?.weight && (
+                                                    <div>
+                                                        <span className="text-gray-600 font-medium">Weight:</span>
+                                                        <p className="text-gray-900 mt-1">{variation.weight} kg</p>
+                                                    </div>
+                                                )}
+
+                                                {selectedProd.isVariation && variation?.dimensions && (
+                                                    <div>
+                                                        <span className="text-gray-600 font-medium">Dimensions:</span>
+                                                        <p className="text-gray-900 mt-1">{variation.dimensions}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            )}
+
+
+                            {/* Products Table */}
+                            {irrFormData.items.length > 0 && (
+                                <div className="border rounded-lg overflow-hidden">
+                                    <table className="w-full">
+                                        <thead className="bg-gray-50 border-b">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product Name</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">UPC</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Variation</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">UOM</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
+                                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200">
+                                            {irrFormData.items.map((item, index) => (
+                                                <tr key={index} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-3 text-sm text-gray-900 font-medium">
+                                                        {item.productName}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900">{item.sku || '-'}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900">{item.upc || '-'}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-600">
+                                                        {item.variation || '-'}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <select
+                                                            value={item.uom}
+                                                            onChange={(e) => handleItemChange(index, 'uom', e.target.value)}
+                                                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                        >
+                                                            <option value="PCS">PCS</option>
+                                                            <option value="BOX">BOX</option>
+                                                            <option value="CTN">CTN</option>
+                                                            <option value="KG">KG</option>
+                                                            <option value="L">L</option>
+                                                            <option value="M">M</option>
+                                                            <option value="SET">SET</option>
+                                                            <option value="PACK">PACK</option>
+                                                        </select>
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <input
+                                                            type="number"
+                                                            value={item.qty}
+                                                            onChange={(e) => handleItemChange(index, 'qty', e.target.value)}
+                                                            min="1"
+                                                            className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                                                        />
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveItem(index)}
+                                                            className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+
+                            {irrFormData.items.length === 0 && (
+                                <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                                    <Package size={40} className="mx-auto text-gray-400 mb-2" />
+                                    <p className="text-gray-500 text-sm">No products added yet</p>
+                                    <p className="text-gray-400 text-xs">Select a product above and click "Add Product"</p>
                                 </div>
                             )}
 
@@ -945,46 +1524,6 @@ const InventoryRequestManagement = () => {
                                 />
                             </div>
 
-                            {/* UOM and Quantity */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        UOM <span className="text-red-500">*</span>
-                                    </label>
-                                    <select
-                                        value={irrFormData.uom}
-                                        onChange={(e) => setIrrFormData({ ...irrFormData, uom: e.target.value })}
-                                        required
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    >
-                                        <option value="">Select UOM</option>
-                                        <option value="PCS">PCS (Pieces)</option>
-                                        <option value="BOX">BOX</option>
-                                        <option value="CTN">CTN (Carton)</option>
-                                        <option value="KG">KG (Kilogram)</option>
-                                        <option value="L">L (Liter)</option>
-                                        <option value="M">M (Meter)</option>
-                                        <option value="SET">SET</option>
-                                        <option value="PACK">PACK</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Quantity <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={irrFormData.qty}
-                                        onChange={(e) => setIrrFormData({ ...irrFormData, qty: e.target.value })}
-                                        required
-                                        min="1"
-                                        step="1"
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Enter quantity"
-                                    />
-                                </div>
-                            </div>
 
                             {/* Remarks */}
                             <div>
@@ -1056,7 +1595,7 @@ const InventoryRequestManagement = () => {
             {/* IRR View Modal */}
             {viewingIrr && (
                 <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full">
+                    <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                         <div className="border-b px-6 py-4 flex items-center justify-between">
                             <h2 className="text-xl font-bold text-gray-900">Request Details</h2>
                             <button
@@ -1068,7 +1607,7 @@ const InventoryRequestManagement = () => {
                         </div>
 
                         <div className="p-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-4 pb-4 border-b">
                                 <div>
                                     <span className="text-sm text-gray-600">Control Number:</span>
                                     <p className="font-semibold text-gray-900">{viewingIrr.controlNumber}</p>
@@ -1078,34 +1617,54 @@ const InventoryRequestManagement = () => {
                                     <p className="font-semibold text-gray-900">{viewingIrr.requestor}</p>
                                 </div>
                                 <div>
-                                    <span className="text-sm text-gray-600">Product:</span>
-                                    <p className="font-semibold text-gray-900">{viewingIrr.productName}</p>
-                                </div>
-                                <div>
-                                    <span className="text-sm text-gray-600">SKU:</span>
-                                    <p className="font-semibold text-gray-900">{viewingIrr.sku || '-'}</p>
-                                </div>
-                                {viewingIrr.variation && (
-                                    <div className="col-span-2">
-                                        <span className="text-sm text-gray-600">Variation:</span>
-                                        <p className="font-semibold text-gray-900">{viewingIrr.variation}</p>
-                                    </div>
-                                )}
-                                <div>
-                                    <span className="text-sm text-gray-600">Quantity:</span>
-                                    <p className="font-semibold text-gray-900">{viewingIrr.qty} {viewingIrr.uom}</p>
-                                </div>
-                                <div>
                                     <span className="text-sm text-gray-600">Status:</span>
                                     <p className="font-semibold text-gray-900">{viewingIrr.status || 'PENDING'}</p>
                                 </div>
-                                {viewingIrr.remarks && (
-                                    <div className="col-span-2">
-                                        <span className="text-sm text-gray-600">Remarks:</span>
-                                        <p className="font-semibold text-gray-900">{viewingIrr.remarks}</p>
-                                    </div>
-                                )}
+                                <div>
+                                    <span className="text-sm text-gray-600">Date:</span>
+                                    <p className="font-semibold text-gray-900">
+                                        {viewingIrr.createdAt ? new Date(viewingIrr.createdAt).toLocaleDateString() : '-'}
+                                    </p>
+                                </div>
                             </div>
+
+                            {/* Products Table */}
+                            {viewingIrr.items && viewingIrr.items.length > 0 && (
+                                <div>
+                                    <h3 className="font-semibold text-gray-900 mb-3">Products</h3>
+                                    <div className="border rounded-lg overflow-hidden">
+                                        <table className="w-full">
+                                            <thead className="bg-gray-50 border-b">
+                                                <tr>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Product</th>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">SKU</th>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">UPC</th>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Variation</th>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Qty</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y">
+                                                {viewingIrr.items.map((item, idx) => (
+                                                    <tr key={idx}>
+                                                        <td className="px-4 py-2 text-sm">{item.productName}</td>
+                                                        <td className="px-4 py-2 text-sm">{item.sku || '-'}</td>
+                                                        <td className="px-4 py-2 text-sm">{item.upc || '-'}</td>
+                                                        <td className="px-4 py-2 text-sm">{item.variation || '-'}</td>
+                                                        <td className="px-4 py-2 text-sm">{item.qty} {item.uom}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+
+                            {viewingIrr.remarks && (
+                                <div>
+                                    <span className="text-sm text-gray-600">Remarks:</span>
+                                    <p className="font-semibold text-gray-900 mt-1">{viewingIrr.remarks}</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -1114,7 +1673,7 @@ const InventoryRequestManagement = () => {
             {/* RPQ Modal */}
             {showRpqModal && (
                 <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
                         <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
                             <h2 className="text-xl font-bold text-gray-900">
                                 Edit Quotation Request
@@ -1165,6 +1724,81 @@ const InventoryRequestManagement = () => {
                                 </div>
                             </div>
 
+                            {/* Products Table with Editable MDR and Quantity */}
+                            {rpqFormData.items && rpqFormData.items.length > 0 && (
+                                <div className="border rounded-lg overflow-hidden">
+                                    <div className="bg-gray-50 px-4 py-3 border-b">
+                                        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                                            <Package size={18} />
+                                            Products ({rpqFormData.items.length})
+                                        </h3>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead className="bg-gray-100 border-b">
+                                                <tr>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product Name</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Variation</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">UOM</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">MDR</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200 bg-white">
+                                                {rpqFormData.items.map((item, idx) => (
+                                                    <tr key={idx} className="hover:bg-gray-50">
+                                                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                                            {item.productName}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm text-gray-600">
+                                                            {item.sku || '-'}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm text-gray-600">
+                                                            {item.variation || '-'}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                                            {item.uom || 'PCS'}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <input
+                                                                type="number"
+                                                                value={item.qty}
+                                                                onChange={(e) => {
+                                                                    const newItems = [...rpqFormData.items];
+                                                                    newItems[idx] = { ...newItems[idx], qty: parseInt(e.target.value) || 0 };
+                                                                    setRpqFormData({ ...rpqFormData, items: newItems });
+                                                                }}
+                                                                min="1"
+                                                                step="1"
+                                                                required
+                                                                className="w-24 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                placeholder="Qty"
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <input
+                                                                type="number"
+                                                                value={item.mdr || ''}
+                                                                onChange={(e) => {
+                                                                    const newItems = [...rpqFormData.items];
+                                                                    newItems[idx] = { ...newItems[idx], mdr: e.target.value };
+                                                                    setRpqFormData({ ...rpqFormData, items: newItems });
+                                                                }}
+                                                                min="0"
+                                                                step="1"
+                                                                className="w-24 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                placeholder="MDR"
+                                                            />
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Payment Arrangement */}
                             <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
                                 <h3 className="font-semibold text-gray-900 mb-3">Payment Arrangement</h3>
@@ -1198,76 +1832,6 @@ const InventoryRequestManagement = () => {
                                             placeholder="Enter amount"
                                         />
                                     </div>
-                                </div>
-                            </div>
-
-                            {/* Product Information */}
-                            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                    <Package size={18} />
-                                    Product Information
-                                </h3>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <span className="text-sm text-gray-600">Product Name:</span>
-                                        <p className="font-medium text-gray-900">{rpqFormData.productName}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-sm text-gray-600">SKU:</span>
-                                        <p className="font-medium text-gray-900">{rpqFormData.sku || '-'}</p>
-                                    </div>
-                                    {rpqFormData.variation && (
-                                        <div className="col-span-2">
-                                            <span className="text-sm text-gray-600">Variation:</span>
-                                            <p className="font-medium text-gray-900">{rpqFormData.variation}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Order Details */}
-                            <div className="grid grid-cols-3 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        UOM
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={rpqFormData.uom}
-                                        disabled
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        MDR (Minimum Order)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={rpqFormData.mdr}
-                                        onChange={(e) => setRpqFormData({ ...rpqFormData, mdr: e.target.value })}
-                                        min="1"
-                                        step="1"
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Enter MDR"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Quantity <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={rpqFormData.qty}
-                                        onChange={(e) => setRpqFormData({ ...rpqFormData, qty: e.target.value })}
-                                        required
-                                        min="1"
-                                        step="1"
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Enter quantity"
-                                    />
                                 </div>
                             </div>
 
@@ -1381,36 +1945,32 @@ const InventoryRequestManagement = () => {
                             {/* Product Info */}
                             <div className="p-4 bg-gray-50 rounded-lg">
                                 <h3 className="font-semibold text-gray-900 mb-3">Product Information</h3>
-                                <div className="grid grid-cols-2 gap-3 text-sm">
-                                    <div>
-                                        <span className="text-gray-600">Product:</span>
-                                        <p className="font-medium text-gray-900">{viewingRpq.productName}</p>
+                                {viewingRpq.items && viewingRpq.items.length > 0 ? (
+                                    <div className="border rounded-lg overflow-hidden">
+                                        <table className="w-full">
+                                            <thead className="bg-gray-100 border-b">
+                                                <tr>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Product</th>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">SKU</th>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Variation</th>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Qty</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y">
+                                                {viewingRpq.items.map((item, idx) => (
+                                                    <tr key={idx}>
+                                                        <td className="px-4 py-2 text-sm font-medium text-gray-900">{item.productName}</td>
+                                                        <td className="px-4 py-2 text-sm text-gray-600">{item.sku || '-'}</td>
+                                                        <td className="px-4 py-2 text-sm text-gray-600">{item.variation || '-'}</td>
+                                                        <td className="px-4 py-2 text-sm text-gray-900">{item.qty} {item.uom}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
                                     </div>
-                                    <div>
-                                        <span className="text-gray-600">SKU:</span>
-                                        <p className="font-medium text-gray-900">{viewingRpq.sku || '-'}</p>
-                                    </div>
-                                    {viewingRpq.variation && (
-                                        <div className="col-span-2">
-                                            <span className="text-gray-600">Variation:</span>
-                                            <p className="font-medium text-gray-900">{viewingRpq.variation}</p>
-                                        </div>
-                                    )}
-                                    <div>
-                                        <span className="text-gray-600">UOM:</span>
-                                        <p className="font-medium text-gray-900">{viewingRpq.uom}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-600">Quantity:</span>
-                                        <p className="font-medium text-gray-900">{viewingRpq.qty}</p>
-                                    </div>
-                                    {viewingRpq.mdr && (
-                                        <div>
-                                            <span className="text-gray-600">MDR:</span>
-                                            <p className="font-medium text-gray-900">{viewingRpq.mdr}</p>
-                                        </div>
-                                    )}
-                                </div>
+                                ) : (
+                                    <p className="text-sm text-gray-500">No products</p>
+                                )}
                             </div>
 
                             {/* Payment Info */}

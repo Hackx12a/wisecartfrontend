@@ -132,19 +132,17 @@ const DeliveryFormModal = ({
 
             setFormData(editFormData);
 
-            // Set branch info
             if (delivery.branch) {
                 const company = delivery.branch.company || delivery.company;
 
                 if (company) {
                     const branchInfoData = {
                         companyName: company.companyName || '',
-                        tin: delivery.branch.tin || company.tin || '',
                         fullAddress: `${company.address || ''}, ${company.city || ''}, ${company.province || ''}`.trim(),
                         branchName: delivery.branch.branchName || '',
                         branchCode: delivery.branch.branchCode || '',
                         branchAddress: `${delivery.branch.address || ''}, ${delivery.branch.city || ''}, ${delivery.branch.province || ''}`.trim(),
-                        branchTin: delivery.branch.tin || '',
+                        branchTin: delivery.branch.tin || company.tin || '',
                         branchContactNumber: delivery.branch.contactNumber || ''
                     };
 
@@ -211,7 +209,7 @@ const DeliveryFormModal = ({
                 id: `${p.id}_${v.id}`,
                 parentProductId: p.id,
                 variationId: v.id,
-                name: `${v.upc || 'N/A'} - ${p.productName || 'Unknown'} - ${v.sku || 'N/A'}`,
+                name: `${p.productName || 'Unknown'}`,
                 subLabel: v.combinationDisplay || (v.attributes ? Object.entries(v.attributes || {})
                     .map(([key, val]) => `${key}: ${val}`)
                     .join(', ') : 'Variation'),
@@ -219,6 +217,7 @@ const DeliveryFormModal = ({
                 upc: v.upc,
                 sku: v.sku,
                 price: v.price || p.price || 0,
+                uom: p.uom || '',
                 isVariation: true
             }));
         } else {
@@ -226,12 +225,13 @@ const DeliveryFormModal = ({
                 id: `prod_${p.id}`,
                 parentProductId: p.id,
                 variationId: null,
-                name: `${p.upc || 'N/A'} - ${p.productName || 'Unknown'} - ${p.sku || 'N/A'}`,
+                name: `${p.productName || 'Unknown'}`,
                 subLabel: 'No variations',
                 fullName: p.productName || 'Unknown Product',
                 upc: p.upc,
                 sku: p.sku,
                 price: p.price || 0,
+                uom: p.uom || '',
                 isVariation: false
             }];
         }
@@ -300,7 +300,8 @@ const DeliveryFormModal = ({
                 newItems[index] = {
                     ...newItems[index],
                     productId: selectedOption.parentProductId,
-                    variationId: selectedOption.variationId || null
+                    variationId: selectedOption.variationId || null,
+                    uom: selectedOption.uom || ''
                 };
 
                 setFormData({ ...formData, items: newItems });
@@ -317,6 +318,7 @@ const DeliveryFormModal = ({
                 }
                 return;
             }
+
         } else {
             newItems[index][field] = value;
         }
@@ -334,7 +336,6 @@ const DeliveryFormModal = ({
 
             newItems[index].preparedQty = '';
             newItems[index].deliveredQty = '';
-            newItems[index].uom = '';
             setFormData({ ...formData, items: newItems });
         }
     };
@@ -374,7 +375,8 @@ const DeliveryFormModal = ({
             return;
         }
 
-        // Check if product already exists in items
+
+
         const exists = formData.items.some(item =>
             item.productId === selectedOption.parentProductId &&
             item.variationId === selectedOption.variationId
@@ -385,16 +387,17 @@ const DeliveryFormModal = ({
             return;
         }
 
-        // Add the product to items
+
         const newItem = {
             productId: selectedOption.parentProductId,
             variationId: selectedOption.variationId || null,
             preparedQty: '',
             deliveredQty: '',
-            uom: '',
+            uom: selectedOption.uom || '',
             warehouseId: formData.selectedWarehouseId,
             originalPreparedQty: 0
         };
+
 
         const newItems = [...formData.items, newItem];
         setFormData({ ...formData, items: newItems });
@@ -419,7 +422,6 @@ const DeliveryFormModal = ({
             if (branch && branch.company) {
                 setBranchInfo({
                     companyName: branch.company.companyName,
-                    tin: branch.company.tin,
                     fullAddress: `${branch.company.address || ''}, ${branch.company.city || ''}, ${branch.company.province || ''}`.trim(),
                     branchName: branch.branchName,
                     branchCode: branch.branchCode,
@@ -634,9 +636,13 @@ const DeliveryFormModal = ({
                                 <input
                                     type="text"
                                     value={formData.deliveryReceiptNumber}
-                                    onChange={(e) => setFormData({ ...formData, deliveryReceiptNumber: e.target.value })}
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/[^0-9]/g, '');
+                                        setFormData({ ...formData, deliveryReceiptNumber: value });
+                                    }}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                     required
+                                    placeholder="Enter numbers only"
                                 />
                             </div>
                             <div>
@@ -838,17 +844,14 @@ const DeliveryFormModal = ({
                                                             <span className="text-sm text-gray-900">{selectedOption?.upc || 'N/A'}</span>
                                                         </td>
 
+
                                                         {/* UOM */}
                                                         <td className="px-4 py-3">
-                                                            <input
-                                                                type="text"
-                                                                value={item.uom || ''}
-                                                                onChange={(e) => handleItemChange(i, 'uom', e.target.value)}
-                                                                className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
-                                                                placeholder="pcs"
-                                                                disabled={isDelivered}
-                                                            />
+                                                            <span className="text-sm text-gray-900 font-medium">
+                                                                {item.uom || 'N/A'}
+                                                            </span>
                                                         </td>
+
 
                                                         {/* Stock */}
                                                         <td className="px-4 py-3">

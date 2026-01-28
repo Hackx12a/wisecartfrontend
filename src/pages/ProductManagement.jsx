@@ -696,6 +696,7 @@ const ProductManagement = () => {
     brand: '',
     shelfLife: '',
     unitCost: '',
+    uom: '',
     variations: []
   });
   const [actionLoading, setActionLoading] = useState(false);
@@ -1062,6 +1063,7 @@ const ProductManagement = () => {
       if (variationCombinations.length > 0) {
         variationCombinations.forEach(combo => {
           const variationData = {
+            id: combo.id || null,
             attributes: combo.attributes,
             sku: combo.sku || null,
             upc: combo.upc || null,
@@ -1170,6 +1172,7 @@ const ProductManagement = () => {
         brand: formData.brand || null,
         shelfLife: formData.shelfLife || null,
         imageUrl: formData.imageUrl || null,
+        uom: formData.uom || null,
         variations: normalizedVariations,
         companyPrices: companyPricesArray,
         companyBasePrices: companyBasePricesArray
@@ -1299,6 +1302,7 @@ const ProductManagement = () => {
       brand: product.brand || '',
       shelfLife: product.shelfLife || '',
       unitCost: product.unitCost || '',
+      uom: product.uom || '',
       imageUrl: product.imageUrl || '',
       variations: []
     });
@@ -1365,6 +1369,7 @@ const ProductManagement = () => {
           }
 
           return {
+            id: v.id,
             combination: comboKey,
             attributes: attrs,
             sku: v.sku || '',
@@ -1386,7 +1391,9 @@ const ProductManagement = () => {
 
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this product? This will also delete any associated alerts.')) return;
+    if (!window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+      return;
+    }
 
     setActionLoading(true);
     setLoadingMessage('Deleting product...');
@@ -1398,7 +1405,7 @@ const ProductManagement = () => {
         return;
       }
 
-      toast.success('Product and associated alerts deleted successfully');
+      toast.success('Product deleted successfully');
       await loadData();
 
       if (filteredProducts.length % itemsPerPage === 1 && currentPage > 1) {
@@ -1437,6 +1444,7 @@ const ProductManagement = () => {
       brand: '',
       unitCost: '',
       shelfLife: '',
+      uom: '',
       variations: []
     });
     setVariationTypes([]);
@@ -1502,7 +1510,7 @@ const ProductManagement = () => {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-6 max-w-full mx-auto px-8">
       <LoadingOverlay show={actionLoading} message={loadingMessage} />
       <Toaster position="top-right" />
 
@@ -1964,6 +1972,20 @@ const ProductManagement = () => {
                       onChange={handleInputChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Enter materials"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Unit of Measure (UOM)
+                    </label>
+                    <input
+                      type="text"
+                      name="uom"
+                      value={formData.uom}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="e.g., pcs, box, kg, liter"
                     />
                   </div>
 

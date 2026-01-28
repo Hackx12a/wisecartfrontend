@@ -185,7 +185,7 @@ const SupplierManagement = () => {
     };
 
     const getPaymentMethodDisplay = (method) => {
-        switch(method) {
+        switch (method) {
             case 'TELEGRAPHIC_TRANSFER': return 'T/T';
             case 'ALIPAY': return 'Alipay';
             case 'PAYPAL': return 'PayPal';
@@ -202,7 +202,7 @@ const SupplierManagement = () => {
     ) : [];
 
     return (
-        <div className="p-6 max-w-7xl mx-auto">
+        <div className="p-6 max-w-full mx-auto px-8">
             <Toaster position="top-right" />
             <LoadingOverlay
                 show={actionLoading}

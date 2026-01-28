@@ -294,7 +294,7 @@ const PurchaseOrderManagement = () => {
     return (
         <>
             <LoadingOverlay show={isLoadingOverlay} message={loadingMessage} />
-            <div className="p-6 max-w-7xl mx-auto">
+            <div className="p-6 max-w-full mx-auto px-8">
                 <Toaster position="top-right" />
                 {/* Header */}
                 <div className="mb-8">

@@ -65,9 +65,9 @@ const BranchCompanyManagement = () => {
   };
 
   const handleEditCompany = (company) => {
-    setEditingData({ 
+    setEditingData({
       branch: { id: 'company-only-edit' }, // Dummy branch for company-only edit
-      company 
+      company
     });
     setModalMode('edit-company-only');
     setShowModal(true);
@@ -126,7 +126,7 @@ const BranchCompanyManagement = () => {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 max-w-full mx-auto px-8">
       <Toaster position="top-right" />
       <LoadingOverlay show={loading} message={loadingMessage} />
 
@@ -140,21 +140,19 @@ const BranchCompanyManagement = () => {
         <nav className="flex gap-8">
           <button
             onClick={() => setActiveTab('branches')}
-            className={`pb-4 px-1 border-b-2 font-medium text-sm transition ${
-              activeTab === 'branches'
+            className={`pb-4 px-1 border-b-2 font-medium text-sm transition ${activeTab === 'branches'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
             Branches ({branches.length})
           </button>
           <button
             onClick={() => setActiveTab('companies')}
-            className={`pb-4 px-1 border-b-2 font-medium text-sm transition ${
-              activeTab === 'companies'
+            className={`pb-4 px-1 border-b-2 font-medium text-sm transition ${activeTab === 'companies'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
             Companies ({companies.length})
           </button>
@@ -168,8 +166,8 @@ const BranchCompanyManagement = () => {
           <input
             type="text"
             placeholder={
-              activeTab === 'branches' 
-                ? "Search by code, name, or city..." 
+              activeTab === 'branches'
+                ? "Search by code, name, or city..."
                 : "Search by company name, TIN, or branch..."
             }
             value={searchTerm}

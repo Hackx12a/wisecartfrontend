@@ -84,6 +84,7 @@ const DeliveryManagement = () => {
 
         if (response.success) {
           setModalState({
+            
             show: true,
             mode: 'edit',
             delivery: response.data

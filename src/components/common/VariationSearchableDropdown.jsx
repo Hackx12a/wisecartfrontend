@@ -58,7 +58,7 @@ const VariationSearchableDropdown = ({
     // Determine which location is selected
     let locationId = null;
     let locationType = null;
-    
+
     if (formData?.fromWarehouseId) {
       locationId = formData.fromWarehouseId;
       locationType = 'warehouse';
@@ -90,7 +90,7 @@ const VariationSearchableDropdown = ({
   };
 
   const stockInfo = selectedOption ? getStockInfo(selectedOption) : null;
-  
+
   // Determine which location is selected for loading key
   let locationId = null;
   if (formData?.fromWarehouseId) {
@@ -124,7 +124,7 @@ const VariationSearchableDropdown = ({
         <div className="flex-1 min-w-0">
           {selectedOption ? (
             <div className="text-gray-900 font-medium truncate">
-              {selectedOption.name}
+              {selectedOption.upc || 'N/A'} - {selectedOption.fullName} - {selectedOption.sku || 'N/A'}
             </div>
           ) : (
             <span className="text-gray-500">{placeholder}</span>
@@ -184,7 +184,9 @@ const VariationSearchableDropdown = ({
                       }`}
                   >
                     <div className="flex flex-col">
-                      <div className="font-medium">{option.name}</div>
+                      <div className="font-medium">
+                        {option.upc || 'N/A'} - {option.name} - {option.sku || 'N/A'}
+                      </div>
                       {option.subLabel && option.subLabel !== 'No variations' && (
                         <div className="text-xs text-gray-600 mt-0.5">Variation: {option.subLabel}</div>
                       )}
@@ -230,7 +232,33 @@ const VariationSearchableDropdown = ({
               </div>
             </div>
 
-            {/* Stock Information Section - FIXED */}
+
+            {/* All Company Prices - NEW */}
+            {/* All Company Prices - Collapsible */}
+            {selectedOption.allCompanyPrices && selectedOption.allCompanyPrices.length > 0 && (
+              <div className="pt-2 border-t border-gray-200">
+                <details className="group">
+                  <summary className="flex items-center justify-between cursor-pointer list-none">
+                    <div className="text-gray-700 font-medium">All Company Prices ({selectedOption.allCompanyPrices.length})</div>
+                    <ChevronDown size={14} className="text-gray-500 transition-transform group-open:rotate-180" />
+                  </summary>
+                  <div className="space-y-1 max-h-24 overflow-y-auto mt-2">
+                    {selectedOption.allCompanyPrices.map((companyPrice, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-xs bg-white p-1.5 rounded border border-gray-200">
+                        <span className="font-medium text-gray-700 truncate flex-1">
+                          {companyPrice.companyName}
+                        </span>
+                        <span className="font-bold text-green-700 ml-2">
+                          ₱{companyPrice.price.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              </div>
+            )}
+
+            {/* Stock Information Section */}
             {(formData?.fromWarehouseId || formData?.fromBranchId || formData?.toWarehouseId || formData?.toBranchId) && (stockInfo || isLoading) && (
               <div className="pt-2 border-t border-gray-200">
                 {/* Stock Header with icon */}
@@ -275,14 +303,15 @@ const VariationSearchableDropdown = ({
                 </div>
 
                 {stockInfo?.reservedQuantity > 0 && (
-                  <div className="flex items-center justify-between p-1.5 rounded border border-orange-200">
-                    <span className="text-gray-600 text-xs">Reserved:</span>
-                    <span className="font-semibold text-orange-600">
-                      {stockInfo.reservedQuantity}
-                    </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center justify-between p-2 bg-white rounded border border-orange-200">
+                      <span className="text-gray-600 text-xs">Reserved:</span>
+                      <span className="font-semibold text-orange-600">
+                        {stockInfo.reservedQuantity}
+                      </span>
+                    </div>
                   </div>
                 )}
-
               </div>
             )}
 

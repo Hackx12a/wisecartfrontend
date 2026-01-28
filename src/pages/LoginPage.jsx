@@ -76,8 +76,6 @@ const LoginPage = () => {
       const userRole = userData.role || 'USER';
       localStorage.setItem('userRole', userRole);
 
-      console.log('✅ Login successful - Username:', userData.username, 'Role:', userRole);
-
       login(data.accessToken, userData);
 
       toast.success(`Welcome back, ${userData.fullName || userData.username}!`);
