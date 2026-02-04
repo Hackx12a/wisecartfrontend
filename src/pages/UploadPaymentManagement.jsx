@@ -7,6 +7,46 @@ import toast, { Toaster } from 'react-hot-toast';
 import { api } from '../services/api';
 import LoadingOverlay from '../components/common/LoadingOverlay';
 import { getFileUrl, getPlaceholderImage, getFileDownloadUrl } from '../utils/fileUtils';
+import { philippineBanks } from '../utils/philippineBanks';
+
+
+
+const formatNumberWithCommas = (value) => {
+    if (!value && value !== 0) return '';
+    const stringValue = String(value);
+    const numericValue = stringValue.replace(/[^0-9.]/g, '');
+    if (!numericValue) return '';
+
+    const parts = numericValue.split('.');
+    let wholePart = parts[0];
+    const decimalPart = parts.length > 1 ? parts[1] : '';
+    wholePart = wholePart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return decimalPart ? `${wholePart}.${decimalPart}` : wholePart;
+};
+
+const parseFormattedNumber = (formattedValue) => {
+    if (!formattedValue && formattedValue !== 0) return '';
+    const stringValue = String(formattedValue);
+    return stringValue.replace(/[^0-9.]/g, '');
+};
+
+const handleCalculatorInput = (currentValue, newInput, isBackspace) => {
+    const currentCents = Math.round(parseFloat(currentValue || '0') * 100);
+    const currentStr = currentCents.toString().padStart(1, '0');
+
+    let newCents;
+    if (isBackspace) {
+        newCents = Math.floor(currentCents / 10);
+    } else {
+        const digit = newInput.replace(/[^0-9]/g, '').slice(-1);
+        if (digit) {
+            newCents = parseInt(currentStr + digit);
+        } else {
+            return currentValue;
+        }
+    }
+    return (newCents / 100).toFixed(2);
+};
 
 const UploadPaymentManagement = () => {
     const [purchaseOrders, setPurchaseOrders] = useState([]);
@@ -351,7 +391,7 @@ const UploadPaymentManagement = () => {
 
         try {
             const payload = {
-                purchaseOrderId: selectedPOForPayment.id,
+                purchaseOrderId: po.id,
                 bank: paymentFormData.bank,
                 referenceNumber: paymentFormData.referenceNumber,
                 paymentDate: paymentFormData.paymentDate,
@@ -491,7 +531,6 @@ const UploadPaymentManagement = () => {
                                         filteredPaymentOrders.map((po) => (
                                             <tr key={po.id} className="hover:bg-gray-50">
                                                 <td className="px-6 py-4">
-                                                    {/* ✅ UPDATED: Add product icon button */}
                                                     <div className="flex items-center gap-2">
                                                         <span className="font-medium text-gray-900">{po.controlNumber}</span>
                                                         {po.items && po.items.length > 0 && (
@@ -507,13 +546,13 @@ const UploadPaymentManagement = () => {
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-900">{po.supplierName}</td>
                                                 <td className="px-6 py-4 text-gray-900">
-                                                    ${po.totalAmount ? po.totalAmount.toFixed(2) : '0.00'}
+                                                    ${formatNumberWithCommas(po.totalAmount ? po.totalAmount.toFixed(2) : '0.00')}
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-900">
-                                                    ${po.totalPaid ? po.totalPaid.toFixed(2) : '0.00'}
+                                                    ${formatNumberWithCommas(po.totalPaid ? po.totalPaid.toFixed(2) : '0.00')}
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-900">
-                                                    ${po.remainingBalance ? po.remainingBalance.toFixed(2) : '0.00'}
+                                                    ${formatNumberWithCommas(po.remainingBalance ? po.remainingBalance.toFixed(2) : '0.00')}
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-900">
                                                     {po.totalAmount > 0 ? ((po.totalPaid / po.totalAmount) * 100).toFixed(2) : '0.00'}%
@@ -594,6 +633,11 @@ const UploadPaymentManagement = () => {
                         onClose={() => setShowPaymentModal(false)}
                         onSubmit={handlePaymentSubmit}
                         actionLoading={actionLoading}
+                        setActionLoading={setActionLoading}
+                        setIsLoadingOverlay={setIsLoadingOverlay}
+                        setLoadingMessage={setLoadingMessage}
+                        loadInitialData={loadInitialData}
+                        setShowPaymentModal={setShowPaymentModal}
                     />
                 )}
 
@@ -1122,9 +1166,14 @@ const QuotationDetailsSection = ({ quotationRequest }) => {
 
 
 
-const PaymentModal = ({ po, formData, setFormData, onClose, onSubmit, actionLoading }) => {
+const PaymentModal = ({ po, formData, setFormData, onClose, onSubmit, actionLoading, setActionLoading, setIsLoadingOverlay, setLoadingMessage, loadInitialData, setShowPaymentModal }) => {
     const [showProductDetails, setShowProductDetails] = useState(false);
     const [showOverpaymentWarning, setShowOverpaymentWarning] = useState(false);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [selectedFilePreview, setSelectedFilePreview] = useState(null);
+    const [uploadingFile, setUploadingFile] = useState(false);
+    const [bankSearch, setBankSearch] = useState('');
+    const [showBankDropdown, setShowBankDropdown] = useState(false);
 
     const calculateDollarTotal = () => {
         const productDollar = parseFloat(formData.productDollarAmount) || 0;
@@ -1138,36 +1187,92 @@ const PaymentModal = ({ po, formData, setFormData, onClose, onSubmit, actionLoad
         return productPeso + processingPeso;
     };
 
-    // Calculate what percentage THIS payment represents
     const calculateThisPaymentPercentage = () => {
         if (!po || !po.totalAmount || po.totalAmount === 0) return 0;
-
         const productDollar = parseFloat(formData.productDollarAmount) || 0;
         return ((productDollar / po.totalAmount) * 100).toFixed(2);
     };
 
-    // Calculate already paid percentage
     const calculateAlreadyPaidPercentage = () => {
         if (!po || !po.totalAmount || po.totalAmount === 0) return 0;
         return ((po.totalPaid / po.totalAmount) * 100).toFixed(2);
     };
 
-    // Calculate NEW total percentage (first percent + new percent) - NO CAP
     const calculateNewTotalPercentage = () => {
         if (!po || !po.totalAmount || po.totalAmount === 0) return 0;
-
         const alreadyPaid = parseFloat(calculateAlreadyPaidPercentage()) || 0;
         const thisPayment = parseFloat(calculateThisPaymentPercentage()) || 0;
-
-
         const newTotal = alreadyPaid + thisPayment;
         return newTotal.toFixed(2);
     };
 
-
     const isOverpayment = () => {
         const newTotal = parseFloat(calculateNewTotalPercentage()) || 0;
         return newTotal > 100;
+    };
+
+    const handleFileSelect = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (selectedFilePreview) {
+            URL.revokeObjectURL(selectedFilePreview);
+        }
+
+        const allowedTypes = [
+            'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+            'application/pdf'
+        ];
+
+        if (!allowedTypes.includes(file.type)) {
+            toast.error('Please upload an image or PDF file');
+            return;
+        }
+
+        if (file.size > 10 * 1024 * 1024) {
+            toast.error('File size must be less than 10MB');
+            return;
+        }
+
+        setSelectedFile(file);
+        if (file.type.startsWith('image/')) {
+            const previewUrl = URL.createObjectURL(file);
+            setSelectedFilePreview(previewUrl);
+        } else {
+            setSelectedFilePreview(null);
+        }
+    };
+
+    const uploadPaymentProof = async (file) => {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('prefix', 'payment_proof');
+
+            let uploadEndpoint = '/upload/image';
+            if (file.type === 'application/pdf') {
+                uploadEndpoint = '/upload/document';
+            }
+
+            const uploadResponse = await api.upload(uploadEndpoint, formData);
+
+            if (uploadResponse.success) {
+                let fileUrl;
+                if (uploadResponse.data?.data?.url) {
+                    fileUrl = uploadResponse.data.data.url;
+                } else if (uploadResponse.data?.url) {
+                    fileUrl = uploadResponse.data.url;
+                } else {
+                    throw new Error('File uploaded but URL not found in response');
+                }
+                return fileUrl;
+            } else {
+                throw new Error(uploadResponse.error || 'Upload failed');
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            throw error;
+        }
     };
 
     const handleSubmitWithWarning = async (e) => {
@@ -1180,12 +1285,91 @@ const PaymentModal = ({ po, formData, setFormData, onClose, onSubmit, actionLoad
         }
     };
 
-
     const handleSubmitPayment = async (e) => {
         e.preventDefault();
-        onSubmit(e);
+
+        if (!po.totalAmount || po.totalAmount === 0) {
+            toast.error('Purchase order total amount is not set. Please update item prices first.');
+            return;
+        }
+
+        setActionLoading(true);
+        setLoadingMessage('Recording payment...');
+        setIsLoadingOverlay(true);
+
+        try {
+            let paymentProofUrl = null;
+
+            if (selectedFile) {
+                setLoadingMessage('Uploading payment proof...');
+                setUploadingFile(true);
+                try {
+                    paymentProofUrl = await uploadPaymentProof(selectedFile);
+                    toast.success('Payment proof uploaded successfully');
+                } catch (uploadError) {
+                    toast.error('Failed to upload payment proof: ' + uploadError.message);
+                    setIsLoadingOverlay(false);
+                    setActionLoading(false);
+                    setUploadingFile(false);
+                    return;
+                }
+                setUploadingFile(false);
+            }
+
+            setLoadingMessage('Recording payment...');
+
+            const payload = {
+                purchaseOrderId: po.id,  // ✅ CHANGED from selectedPOForPayment.id
+                bank: formData.bank,
+                referenceNumber: formData.referenceNumber,
+                paymentDate: formData.paymentDate,
+                productDollarAmount: parseFloat(formData.productDollarAmount),
+                productPesoAmount: parseFloat(formData.productPesoAmount),
+                processingFeeDollar: parseFloat(formData.processingFeeDollar || 0),
+                processingFeePeso: parseFloat(formData.processingFeePeso || 0),
+                paymentProofUrl: paymentProofUrl
+            };
+
+            const response = await api.post('/payments', payload);
+            if (response.success) {
+                toast.success('Payment recorded successfully');
+                setShowPaymentModal(false);
+                setSelectedFile(null);
+                setSelectedFilePreview(null);
+                await loadInitialData();
+                window.dispatchEvent(new Event('paymentUpdated'));
+            }
+        } catch (error) {
+            console.error('Payment error:', error);
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to record payment';
+            toast.error(errorMessage);
+        } finally {
+            setIsLoadingOverlay(false);
+            setActionLoading(false);
+        }
     };
 
+
+    const filteredBanks = philippineBanks.filter(bank =>
+        bank.toLowerCase().includes(bankSearch.toLowerCase())
+    );
+    useEffect(() => {
+        return () => {
+            if (selectedFilePreview) {
+                URL.revokeObjectURL(selectedFilePreview);
+            }
+        };
+    }, [selectedFilePreview]);
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (showBankDropdown && !event.target.closest('.bank-dropdown-container')) {
+                setShowBankDropdown(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showBankDropdown]);
 
     return (
         <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
@@ -1199,6 +1383,7 @@ const PaymentModal = ({ po, formData, setFormData, onClose, onSubmit, actionLoad
 
                 <form onSubmit={handleSubmitWithWarning} className="p-6 space-y-5">
                     {po.quotationRequest && <QuotationDetailsSection quotationRequest={po.quotationRequest} />}
+
                     <div className="p-4 bg-blue-50 rounded-lg">
                         <div className="grid grid-cols-3 gap-3 text-sm">
                             <div>
@@ -1207,15 +1392,15 @@ const PaymentModal = ({ po, formData, setFormData, onClose, onSubmit, actionLoad
                             </div>
                             <div>
                                 <span className="text-gray-600">Total Amount:</span>
-                                <p className="font-medium text-gray-900">${po.totalAmount?.toFixed(2)}</p>
+                                <p className="font-medium text-gray-900">${formatNumberWithCommas(po.totalAmount?.toFixed(2))}</p>
                             </div>
                             <div>
                                 <span className="text-gray-600">Total Paid:</span>
-                                <p className="font-medium text-gray-900">${po.totalPaid?.toFixed(2) || '0.00'}</p>
+                                <p className="font-medium text-gray-900">${formatNumberWithCommas(po.totalPaid?.toFixed(2) || '0.00')}</p>
                             </div>
                             <div>
                                 <span className="text-gray-600">Remaining:</span>
-                                <p className="font-medium text-gray-900">${po.remainingBalance?.toFixed(2) || '0.00'}</p>
+                                <p className="font-medium text-gray-900">${formatNumberWithCommas(po.remainingBalance?.toFixed(2) || '0.00')}</p>
                             </div>
                             <div>
                                 <span className="text-gray-600">Already Paid:</span>
@@ -1239,143 +1424,286 @@ const PaymentModal = ({ po, formData, setFormData, onClose, onSubmit, actionLoad
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Bank <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                value={formData.bank}
-                                onChange={(e) => setFormData({ ...formData, bank: e.target.value })}
-                                required
-                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                                placeholder="Enter bank name"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Reference Number <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                value={formData.referenceNumber}
-                                onChange={(e) => setFormData({ ...formData, referenceNumber: e.target.value })}
-                                required
-                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                                placeholder="Enter reference number"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Payment Date <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="date"
-                                value={formData.paymentDate}
-                                onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
-                                required
-                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                            />
-                        </div>
-                    </div>
+                    {/* Payment Details - Grid Layout */}
+                    <div className="space-y-4">
+                        <h3 className="font-semibold text-gray-900">Payment Details</h3>
 
-                    <div className="flex items-start pt-3 border-t">
-                        <label className="w-48 text-sm font-medium text-gray-700 pt-2">
-                            Product Cost <span className="text-red-500">*</span>
-                        </label>
-                        <div className="flex-1 flex gap-4">
-                            <div className="flex-1">
+                        {/* Row 1: Bank, Reference Number, Payment Date */}
+                        <div className="grid grid-cols-3 gap-4">
+                            {/* Bank - Searchable Dropdown */}
+                            <div className="bank-dropdown-container relative">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Bank <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={bankSearch || formData.bank}
+                                    onChange={(e) => {
+                                        setBankSearch(e.target.value);
+                                        setFormData({ ...formData, bank: e.target.value });
+                                        setShowBankDropdown(true);
+                                    }}
+                                    onFocus={() => setShowBankDropdown(true)}
+                                    required
+                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Search or select bank"
+                                />
+                                {showBankDropdown && (
+                                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                        {filteredBanks.length === 0 ? (
+                                            <div className="px-4 py-2 text-sm text-gray-500">No banks found</div>
+                                        ) : (
+                                            filteredBanks.map((bank, index) => (
+                                                <button
+                                                    key={index}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setFormData({ ...formData, bank: bank });
+                                                        setBankSearch(bank);
+                                                        setShowBankDropdown(false);
+                                                    }}
+                                                    className="w-full text-left px-4 py-2 hover:bg-blue-50 text-sm"
+                                                >
+                                                    {bank}
+                                                </button>
+                                            ))
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Reference Number */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Reference Number <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.referenceNumber}
+                                    onChange={(e) => setFormData({ ...formData, referenceNumber: e.target.value })}
+                                    required
+                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Enter reference number"
+                                />
+                            </div>
+
+                            {/* Payment Date */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Payment Date <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    value={formData.paymentDate}
+                                    onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
+                                    required
+                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Row 2: Product Cost */}
+                        <div className="grid grid-cols-3 gap-4 items-end">
+                            <div className="text-sm font-medium text-gray-700 pt-7">
+                                Product Cost <span className="text-red-500">*</span>
+                            </div>
+                            <div>
                                 <div className="flex justify-center items-center mb-1">
                                     <span className="text-base font-bold text-gray-800">$</span>
                                     <span className="text-xs text-gray-500 ml-1">(USD)</span>
                                 </div>
                                 <input
-                                    type="number"
-                                    value={formData.productDollarAmount}
-                                    onChange={(e) => {
-                                        setFormData({ ...formData, productDollarAmount: e.target.value });
+                                    type="text"
+                                    value={formatNumberWithCommas(formData.productDollarAmount || '0.00')}
+                                    onChange={(e) => { }}
+                                    onKeyDown={(e) => {
+                                        e.preventDefault();
+                                        let newValue;
+                                        if (e.key === 'Backspace' || e.key === 'Delete') {
+                                            newValue = handleCalculatorInput(formData.productDollarAmount || '0.00', '', true);
+                                        } else if (e.key >= '0' && e.key <= '9') {
+                                            newValue = handleCalculatorInput(formData.productDollarAmount || '0.00', e.key, false);
+                                        } else if (e.key === 'Tab' || e.key === 'Enter') {
+                                            return;
+                                        } else {
+                                            return;
+                                        }
+                                        setFormData({ ...formData, productDollarAmount: newValue });
                                     }}
                                     required
-                                    min="0"
-                                    step="0.01"
-                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-left"
-                                    placeholder="USD"
+                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-right"
+                                    placeholder="0.00"
                                 />
                             </div>
-                            <div className="flex-1">
+                            <div>
                                 <div className="flex justify-center items-center mb-1">
                                     <span className="text-base font-bold text-gray-800">₱</span>
                                     <span className="text-xs text-gray-500 ml-1">(PHP)</span>
                                 </div>
                                 <input
-                                    type="number"
-                                    value={formData.productPesoAmount}
-                                    onChange={(e) => setFormData({ ...formData, productPesoAmount: e.target.value })}
+                                    type="text"
+                                    value={formatNumberWithCommas(formData.productPesoAmount || '0.00')}
+                                    onChange={(e) => { }}
+                                    onKeyDown={(e) => {
+                                        e.preventDefault();
+                                        let newValue;
+                                        if (e.key === 'Backspace' || e.key === 'Delete') {
+                                            newValue = handleCalculatorInput(formData.productPesoAmount || '0.00', '', true);
+                                        } else if (e.key >= '0' && e.key <= '9') {
+                                            newValue = handleCalculatorInput(formData.productPesoAmount || '0.00', e.key, false);
+                                        } else if (e.key === 'Tab' || e.key === 'Enter') {
+                                            return;
+                                        } else {
+                                            return;
+                                        }
+                                        setFormData({ ...formData, productPesoAmount: newValue });
+                                    }}
                                     required
-                                    min="0"
-                                    step="0.01"
-                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-left"
-                                    placeholder="PHP"
+                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-right"
+                                    placeholder="0.00"
                                 />
+                            </div>
+                        </div>
+
+                        {/* Row 3: Processing Fee */}
+                        <div className="grid grid-cols-3 gap-4 items-end">
+                            <div className="text-sm font-medium text-gray-700">
+                                Processing Fee
+                            </div>
+                            <div>
+                                <input
+                                    type="text"
+                                    value={formatNumberWithCommas(formData.processingFeeDollar || '0.00')}
+                                    onChange={(e) => { }}
+                                    onKeyDown={(e) => {
+                                        e.preventDefault();
+                                        let newValue;
+                                        if (e.key === 'Backspace' || e.key === 'Delete') {
+                                            newValue = handleCalculatorInput(formData.processingFeeDollar || '0.00', '', true);
+                                        } else if (e.key >= '0' && e.key <= '9') {
+                                            newValue = handleCalculatorInput(formData.processingFeeDollar || '0.00', e.key, false);
+                                        } else if (e.key === 'Tab' || e.key === 'Enter') {
+                                            return;
+                                        } else {
+                                            return;
+                                        }
+                                        setFormData({ ...formData, processingFeeDollar: newValue });
+                                    }}
+                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-right"
+                                    placeholder="0.00"
+                                />
+                            </div>
+                            <div>
+                                <input
+                                    type="text"
+                                    value={formatNumberWithCommas(formData.processingFeePeso || '0.00')}
+                                    onChange={(e) => { }}
+                                    onKeyDown={(e) => {
+                                        e.preventDefault();
+                                        let newValue;
+                                        if (e.key === 'Backspace' || e.key === 'Delete') {
+                                            newValue = handleCalculatorInput(formData.processingFeePeso || '0.00', '', true);
+                                        } else if (e.key >= '0' && e.key <= '9') {
+                                            newValue = handleCalculatorInput(formData.processingFeePeso || '0.00', e.key, false);
+                                        } else if (e.key === 'Tab' || e.key === 'Enter') {
+                                            return;
+                                        } else {
+                                            return;
+                                        }
+                                        setFormData({ ...formData, processingFeePeso: newValue });
+                                    }}
+                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-right"
+                                    placeholder="0.00"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Row 4: Total */}
+                        <div className="grid grid-cols-3 gap-4 items-end pt-2 border-t">
+                            <div className="text-sm font-bold text-gray-900">
+                                Total
+                            </div>
+                            <div>
+                                <div className="w-full px-4 py-2 bg-gray-100 rounded-lg font-semibold text-gray-900 text-right">
+                                    ${formatNumberWithCommas(calculateDollarTotal().toFixed(2))}
+                                </div>
+                            </div>
+                            <div>
+                                <div className="w-full px-4 py-2 bg-gray-100 rounded-lg font-semibold text-gray-900 text-right">
+                                    ₱{formatNumberWithCommas(calculatePesoTotal().toFixed(2))}
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-start">
-                        <label className="w-48 text-sm font-medium text-gray-700 pt-2">
-                            Processing Fee
-                        </label>
-                        <div className="flex-1 flex gap-4">
-                            <div className="flex-1">
-                                <input
-                                    type="number"
-                                    value={formData.processingFeeDollar}
-                                    onChange={(e) => setFormData({ ...formData, processingFeeDollar: e.target.value })}
-                                    min="0"
-                                    step="0.01"
-                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    placeholder="USD"
-                                />
-                            </div>
-                            <div className="flex-1">
-                                <input
-                                    type="number"
-                                    value={formData.processingFeePeso}
-                                    onChange={(e) => setFormData({ ...formData, processingFeePeso: e.target.value })}
-                                    min="0"
-                                    step="0.01"
-                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    placeholder="PHP"
-                                />
-                            </div>
-                        </div>
-                    </div>
+                    {/* Upload Payment Proof */}
+                    <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                        <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                            <FileText size={18} className="text-purple-600" />
+                            Upload Payment Proof
+                        </h3>
 
-                    <div className="flex items-start pt-3  ">
-                        <label className="w-48 text-sm font-medium text-gray-700 pt-2">
-                            Total
+                        {(selectedFile || selectedFilePreview) && (
+                            <div className="mb-4 p-3 bg-white rounded-lg border border-gray-300">
+                                {selectedFilePreview ? (
+                                    <img
+                                        src={selectedFilePreview}
+                                        alt="Preview"
+                                        className="w-full h-64 object-contain bg-gray-50 rounded"
+                                    />
+                                ) : selectedFile ? (
+                                    <div className="flex items-center gap-3 p-2">
+                                        <FileText size={32} className="text-gray-600" />
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-900">{selectedFile.name}</p>
+                                            <p className="text-xs text-gray-500">
+                                                {(selectedFile.size / 1024).toFixed(2)} KB
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedFile(null);
+                                                setSelectedFilePreview(null);
+                                            }}
+                                            className="ml-auto p-1 text-red-600 hover:bg-red-50 rounded"
+                                        >
+                                            <X size={20} />
+                                        </button>
+                                    </div>
+                                ) : null}
+                            </div>
+                        )}
+
+                        <input
+                            type="file"
+                            accept="image/*,.pdf"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                            id="payment-proof-upload"
+                        />
+                        <label
+                            htmlFor="payment-proof-upload"
+                            className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-center cursor-pointer hover:border-gray-400 hover:bg-gray-50"
+                        >
+                            <Upload size={20} />
+                            <div>
+                                <span className="block font-medium text-gray-700">
+                                    {selectedFile ? 'Replace Payment Proof' : 'Upload Payment Proof'}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                    Supported: Images, PDF (Max 10MB)
+                                </span>
+                            </div>
                         </label>
-                        <div className="flex-1 flex gap-4">
-                            <div className="flex-1">
-                                <div className="w-full px-4 py-2 bg-gray-100  rounded-lg font-semibold text-gray-900">
-                                    ${calculateDollarTotal().toFixed(2)}
-                                </div>
-                            </div>
-                            <div className="flex-1">
-                                <div className="w-full px-4 py-2 bg-gray-100  rounded-lg font-semibold text-gray-900">
-                                    ₱{calculatePesoTotal().toFixed(2)}
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     {/* Payment Percentage Section */}
-                    <div className="flex items-start pt-3 border-t">
-                        <label className="w-48 text-sm font-medium text-gray-700 pt-2">
+                    <div className="grid grid-cols-3 gap-4 items-end pt-3 border-t">
+                        <div className="text-sm font-medium text-gray-700">
                             Payment Percentage
-                        </label>
-                        <div className="flex-1">
+                        </div>
+                        <div className="col-span-2">
                             <div className={`p-4 rounded-lg ${isOverpayment() ? 'bg-red-50 border border-red-200' : 'bg-amber-50'}`}>
                                 <p className={`font-semibold text-xl mb-2 ${isOverpayment() ? 'text-red-700' : 'text-gray-900'}`}>
                                     {formData.productDollarAmount
@@ -1391,7 +1719,6 @@ const PaymentModal = ({ po, formData, setFormData, onClose, onSubmit, actionLoad
                                 <p className="text-xs text-gray-500 mt-1">
                                     {formData.productDollarAmount && (
                                         <span className={isOverpayment() ? 'text-red-600 font-medium' : ''}>
-                                            <br />
                                             Adding {calculateThisPaymentPercentage()}% to existing {calculateAlreadyPaidPercentage()}% = {calculateNewTotalPercentage()}% total.
                                             {isOverpayment() && (
                                                 <span className="font-bold"> This exceeds 100%!</span>
@@ -1424,13 +1751,13 @@ const PaymentModal = ({ po, formData, setFormData, onClose, onSubmit, actionLoad
                         </button>
                         <button
                             type="submit"
-                            disabled={actionLoading}
+                            disabled={actionLoading || uploadingFile}
                             className={`flex-1 px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2 ${isOverpayment() ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-green-600 text-white'}`}
                         >
-                            {actionLoading ? (
+                            {actionLoading || uploadingFile ? (
                                 <>
                                     <Loader2 className="animate-spin" size={18} />
-                                    Recording...
+                                    {uploadingFile ? 'Uploading...' : 'Recording...'}
                                 </>
                             ) : (
                                 <>
@@ -1673,118 +2000,245 @@ const PaymentModal = ({ po, formData, setFormData, onClose, onSubmit, actionLoad
 };
 
 
-const ViewPaymentsModal = ({ data, onClose, getPaymentStatusBadge }) => (
-    <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="border-b px-6 py-4 flex items-center justify-between sticky top-0 bg-white">
-                <h2 className="text-xl font-bold text-gray-900">Payment History</h2>
-                <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
-                    <X size={20} />
-                </button>
-            </div>
 
-            <div className="p-6 space-y-6">
-                <div className="p-4 bg-blue-50 rounded-lg">
-                    <div className="grid grid-cols-3 gap-3 text-sm">
-                        <div>
-                            <span className="text-gray-600">PO Number:</span>
-                            <p className="font-medium text-gray-900">{data.po.controlNumber}</p>
-                        </div>
-                        <div>
-                            <span className="text-gray-600">Total Amount:</span>
-                            <p className="font-medium text-gray-900">${data.po.totalAmount?.toFixed(2)}</p>
-                        </div>
-                        <div>
-                            <span className="text-gray-600">Status:</span>
-                            <div className="mt-1">{getPaymentStatusBadge(data.po.paymentStatus)}</div>
+
+const ViewPaymentsModal = ({ data, onClose, getPaymentStatusBadge }) => {
+    const calculateTotalPercentage = () => {
+        return data.payments.reduce((sum, p) => sum + (parseFloat(p.percentageOfTotal) || 0), 0).toFixed(2);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="border-b px-6 py-4 flex items-center justify-between sticky top-0 bg-white">
+                    <h2 className="text-xl font-bold text-gray-900">Payment History</h2>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <div className="p-6 space-y-6">
+                    <div className="p-4 bg-blue-50 rounded-lg">
+                        <div className="grid grid-cols-3 gap-3 text-sm">
+                            <div>
+                                <span className="text-gray-600">PO Number:</span>
+                                <p className="font-medium text-gray-900">{data.po.controlNumber}</p>
+                            </div>
+                            <div>
+                                <span className="text-gray-600">Total Amount:</span>
+                                <p className="font-medium text-gray-900">${formatNumberWithCommas(data.po.totalAmount?.toFixed(2))}</p>
+                            </div>
+                            <div>
+                                <span className="text-gray-600">Total Paid:</span>
+                                <p className="font-medium text-gray-900">${formatNumberWithCommas(data.po.totalPaid?.toFixed(2) || '0.00')}</p>
+                            </div>
+                            <div>
+                                <span className="text-gray-600">Remaining:</span>
+                                <p className="font-medium text-gray-900">${formatNumberWithCommas(data.po.remainingBalance?.toFixed(2) || '0.00')}</p>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div>
-                    <h3 className="font-semibold text-gray-900 mb-3">Payment Records</h3>
-                    {!data.payments || data.payments.length === 0 ? (
-                        <p className="text-center text-gray-500 py-8">No payments recorded yet</p>
-                    ) : (
-                        <div className="space-y-4">
-                            {data.payments.map((payment) => (
-                                <div key={payment.id} className="p-4 bg-gray-50 rounded-lg border">
-                                    <div className="flex justify-between mb-3">
-                                        <div>
-                                            <span className="font-semibold">Payment #{payment.paymentNumber}</span>
-                                            <p className="text-sm text-gray-600">
-                                                {payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'No date'}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="font-semibold text-lg">${payment.productDollarAmount?.toFixed(2) || '0.00'}</p>
-                                            <p className="text-sm text-gray-600">{payment.percentageOfTotal?.toFixed(2) || '0.00'}%</p>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2 text-sm border-t pt-3">
-                                        <div>
-                                            <span className="text-gray-600">Bank:</span>
-                                            <span className="ml-2 font-medium">{payment.bank || 'N/A'}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-600">Reference #:</span>
-                                            <span className="ml-2 font-medium">{payment.referenceNumber || 'N/A'}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-600">Product Cost ($):</span>
-                                            <span className="ml-2">${payment.productDollarAmount?.toFixed(2) || '0.00'}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-600">Product Cost (₱):</span>
-                                            <span className="ml-2">₱{payment.productPesoAmount?.toFixed(2) || '0.00'}</span>
-                                        </div>
-                                        {(payment.processingFeeDollar > 0 || payment.processingFeePeso > 0) && (
-                                            <>
-                                                <div>
-                                                    <span className="text-gray-600">Processing Fee ($):</span>
-                                                    <span className="ml-2">${payment.processingFeeDollar?.toFixed(2) || '0.00'}</span>
+                    <div>
+                        <h3 className="font-semibold text-gray-900 mb-3">Payment Records</h3>
+                        {!data.payments || data.payments.length === 0 ? (
+                            <p className="text-center text-gray-500 py-8">No payments recorded yet</p>
+                        ) : (
+                            <div className="space-y-4">
+                                {data.payments.map((payment) => (
+                                    <div key={payment.id} className="p-4 bg-gray-50 rounded-lg border">
+                                        {/* Header Row */}
+                                        <div className="flex justify-between items-start mb-4 pb-3 border-b">
+                                            <div className="flex-1">
+                                                <div className="flex items-baseline gap-4">
+                                                    <span className="font-bold text-lg text-gray-900">
+                                                        Payment #{payment.paymentNumber}
+                                                    </span>
+                                                    <div className="flex items-baseline gap-3 ml-auto">
+                                                        <span className="font-semibold text-xl text-blue-600">
+                                                            ${formatNumberWithCommas(payment.productDollarAmount?.toFixed(2) || '0.00')}
+                                                        </span>
+                                                        <span className="text-sm text-gray-600 bg-blue-100 px-2 py-1 rounded font-medium">
+                                                            {payment.percentageOfTotal?.toFixed(2) || '0.00'}%
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <span className="text-gray-600">Processing Fee (₱):</span>
-                                                    <span className="ml-2">₱{payment.processingFeePeso?.toFixed(2) || '0.00'}</span>
+                                                <div className="mt-2 space-y-1 text-sm text-gray-700">
+                                                    <div>
+                                                        <span className="font-medium">Reference #:</span>
+                                                        <span className="ml-2">{payment.referenceNumber || 'N/A'}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-medium">Date:</span>
+                                                        <span className="ml-2">
+                                                            {payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'No date'}
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-medium">Bank:</span>
+                                                        <span className="ml-2">{payment.bank || 'N/A'}</span>
+                                                    </div>
                                                 </div>
-                                            </>
-                                        )}
-                                        <div className="col-span-2 border-t pt-2 mt-2">
-                                            <div className="flex justify-between font-semibold">
-                                                <span>Total:</span>
-                                                <span>${payment.totalDollar?.toFixed(2) || '0.00'} / ₱{payment.totalPeso?.toFixed(2) || '0.00'}</span>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
 
-                <div className="p-4 bg-amber-50 rounded-lg">
-                    <div className="grid grid-cols-3 gap-3">
-                        <div>
-                            <span className="text-sm text-gray-600">Total Paid:</span>
-                            <p className="font-semibold text-lg">${data.po.totalPaid?.toFixed(2) || '0.00'}</p>
+                                        {/* Payment Breakdown */}
+                                        <div className="space-y-2">
+                                            {/* Column Headers */}
+                                            <div className="grid grid-cols-3 gap-4 pb-2 border-b border-gray-300">
+                                                <div></div>
+                                                <div className="text-center text-xs font-bold text-gray-600 uppercase">USD</div>
+                                                <div className="text-center text-xs font-bold text-gray-600 uppercase">PHP</div>
+                                            </div>
+
+                                            {/* Product Cost */}
+                                            <div className="grid grid-cols-3 gap-4 items-center">
+                                                <div className="text-sm font-medium text-gray-700">Product Cost:</div>
+                                                <div className="text-sm text-center font-semibold text-gray-900">
+                                                    ${formatNumberWithCommas(payment.productDollarAmount?.toFixed(2) || '0.00')}
+                                                </div>
+                                                <div className="text-sm text-center font-semibold text-gray-900">
+                                                    ₱{formatNumberWithCommas(payment.productPesoAmount?.toFixed(2) || '0.00')}
+                                                </div>
+                                            </div>
+
+                                            {/* Processing Fee */}
+                                            {(payment.processingFeeDollar > 0 || payment.processingFeePeso > 0) && (
+                                                <div className="grid grid-cols-3 gap-4 items-center">
+                                                    <div className="text-sm font-medium text-gray-700">Processing Fee:</div>
+                                                    <div className="text-sm text-center text-gray-900">
+                                                        ${formatNumberWithCommas(payment.processingFeeDollar?.toFixed(2) || '0.00')}
+                                                    </div>
+                                                    <div className="text-sm text-center text-gray-900">
+                                                        ₱{formatNumberWithCommas(payment.processingFeePeso?.toFixed(2) || '0.00')}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Total */}
+                                            <div className="grid grid-cols-3 gap-4 items-center pt-2 border-t border-gray-300">
+                                                <div className="text-sm font-bold text-gray-900">Total:</div>
+                                                <div className="text-sm text-center font-bold text-gray-900">
+                                                    ${formatNumberWithCommas(payment.totalDollar?.toFixed(2) || '0.00')}
+                                                </div>
+                                                <div className="text-sm text-center font-bold text-gray-900">
+                                                    ₱{formatNumberWithCommas(payment.totalPeso?.toFixed(2) || '0.00')}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Payment Proof */}
+                                        {payment.paymentProofUrl && (
+                                            <div className="mt-4 pt-4 border-t">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <FileText size={16} className="text-purple-600" />
+                                                    <span className="text-sm font-medium text-gray-700">Payment Proof:</span>
+                                                </div>
+                                                {payment.paymentProofUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                                                    <img
+                                                        src={getFileUrl(payment.paymentProofUrl)}
+                                                        alt="Payment Proof"
+                                                        className="w-full max-h-48 object-contain bg-white rounded border cursor-pointer"
+                                                        onClick={() => window.open(getFileUrl(payment.paymentProofUrl), '_blank')}
+                                                        onError={(e) => e.target.src = getPlaceholderImage()}
+                                                    />
+                                                ) : (
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => window.open(getFileUrl(payment.paymentProofUrl), '_blank')}
+                                                            className="flex items-center gap-2 text-blue-600 hover:bg-blue-50 p-2 rounded text-sm"
+                                                        >
+                                                            <Eye size={16} />
+                                                            View Document
+                                                        </button>
+                                                        <a
+                                                            href={getFileDownloadUrl(payment.paymentProofUrl)}
+                                                            download
+                                                            className="flex items-center gap-2 text-green-600 hover:bg-green-50 p-2 rounded text-sm"
+                                                        >
+                                                            <Download size={16} />
+                                                            Download
+                                                        </a>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Payment Summary */}
+                    <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="font-bold text-gray-900">Payment Summary</h3>
+                            <span className="text-xl font-bold text-amber-700">
+                                {((data.po.totalPaid / data.po.totalAmount) * 100).toFixed(2)}%
+                            </span>
                         </div>
-                        <div>
-                            <span className="text-sm text-gray-600">Remaining Balance:</span>
-                            <p className="font-semibold text-lg">${data.po.remainingBalance?.toFixed(2) || '0.00'}</p>
-                        </div>
-                        <div>
-                            <span className="text-sm text-gray-600">Progress:</span>
-                            <p className="font-semibold text-lg">
-                                {data.po.totalAmount > 0 ? ((data.po.totalPaid / data.po.totalAmount) * 100).toFixed(2) : '0.00'}%
-                            </p>
+                        <div className="space-y-2">
+                            {/* Column Headers */}
+                            <div className="grid grid-cols-3 gap-4 pb-2 border-b border-amber-300">
+                                <div></div>
+                                <div className="text-center text-xs font-bold text-gray-700 uppercase">USD</div>
+                                <div className="text-center text-xs font-bold text-gray-700 uppercase">PHP</div>
+                            </div>
+
+                            {/* Product Cost Total */}
+                            <div className="grid grid-cols-3 gap-4 items-center">
+                                <div className="text-sm font-medium text-gray-800">Product Cost:</div>
+                                <div className="text-sm text-center font-semibold text-gray-900">
+                                    ${formatNumberWithCommas(
+                                        data.payments.reduce((sum, p) => sum + (parseFloat(p.productDollarAmount) || 0), 0).toFixed(2)
+                                    )}
+                                </div>
+                                <div className="text-sm text-center font-semibold text-gray-900">
+                                    ₱{formatNumberWithCommas(
+                                        data.payments.reduce((sum, p) => sum + (parseFloat(p.productPesoAmount) || 0), 0).toFixed(2)
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Processing Fee Total */}
+                            <div className="grid grid-cols-3 gap-4 items-center">
+                                <div className="text-sm font-medium text-gray-800">Processing Fee:</div>
+                                <div className="text-sm text-center text-gray-900">
+                                    ${formatNumberWithCommas(
+                                        data.payments.reduce((sum, p) => sum + (parseFloat(p.processingFeeDollar) || 0), 0).toFixed(2)
+                                    )}
+                                </div>
+                                <div className="text-sm text-center text-gray-900">
+                                    ₱{formatNumberWithCommas(
+                                        data.payments.reduce((sum, p) => sum + (parseFloat(p.processingFeePeso) || 0), 0).toFixed(2)
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Grand Total */}
+                            <div className="grid grid-cols-3 gap-4 items-center pt-2 border-t-2 border-amber-400">
+                                <div className="text-base font-bold text-gray-900">Total:</div>
+                                <div className="text-base text-center font-bold text-gray-900">
+                                    ${formatNumberWithCommas(
+                                        data.payments.reduce((sum, p) => sum + (parseFloat(p.totalDollar) || 0), 0).toFixed(2)
+                                    )}
+                                </div>
+                                <div className="text-base text-center font-bold text-gray-900">
+                                    ₱{formatNumberWithCommas(
+                                        data.payments.reduce((sum, p) => sum + (parseFloat(p.totalPeso) || 0), 0).toFixed(2)
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-);
+    );
+};
+
+
 
 const ProductDetailsModal = ({ products, onClose, po }) => {
     if (!products || products.length === 0) return null;
@@ -1890,15 +2344,21 @@ const ProductDetailsModal = ({ products, onClose, po }) => {
     );
 };
 
-// Export a function to get payment counts
+
 export const getPaymentCounts = async () => {
     try {
-        const response = await api.get('/purchase-orders');
+        const response = await api.get('/purchase-orders').catch(err => {
+            console.warn('API connection failed, returning default counts');
+            return null;
+        });
+
+        if (!response) {
+            return { pending: 0, partial: 0, fullPaid: 0, total: 0 };
+        }
         if (response.success && response.data) {
             const actualData = response.data.data || response.data;
             const orders = Array.isArray(actualData) ? actualData : [];
 
-            // Filter submitted orders only
             const submitted = orders.filter(po =>
                 po.paymentStatus === 'PAYMENT_PENDING' ||
                 po.paymentStatus === 'PARTIAL_PAID' ||

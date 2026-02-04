@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, X } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
-import BranchTable from '../components/tables/BranchTable';
-import CompanyTable from '../components/tables/CompanyTable';
-import BranchViewModal from '../components/modals/BranchViewModal';
-import CompanyViewModal from '../components/modals/CompanyViewModal';
-import BranchCompanyModal from '../components/modals/BranchCompanyModal';
-import { LoadingOverlay } from '../components/common/LoadingOverlay';
-import { api } from '../services/api';
-import { useBranchesCompanies } from '../hooks/useBranchCompany';
+import BranchTable from '../../components/tables/BranchTable';
+import CompanyTable from '../../components/tables/CompanyTable';
+import BranchViewModal from '../../components/modals/BranchViewModal';
+import CompanyViewModal from '../../components/modals/CompanyViewModal';
+import BranchCompanyModal from '../../components/modals/BranchCompanyModal';
+import { LoadingOverlay } from '../../components/common/LoadingOverlay';
+import { api } from '../../services/api';
+import { useBranchesCompanies } from '../../hooks/useBranchCompany';
 
 const BranchCompanyManagement = () => {
   const [activeTab, setActiveTab] = useState('branches');

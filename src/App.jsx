@@ -8,12 +8,12 @@ import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import SalesManagement from './pages/SalesManagement';
 import ProductManagement from './pages/ProductManagement';
-import BranchCompanyManagement from './pages/BranchCompanyManagement';
-import WarehouseInventory from './pages/InventoryRecord';
+import BranchCompanyManagement from './pages/BranchCompanyManagement/index';
+import WarehouseInventory from './pages/InventoryRecordsManagement/index.jsx';
 import NotFound from './pages/NotFound';
 import Layout from './components/layout/Layout';
 import Supplier from './pages/SupplierManagement';
-import InventoryRequestManagement from './pages/InventoryRequestManagement';
+import ProcurementManagement from './pages/ProcurementManagement/index.jsx';
 import { AuthProvider, AuthLoading, ProtectedRoute, AdminRoute } from './context/AuthContext';
 
 function App() {
@@ -42,10 +42,10 @@ function App() {
             } />
 
 
-            <Route path="/inventory-request" element={
+            <Route path="/procurement" element={
               <ProtectedRoute>
                 <Layout>
-                  <InventoryRequestManagement />
+                  <ProcurementManagement />
                 </Layout>
               </ProtectedRoute>
             } />
