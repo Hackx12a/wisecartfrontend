@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import './invoice-print.css';
+import '../styles/invoice-print.css';
 import { api } from '../services/api';
 import toast, { Toaster } from 'react-hot-toast';
 import { Search, Plus, Edit2, Trash2, Eye, FileText, Check, X, Printer, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
-import './sales-memo-print.css';
-import { LoadingOverlay } from './LoadingOverlay';
+import '../styles/sales-memo-print.css';
+import { LoadingOverlay } from '../components/common/LoadingOverlay';
 import VariationSearchableDropdown from '../components/common/VariationSearchableDropdown';
 
 
@@ -623,7 +623,6 @@ const SalesManagement = () => {
     toast.loading('Generating Sales Memo...', { id: 'sales-memo-loading' });
 
     try {
-
       const response = await api.post('/sales/sales-memo/generate', filterData);
 
       toast.dismiss('sales-memo-loading');
@@ -633,34 +632,25 @@ const SalesManagement = () => {
 
         if (!memoData.products || memoData.products.length === 0) {
           toast.error(
-            'No sales data found for the selected criteria.\n\n' +
-            'Please ensure:\n' +
-            '• Sales exist for the selected company\n' +
-            '• Sales are CONFIRMED or INVOICED\n' +
-            '• Date range includes sales data',
+            'No sales data found for the selected criteria.\n\nPlease ensure:\n• Sales exist for the selected company\n• Sales are CONFIRMED or INVOICED\n• Date range includes sales data',
             { duration: 6000 }
           );
           return;
         }
 
         memoData.adjustments = memoData.adjustments || [];
-
         setSalesMemo(memoData);
         setShowSalesMemoModal(false);
 
         toast.success(
-          `Sales Memo generated successfully!\n\n` +
-          `Products: ${memoData.products.length}\n` +
-          `Date: ${formatDate(memoData.generatedAt)}`,
+          `Sales Memo generated successfully!\n\nProducts: ${memoData.products.length}\nDate: ${formatDate(memoData.generatedAt)}`,
           { duration: 4000 }
         );
-
       } else {
         toast.error(response.message || 'Failed to generate sales memo', { duration: 5000 });
       }
     } catch (error) {
       toast.dismiss('sales-memo-loading');
-
       console.error('Sales memo generation error:', error);
 
       let errorMessage = 'Failed to generate sales memo';
@@ -668,6 +658,22 @@ const SalesManagement = () => {
       if (error.response && error.response.data) {
         if (typeof error.response.data === 'string') {
           errorMessage = error.response.data;
+
+          // Check if error is about no sales found
+          if (errorMessage.includes('No CONFIRMED or INVOICED sales found')) {
+            const selectedCompany = companies.find(c => c.id === filterData.companyId);
+            const selectedBranch = filterData.branchId ? branches.find(b => b.id === filterData.branchId) : null;
+
+            toast.error(
+              `No CONFIRMED or INVOICED sales found!\n\n` +
+              `Company: ${selectedCompany?.companyName || 'Unknown'}\n` +
+              `${selectedBranch ? `Branch: ${selectedBranch.branchName}\n` : 'All Branches\n'}` +
+              `Period: ${monthsFull[filterData.startMonth - 1]} ${filterData.startYear} - ${monthsFull[filterData.endMonth - 1]} ${filterData.endYear}\n\n` +
+              `Please ensure sales are CONFIRMED or INVOICED before generating the sales memo.`,
+              { duration: 8000 }
+            );
+            return;
+          }
         } else if (error.response.data.message) {
           errorMessage = error.response.data.message;
         }
@@ -783,13 +789,19 @@ const SalesManagement = () => {
         const invoiceData = response.data || response;
 
         if (!invoiceData.products || invoiceData.products.length === 0) {
+          const selectedCompany = companies.find(c => c.id === filterData.companyId);
+          const selectedBranch = filterData.branchId ? branches.find(b => b.id === filterData.branchId) : null;
+
           toast.error(
-            'No sales data found for invoice generation.\n\n' +
-            'Please ensure:\n' +
-            '• Sales exist for the selected company\n' +
-            '• Sales are CONFIRMED or INVOICED\n' +
-            '• Date range includes sales data',
-            { duration: 6000 }
+            `No sales data found for invoice generation!\n\n` +
+            `Company: ${selectedCompany?.companyName || 'Unknown'}\n` +
+            `${selectedBranch ? `Branch: ${selectedBranch.branchName}\n` : 'All Branches\n'}` +
+            `Period: ${monthsFull[filterData.startMonth - 1]} ${filterData.startYear} - ${monthsFull[filterData.endMonth - 1]} ${filterData.endYear}\n\n` +
+            `Please ensure:\n` +
+            `• Sales exist for the selected company\n` +
+            `• Sales are CONFIRMED or INVOICED\n` +
+            `• Date range includes sales data`,
+            { duration: 8000 }
           );
           return;
         }
@@ -821,14 +833,40 @@ const SalesManagement = () => {
       toast.dismiss('invoice-loading');
       console.error('Invoice generation error:', error);
 
-      const errorMessage = error.response?.data?.message ||
-        error.response?.data ||
-        error.message ||
-        'Failed to generate invoice';
+      let errorMessage = 'Failed to generate invoice';
+
+      if (error.response && error.response.data) {
+        if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+
+          // Check if error is about no sales found
+          if (errorMessage.includes('No CONFIRMED or INVOICED sales found') ||
+            errorMessage.includes('No sales found')) {
+            const selectedCompany = companies.find(c => c.id === filterData.companyId);
+            const selectedBranch = filterData.branchId ? branches.find(b => b.id === filterData.branchId) : null;
+
+            toast.error(
+              `No CONFIRMED or INVOICED sales found!\n\n` +
+              `Company: ${selectedCompany?.companyName || 'Unknown'}\n` +
+              `${selectedBranch ? `Branch: ${selectedBranch.branchName}\n` : 'All Branches\n'}` +
+              `Period: ${monthsFull[filterData.startMonth - 1]} ${filterData.startYear} - ${monthsFull[filterData.endMonth - 1]} ${filterData.endYear}\n\n` +
+              `Please ensure sales are CONFIRMED or INVOICED before generating the invoice.`,
+              { duration: 8000 }
+            );
+            return;
+          }
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
 
       toast.error(errorMessage, { duration: 5000 });
     }
   };
+
+
 
   const handleUpdateStatus = async (saleId, newStatus) => {
     const statusLabels = {

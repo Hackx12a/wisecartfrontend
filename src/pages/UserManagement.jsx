@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Search, X, User, Shield, UserCheck, UserX, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { api } from '../services/api';
-import { LoadingOverlay } from './LoadingOverlay';
+import { LoadingOverlay } from '../components/common/LoadingOverlay';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);

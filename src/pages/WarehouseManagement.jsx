@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Search, X, Warehouse, MapPin, Building, Star, ChevronLeft, ChevronRight, User, Phone } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
-import { LoadingOverlay } from './LoadingOverlay';
+import { LoadingOverlay } from '../components/common/LoadingOverlay';
 import { api } from '../services/api';
 
 const WarehouseManagement = () => {

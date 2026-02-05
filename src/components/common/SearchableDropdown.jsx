@@ -1,16 +1,16 @@
-// src/components/common/SearchableDropdown.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, ChevronDown } from 'lucide-react';
 
-const SearchableDropdown = ({ 
-  options, 
-  value, 
-  onChange, 
-  placeholder, 
-  displayKey, 
-  valueKey, 
-  required = false, 
-  disabled = false 
+const SearchableDropdown = ({
+  options,
+  value,
+  onChange,
+  placeholder,
+  displayKey,
+  valueKey,
+  required = false,
+  disabled = false,
+  onProductUpdate // Add this optional prop
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -26,6 +26,21 @@ const SearchableDropdown = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Add product update listener if prop is provided
+  useEffect(() => {
+    if (onProductUpdate) {
+      const handleProductUpdate = () => {
+        onProductUpdate();
+      };
+
+      window.addEventListener('productUpdated', handleProductUpdate);
+
+      return () => {
+        window.removeEventListener('productUpdated', handleProductUpdate);
+      };
+    }
+  }, [onProductUpdate]);
+
   const filteredOptions = options.filter(option =>
     option[displayKey]?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -38,9 +53,8 @@ const SearchableDropdown = ({
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-left flex items-center justify-between ${
-          disabled ? 'bg-gray-100 cursor-not-allowed opacity-60' : 'bg-white'
-        }`}
+        className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-left flex items-center justify-between ${disabled ? 'bg-gray-100 cursor-not-allowed opacity-60' : 'bg-white'
+          }`}
       >
         <span className={selectedOption ? 'text-gray-900' : 'text-gray-500'}>
           {selectedOption ? selectedOption[displayKey] : placeholder}
@@ -91,9 +105,8 @@ const SearchableDropdown = ({
                     setIsOpen(false);
                     setSearchTerm('');
                   }}
-                  className={`w-full px-4 py-2 text-left hover:bg-blue-50 transition text-sm ${
-                    value === option[valueKey] ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-900'
-                  }`}
+                  className={`w-full px-4 py-2 text-left hover:bg-blue-50 transition text-sm ${value === option[valueKey] ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-900'
+                    }`}
                 >
                   {option[displayKey]}
                 </button>

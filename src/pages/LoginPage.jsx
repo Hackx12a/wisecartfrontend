@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Lock, LogIn, AlertCircle, Building2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { LoadingOverlay } from './LoadingOverlay';
+import { LoadingOverlay } from '../components/common/LoadingOverlay';
 import { useNavigate } from 'react-router-dom';
 
 const LoginPage = () => {
