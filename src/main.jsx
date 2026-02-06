@@ -1,3 +1,10 @@
+const redirect = sessionStorage.redirect;
+delete sessionStorage.redirect;
+if (redirect && redirect !== location.pathname) {
+  history.replaceState(null, null, redirect);
+}
+
+
 // src/main.jsx
 import React from 'react';
 import ReactDOM from 'react-dom/client';
