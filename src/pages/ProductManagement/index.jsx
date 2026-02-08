@@ -95,7 +95,7 @@ const ProductManagement = () => {
     return [...products].sort((a, b) => {
       let aValue = a[sortConfig.key];
       let bValue = b[sortConfig.key];
-      
+
       if (sortConfig.key === 'createdAt') {
         aValue = aValue ? new Date(aValue).getTime() : 0;
         bValue = bValue ? new Date(bValue).getTime() : 0;
@@ -310,33 +310,9 @@ const ProductManagement = () => {
         resetForm();
         await loadData();
         setCurrentPage(1);
-      } else {
-        const errorMessage = response?.error || 'Failed to save product';
-        if (errorMessage.toLowerCase().includes('upc') ||
-          errorMessage.toLowerCase().includes('duplicate') ||
-          errorMessage.toLowerCase().includes('already exists')) {
-          toast.error(`Product with UPC "${formData.upc}" already exists`);
-        } else {
-          toast.error(errorMessage);
-        }
       }
     } catch (error) {
       console.error('Submit error:', error);
-      const errorMessage = error.message || 'Failed to save product';
-      
-      if (errorMessage.toLowerCase().includes('upc') ||
-        errorMessage.toLowerCase().includes('duplicate') ||
-        errorMessage.toLowerCase().includes('already exists')) {
-        toast.error(`Product with UPC "${formData.upc}" already exists`);
-      } else if (errorMessage.includes('400') || errorMessage.includes('Bad Request')) {
-        toast.error('Invalid data. Please check all fields and try again.');
-      } else if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
-        toast.error('Session expired. Please login again.');
-      } else if (errorMessage.includes('500') || errorMessage.includes('Server Error')) {
-        toast.error('Server error. Please try again later.');
-      } else {
-        toast.error(errorMessage);
-      }
     }
   };
 
@@ -485,11 +461,10 @@ const ProductManagement = () => {
               <button
                 onClick={prevPage}
                 disabled={currentPage === 1}
-                className={`p-2 rounded-lg border ${
-                  currentPage === 1
+                className={`p-2 rounded-lg border ${currentPage === 1
                     ? 'text-gray-400 cursor-not-allowed border-gray-200'
                     : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-                }`}
+                  }`}
               >
                 <ChevronLeft size={16} />
               </button>
@@ -499,11 +474,10 @@ const ProductManagement = () => {
                   <button
                     key={number}
                     onClick={() => paginate(number)}
-                    className={`min-w-[40px] px-3 py-2 text-sm rounded-lg border ${
-                      currentPage === number
+                    className={`min-w-[40px] px-3 py-2 text-sm rounded-lg border ${currentPage === number
                         ? 'bg-blue-600 text-white border-blue-600'
                         : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-                    }`}
+                      }`}
                   >
                     {number}
                   </button>
@@ -513,11 +487,10 @@ const ProductManagement = () => {
               <button
                 onClick={nextPage}
                 disabled={currentPage === totalPages}
-                className={`p-2 rounded-lg border ${
-                  currentPage === totalPages
+                className={`p-2 rounded-lg border ${currentPage === totalPages
                     ? 'text-gray-400 cursor-not-allowed border-gray-200'
                     : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-                }`}
+                  }`}
               >
                 <ChevronRight size={16} />
               </button>

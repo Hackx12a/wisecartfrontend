@@ -9,8 +9,8 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    minify: 'esbuild', // Ensure this is set to 'esbuild'
-    target: 'es2020', // Add this for better compatibility
+    minify: 'esbuild',
+    target: 'es2020',
     rollupOptions: {
       output: {
         manualChunks: {

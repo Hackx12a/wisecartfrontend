@@ -42,17 +42,17 @@ const isTokenExpired = (token) => {
 
 const getToken = () => {
     const token = localStorage.getItem('authToken');
-    
+
     if (!token || isTokenExpired(token)) {
         localStorage.removeItem('authToken');
         localStorage.removeItem('user');
-        
+
         if (!window.location.pathname.includes('/login')) {
             window.location.href = '/login';
         }
         return null;
     }
-    
+
     return token;
 };
 
@@ -66,7 +66,7 @@ const calculateRetryDelay = (attempt) => {
 
 const handleRateLimit = async (response, url, options, attempt = 0) => {
     if (response.status !== 429) return response;
-    
+
     // Max retries reached
     if (attempt >= RATE_LIMIT_CONFIG.maxRetries) {
         if (activeRetryToast) {
@@ -79,7 +79,7 @@ const handleRateLimit = async (response, url, options, attempt = 0) => {
 
     // Get retry delay from server or calculate
     let retryDelay = 1;
-    
+
     try {
         const contentType = response.headers.get('content-type');
         if (contentType?.includes('application/json')) {
@@ -124,14 +124,14 @@ const handleRateLimit = async (response, url, options, attempt = 0) => {
 
 const fetchWithAuthRetry = async (url, options = {}, attempt = 0) => {
     const token = getToken();
-    
+
     // Skip auth check for login/register endpoints
     if (!token && !url.includes('/auth/')) {
         toast.error('🔒 Please log in to continue');
-        return { 
-            success: false, 
-            error: 'Authentication required', 
-            status: 401 
+        return {
+            success: false,
+            error: 'Authentication required',
+            status: 401
         };
     }
 
@@ -154,9 +154,9 @@ const fetchWithAuthRetry = async (url, options = {}, attempt = 0) => {
 
         // Clear retry toast on success
         if (activeRetryToast && response.ok) {
-            toast.success('✅ Request completed!', { 
-                id: activeRetryToast, 
-                duration: 1000 
+            toast.success('✅ Request completed!', {
+                id: activeRetryToast,
+                duration: 1000
             });
             activeRetryToast = null;
         }
@@ -178,14 +178,16 @@ const fetchWithAuthRetry = async (url, options = {}, attempt = 0) => {
 
         console.error('Network error:', error);
         toast.error('📡 Network error. Please check your connection.');
-        
-        return { 
-            success: false, 
-            error: 'Network error', 
-            status: 0 
+
+        return {
+            success: false,
+            error: 'Network error',
+            status: 0
         };
     }
 };
+
+
 
 
 const handleResponse = async (response) => {
@@ -193,34 +195,52 @@ const handleResponse = async (response) => {
     if (response.status === 401) {
         localStorage.removeItem('authToken');
         localStorage.removeItem('user');
-        
+
         toast.error('🔒 Session expired. Please log in again.');
-        
+
         if (!window.location.pathname.includes('/login')) {
             setTimeout(() => window.location.href = '/login', 1000);
         }
-        
-        return { 
-            success: false, 
-            error: 'Session expired', 
-            status: 401 
+
+        return {
+            success: false,
+            error: 'Session expired',
+            status: 401
         };
     }
 
     // Handle errors
     if (!response.ok) {
         let errorMessage = 'Request failed';
-        
+
         try {
-            const contentType = response.headers.get('content-type');
-            
-            if (contentType?.includes('application/json')) {
-                const errorData = await response.json();
-                errorMessage = errorData.error || errorData.message || 'Request failed';
-            } else {
-                const text = await response.text();
-                if (text?.trim()) {
-                    errorMessage = text.replace(/^Error:\s*/i, '').trim();
+            const text = await response.text();
+
+            if (text?.trim()) {
+                // Try to parse as JSON
+                try {
+                    const jsonError = JSON.parse(text);
+
+                    // Check if it has specific field errors in the 'errors' object
+                    if (jsonError.errors && typeof jsonError.errors === 'object') {
+                        // Format field errors nicely
+                        const fieldErrors = Object.entries(jsonError.errors)
+                            .map(([field, message]) => `${field}: ${message}`)
+                            .join(', ');
+
+                        errorMessage = fieldErrors || jsonError.error || 'Validation failed';
+                    }
+                    // Fallback to general error message
+                    else if (jsonError.message) {
+                        errorMessage = jsonError.message;
+                    } else if (jsonError.error) {
+                        errorMessage = jsonError.error;
+                    } else {
+                        errorMessage = text;
+                    }
+                } catch {
+                    // If not JSON, use the text directly
+                    errorMessage = text;
                 }
             }
         } catch (e) {
@@ -232,89 +252,86 @@ const handleResponse = async (response) => {
             toast.error(`❌ ${errorMessage}`);
         }
 
-        return { 
-            success: false, 
-            error: errorMessage, 
-            status: response.status 
+        return {
+            success: false,
+            error: errorMessage,
+            status: response.status
         };
     }
 
-    // Handle successful responses
+
     const contentType = response.headers.get('content-type');
 
-    // JSON response
     if (contentType?.includes('application/json')) {
         const data = await response.json();
-        return { 
-            success: true, 
-            data, 
-            status: response.status 
+        return {
+            success: true,
+            data,
+            status: response.status
         };
     }
 
-    // No content
     if (response.status === 204) {
-        return { 
-            success: true, 
-            data: null, 
-            status: 204 
+        return {
+            success: true,
+            data: null,
+            status: 204
         };
     }
 
-    // Created response
     if (response.status === 201) {
         try {
             const data = await response.json();
-            return { 
-                success: true, 
-                data, 
-                status: 201 
+            return {
+                success: true,
+                data,
+                status: 201
             };
         } catch (e) {
-            return { 
-                success: true, 
-                data: null, 
-                status: 201 
+            return {
+                success: true,
+                data: null,
+                status: 201
             };
         }
     }
 
     // Text response
     const textData = await response.text();
-    return { 
-        success: true, 
-        data: textData, 
-        status: response.status 
+    return {
+        success: true,
+        data: textData,
+        status: response.status
     };
 };
 
 
 const batchRequests = async (requests, delayBetween = 50) => {
     const results = [];
-    
+
     for (let i = 0; i < requests.length; i++) {
         const { endpoint, method = 'GET', data } = requests[i];
-        
+
         try {
             const result = await fetchWithAuthRetry(endpoint, {
                 method,
                 body: data ? JSON.stringify(data) : undefined,
             });
-            
+
             results.push(result);
-            
+
             // Small delay between requests
             if (i < requests.length - 1) {
                 await new Promise(resolve => setTimeout(resolve, delayBetween));
             }
         } catch (error) {
-            results.push({ 
-                success: false, 
-                error: error.message 
+            results.push({
+                success: false,
+                error: error.message
             });
         }
     }
-    
+
     return results;
 };
 
@@ -323,7 +340,7 @@ export const api = {
     /**
      * GET request
      */
-    get: (endpoint) => 
+    get: (endpoint) =>
         fetchWithAuthRetry(endpoint, { method: 'GET' }),
 
     /**
@@ -339,10 +356,10 @@ export const api = {
      * PATCH request
      */
     patch: (endpoint, data = null, config = {}) => {
-        const queryParams = config.params 
-            ? '?' + new URLSearchParams(config.params).toString() 
+        const queryParams = config.params
+            ? '?' + new URLSearchParams(config.params).toString()
             : '';
-        
+
         return fetchWithAuthRetry(`${endpoint}${queryParams}`, {
             method: 'PATCH',
             body: data ? JSON.stringify(data) : undefined,
@@ -375,21 +392,21 @@ export const api = {
      */
     upload: async (endpoint, formData) => {
         const token = getToken();
-        
+
         if (!token) {
             toast.error('🔒 Please log in to continue');
-            return { 
-                success: false, 
-                error: 'Authentication required', 
-                status: 401 
+            return {
+                success: false,
+                error: 'Authentication required',
+                status: 401
             };
         }
-        
+
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                 method: 'POST',
-                headers: { 
-                    'Authorization': `Bearer ${token}` 
+                headers: {
+                    'Authorization': `Bearer ${token}`
                 },
                 body: formData,
             });
@@ -400,47 +417,47 @@ export const api = {
                 localStorage.removeItem('user');
                 toast.error('🔒 Session expired');
                 setTimeout(() => window.location.href = '/login', 1000);
-                return { 
-                    success: false, 
-                    error: 'Session expired', 
-                    status: 401 
+                return {
+                    success: false,
+                    error: 'Session expired',
+                    status: 401
                 };
             }
 
             // Handle rate limiting
             if (response.status === 429) {
-                return handleRateLimit(response, endpoint, { 
-                    method: 'POST', 
-                    body: formData 
+                return handleRateLimit(response, endpoint, {
+                    method: 'POST',
+                    body: formData
                 });
             }
-            
+
             // Handle errors
             if (!response.ok) {
                 const errorMessage = await response.text() || 'Upload failed';
                 toast.error(`❌ ${errorMessage}`);
-                return { 
-                    success: false, 
-                    error: errorMessage, 
-                    status: response.status 
+                return {
+                    success: false,
+                    error: errorMessage,
+                    status: response.status
                 };
             }
-            
+
             // Success
             const data = await response.json();
-            return { 
-                success: true, 
-                data, 
-                status: response.status 
+            return {
+                success: true,
+                data,
+                status: response.status
             };
-            
+
         } catch (error) {
             console.error('Upload error:', error);
             toast.error('📡 Upload failed. Check your connection.');
-            return { 
-                success: false, 
-                error: 'Network error', 
-                status: 0 
+            return {
+                success: false,
+                error: 'Network error',
+                status: 0
             };
         }
     },
@@ -450,21 +467,21 @@ export const api = {
      */
     download: async (endpoint) => {
         const token = getToken();
-        
+
         if (!token) {
             toast.error('🔒 Please log in to continue');
-            return { 
-                success: false, 
-                error: 'Authentication required', 
-                status: 401 
+            return {
+                success: false,
+                error: 'Authentication required',
+                status: 401
             };
         }
-        
+
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                 method: 'GET',
-                headers: { 
-                    'Authorization': `Bearer ${token}` 
+                headers: {
+                    'Authorization': `Bearer ${token}`
                 },
             });
 
@@ -474,39 +491,39 @@ export const api = {
                 localStorage.removeItem('user');
                 toast.error('🔒 Session expired');
                 setTimeout(() => window.location.href = '/login', 1000);
-                return { 
-                    success: false, 
-                    error: 'Session expired', 
-                    status: 401 
+                return {
+                    success: false,
+                    error: 'Session expired',
+                    status: 401
                 };
             }
-            
+
             // Handle errors
             if (!response.ok) {
                 const errorMessage = await response.text() || 'Download failed';
                 toast.error(`❌ ${errorMessage}`);
-                return { 
-                    success: false, 
-                    error: errorMessage, 
-                    status: response.status 
+                return {
+                    success: false,
+                    error: errorMessage,
+                    status: response.status
                 };
             }
-            
+
             // Success
             const blob = await response.blob();
-            return { 
-                success: true, 
-                data: blob, 
-                status: response.status 
+            return {
+                success: true,
+                data: blob,
+                status: response.status
             };
-            
+
         } catch (error) {
             console.error('Download error:', error);
             toast.error('📡 Download failed');
-            return { 
-                success: false, 
-                error: 'Network error', 
-                status: 0 
+            return {
+                success: false,
+                error: 'Network error',
+                status: 0
             };
         }
     },
@@ -525,7 +542,7 @@ export const api = {
     getTokenExpiration: () => {
         const token = localStorage.getItem('authToken');
         if (!token) return null;
-        
+
         const decoded = decodeJWT(token);
         return decoded?.exp || null;
     },
@@ -540,8 +557,8 @@ export const api = {
     /**
      * Get current rate limit configuration
      */
-    getRateLimitConfig: () => ({ 
-        ...RATE_LIMIT_CONFIG 
+    getRateLimitConfig: () => ({
+        ...RATE_LIMIT_CONFIG
     }),
 
     /**
