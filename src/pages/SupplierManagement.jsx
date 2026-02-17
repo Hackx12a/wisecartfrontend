@@ -28,6 +28,7 @@ const SupplierManagement = () => {
         wechat: '',
         whatsapp: '',
         email: '',
+        website: '',
         others: '',
         modeOfPayment: '',
         bankName: '',
@@ -117,6 +118,7 @@ const SupplierManagement = () => {
             wechat: supplier.wechat || '',
             whatsapp: supplier.whatsapp || '',
             email: supplier.email || '',
+            website: supplier.website || '',
             others: supplier.others || '',
             modeOfPayment: supplier.modeOfPayment || '',
             bankName: supplier.bankName || '',
@@ -167,6 +169,7 @@ const SupplierManagement = () => {
             wechat: '',
             whatsapp: '',
             email: '',
+            website: '',
             others: '',
             modeOfPayment: '',
             bankName: '',
@@ -507,6 +510,20 @@ const SupplierManagement = () => {
                                             disabled={actionLoading}
                                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                                             placeholder="Enter email address"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Website
+                                        </label>
+                                        <input
+                                            type="url"
+                                            value={formData.website}
+                                            onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                                            disabled={actionLoading}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                                            placeholder="Enter website URL"
                                         />
                                     </div>
 
