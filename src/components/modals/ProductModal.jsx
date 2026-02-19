@@ -312,6 +312,7 @@ const ProductModal = ({
                                                 <Globe size={13} className="text-gray-400" />
                                                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide w-40">Country of Origin</span>
                                             </div>
+                                            <div className="w-8 flex-shrink-0"></div> {/* Spacer for remove button */}
                                         </div>
 
                                         <div className="space-y-2">
@@ -321,20 +322,47 @@ const ProductModal = ({
                                                 if (!supplier) return null;
 
                                                 return (
-                                                    <div key={`selected-${id}`} className="flex items-center gap-3 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                                                    <div key={`selected-${id}`} className="flex items-center gap-3 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg group hover:bg-blue-100 transition">
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-sm font-medium text-gray-800">{supplier.name}</p>
                                                         </div>
                                                         <div className="flex items-center gap-1.5 flex-shrink-0">
                                                             <Globe size={13} className="text-gray-400" />
-                                                            <div className="w-40 px-3 py-1.5 text-sm bg-gray-100 border border-gray-200 rounded-md text-gray-700">
+                                                            <div className="w-40 px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-md text-gray-700">
                                                                 {formData.supplierCountries?.[id] || supplier?.country || 'Not specified'}
                                                             </div>
                                                         </div>
+
+                                                        {/* Remove button */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleSupplierToggle(id)}
+                                                            className="w-8 h-8 flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full transition opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                                            title="Remove supplier"
+                                                        >
+                                                            <X size={16} />
+                                                        </button>
                                                     </div>
                                                 );
                                             })}
                                         </div>
+
+                                        {formData.supplierIds.length > 1 && (
+                                            <div className="mt-3 flex justify-end">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (window.confirm('Remove all suppliers?')) {
+                                                            formData.supplierIds.forEach(id => handleSupplierToggle(id));
+                                                        }
+                                                    }}
+                                                    className="text-xs text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
+                                                >
+                                                    <Trash2 size={12} />
+                                                    Remove All
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
