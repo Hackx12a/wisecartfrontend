@@ -1,7 +1,7 @@
 import React from 'react';
 import {
     X, Package, Globe, Box, Tag, AlertCircle,
-    Edit2, Plus, Trash2, DollarSign
+    Edit2, Plus, Trash2, DollarSign, Copy
 } from 'lucide-react';
 import SearchableDropdown from '../common/SearchableDropdown';
 import CategoryInput from '../forms/CategoryInput';
@@ -43,9 +43,18 @@ const ProductModal = ({
         setVariationCombinations(newCombinations);
     };
 
+    // Apply one price to ALL companies in a single variation row
+    const applyPriceToAllCompanies = (comboIndex, price) => {
+        const newCombinations = [...variationCombinations];
+        companies.forEach((company) => {
+            newCombinations[comboIndex].companyPrices[company.id] = price;
+        });
+        setVariationCombinations(newCombinations);
+    };
+
     return (
         <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-xl max-w-7xl w-full max-h-[90vh] overflow-y-auto">
                 <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
                     <h2 className="text-xl font-bold text-gray-900">
                         {editingProduct ? 'Edit Product' : 'Add New Product'}
@@ -728,9 +737,14 @@ const ProductModal = ({
                                         </h4>
                                     </div>
 
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full">
-                                            <thead className="bg-gray-50 border-b border-gray-200">
+                                    <div style={{
+                                        overflowX: 'auto',
+                                        overflowY: 'auto',
+                                        position: 'relative',
+                                        maxHeight: '650px'
+                                    }}>
+                                        <table className="w-full" style={{ minWidth: '1400px' }}>
+                                            <thead className="bg-gray-50 border-b border-gray-200" style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                                                 <tr>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-28">Image</th>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-48">Variation</th>
@@ -739,13 +753,15 @@ const ProductModal = ({
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-32">Weight (kg)</th>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-64">Dimensions (L×W×H cm)</th>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-32">Unit Cost (₱)</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase min-w-[400px]">Company Prices</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase" style={{ minWidth: '360px' }}>
+                                                        Company Prices
+                                                    </th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-200">
                                                 {variationCombinations.map((combo, comboIndex) => (
                                                     <tr key={comboIndex} className="hover:bg-gray-50">
-                                                        {/* Image Upload*/}
+                                                        {/* Image Upload */}
                                                         <td className="px-4 py-3 w-28">
                                                             {!combo.imageUrl ? (
                                                                 <div className="relative">
@@ -757,7 +773,6 @@ const ProductModal = ({
                                                                             if (file) {
                                                                                 const imageUrl = await handleImageUpload(file, true, comboIndex);
                                                                                 if (imageUrl) {
-                                                                                    console.log('Variation image uploaded:', imageUrl);
                                                                                     updateVariationCombination(comboIndex, 'imageUrl', imageUrl);
                                                                                 }
                                                                             }
@@ -789,7 +804,6 @@ const ProductModal = ({
                                                                             alt="Variation"
                                                                             className="w-full h-full object-cover"
                                                                             onError={(e) => {
-                                                                                console.error('Variation image load error:', combo.imageUrl);
                                                                                 e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZTwvdGV4dD48L3N2Zz4=';
                                                                             }}
                                                                         />
@@ -805,7 +819,7 @@ const ProductModal = ({
                                                             )}
                                                         </td>
 
-                                                        {/* Variation Attributes*/}
+                                                        {/* Variation Attributes */}
                                                         <td className="px-4 py-3 w-48">
                                                             <div className="flex flex-wrap gap-1">
                                                                 {Object.entries(combo.attributes).map(([type, value]) => (
@@ -906,15 +920,61 @@ const ProductModal = ({
                                                             )}
                                                         </td>
 
-                                                        {/* Company Prices */}
-                                                        <td className="px-4 py-3 min-w-[400px]">
-                                                            <div className="space-y-2">
+                                                        {/* ── Company Prices (UPDATED) ── */}
+                                                        <td className="px-4 py-3" style={{ minWidth: '360px' }}>
+                                                            {/* Apply-to-all row */}
+                                                            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-200">
+                                                                <span className="text-xs font-semibold text-gray-600 flex-shrink-0">Apply all:</span>
+                                                                <div className="flex items-center gap-1 flex-1">
+                                                                    <span className="text-sm text-gray-500 flex-shrink-0">₱</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        placeholder="0.00"
+                                                                        step="0.01"
+                                                                        min="0"
+                                                                        id={`apply-all-price-${comboIndex}`}
+                                                                        className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-blue-50"
+                                                                    />
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const input = document.getElementById(`apply-all-price-${comboIndex}`);
+                                                                        if (input && input.value) {
+                                                                            applyPriceToAllCompanies(comboIndex, input.value);
+                                                                        }
+                                                                    }}
+                                                                    className="flex-shrink-0 flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition font-medium"
+                                                                    title="Apply this price to all companies"
+                                                                >
+                                                                    <Copy size={12} />
+                                                                    Apply
+                                                                </button>
+                                                            </div>
+
+                                                            {/* Scrollable company list — shows 3 rows (~108px), scrollable beyond */}
+                                                            <div
+                                                                className="space-y-1.5 overflow-y-auto pr-1"
+                                                                style={{ maxHeight: '108px' }}
+                                                            >
                                                                 {companies.map((company) => (
-                                                                    <div key={company.id} className="flex items-center gap-3">
-                                                                        <label className="text-xs text-gray-700 font-medium min-w-[140px] truncate" title={company.companyName}>
+                                                                    <div key={company.id} className="flex items-center gap-2">
+                                                                        {/* Company name: wraps to 2 lines, no ellipsis */}
+                                                                        <label
+                                                                            className="text-xs text-gray-700 font-medium flex-shrink-0"
+                                                                            style={{
+                                                                                width: '200px',
+                                                                                display: '-webkit-box',
+                                                                                WebkitLineClamp: 2,
+                                                                                WebkitBoxOrient: 'vertical',
+                                                                                overflow: 'hidden',
+                                                                                lineHeight: '1.3',
+                                                                            }}
+                                                                            title={company.companyName}
+                                                                        >
                                                                             {company.companyName}
                                                                         </label>
-                                                                        <div className="flex items-center gap-2 flex-1">
+                                                                        <div className="flex items-center gap-1 flex-shrink-0" style={{ width: '140px' }}>
                                                                             <span className="text-sm text-gray-500">₱</span>
                                                                             <input
                                                                                 type="number"
@@ -923,7 +983,7 @@ const ProductModal = ({
                                                                                 placeholder="0.00"
                                                                                 step="0.01"
                                                                                 min="0"
-                                                                                className="flex-1 min-w-[120px] px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                                             />
                                                                         </div>
                                                                     </div>
