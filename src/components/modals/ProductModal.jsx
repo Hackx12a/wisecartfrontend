@@ -43,12 +43,21 @@ const ProductModal = ({
         setVariationCombinations(newCombinations);
     };
 
-    // Apply one price to ALL companies in a single variation row
+
     const applyPriceToAllCompanies = (comboIndex, price) => {
         const newCombinations = [...variationCombinations];
         companies.forEach((company) => {
             newCombinations[comboIndex].companyPrices[company.id] = price;
         });
+        setVariationCombinations(newCombinations);
+    };
+
+    const updateVariationCompanySku = (comboIndex, companyId, sku) => {
+        const newCombinations = [...variationCombinations];
+        if (!newCombinations[comboIndex].companySkus) {
+            newCombinations[comboIndex].companySkus = {};
+        }
+        newCombinations[comboIndex].companySkus[companyId] = sku;
         setVariationCombinations(newCombinations);
     };
 
@@ -746,23 +755,25 @@ const ProductModal = ({
                                         <table className="w-full" style={{ minWidth: '1400px' }}>
                                             <thead className="bg-gray-50 border-b border-gray-200" style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                                                 <tr>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-28">Image</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-48">Variation</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-40">SKU</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-28" style={{ position: 'sticky', left: 0, zIndex: 2, backgroundColor: '#f9fafb', width: '112px', minWidth: '112px', maxWidth: '112px' }}>Image</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-48" style={{ position: 'sticky', left: '112px', zIndex: 2, backgroundColor: '#f9fafb', boxShadow: '2px 0 4px rgba(0,0,0,0.08)' }}>Variation</th>                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-40">SKU</th>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-40">UPC</th>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-32">Weight (kg)</th>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-64">Dimensions (L×W×H cm)</th>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-32">Unit Cost (₱)</th>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase" style={{ minWidth: '360px' }}>
-                                                        Company Prices
+                                                        Company Prices <span className="text-red-500">*</span>
+                                                    </th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase" style={{ minWidth: '360px' }}>
+                                                        Company SKU <span className="text-red-500">*</span>
                                                     </th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-200">
                                                 {variationCombinations.map((combo, comboIndex) => (
-                                                    <tr key={comboIndex} className="hover:bg-gray-50">
+                                                    <tr key={comboIndex}>
                                                         {/* Image Upload */}
-                                                        <td className="px-4 py-3 w-28">
+                                                        <td className="px-4 py-3 w-28" style={{ position: 'sticky', left: 0, zIndex: 1, backgroundColor: 'white', width: '112px', minWidth: '112px', maxWidth: '112px' }}>
                                                             {!combo.imageUrl ? (
                                                                 <div className="relative">
                                                                     <input
@@ -820,7 +831,7 @@ const ProductModal = ({
                                                         </td>
 
                                                         {/* Variation Attributes */}
-                                                        <td className="px-4 py-3 w-48">
+                                                        <td className="px-4 py-3 w-48" style={{ position: 'sticky', left: '112px', zIndex: 1, backgroundColor: 'white', boxShadow: '2px 0 4px rgba(0,0,0,0.08)' }}>
                                                             <div className="flex flex-wrap gap-1">
                                                                 {Object.entries(combo.attributes).map(([type, value]) => (
                                                                     <span key={type} className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium whitespace-nowrap">
@@ -980,9 +991,47 @@ const ProductModal = ({
                                                                                 type="number"
                                                                                 value={combo.companyPrices[company.id] || ''}
                                                                                 onChange={(e) => updateVariationCompanyPrice(comboIndex, company.id, e.target.value)}
-                                                                                placeholder="0.00"
+                                                                                placeholder="0.00 *"
                                                                                 step="0.01"
                                                                                 min="0"
+                                                                                required
+                                                                                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </td>
+
+                                                        <td className="px-4 py-3" style={{ minWidth: '360px' }}>
+                                                            <div className="mb-2 pb-2 border-b border-transparent" style={{ height: '32px' }} />
+                                                            <div
+                                                                className="space-y-1.5 overflow-y-auto pr-1"
+                                                                style={{ maxHeight: '108px' }}
+                                                            >
+                                                                {companies.map((company) => (
+                                                                    <div key={company.id} className="flex items-center gap-2">
+                                                                        <label
+                                                                            className="text-xs text-gray-700 font-medium flex-shrink-0"
+                                                                            style={{
+                                                                                width: '200px',
+                                                                                display: '-webkit-box',
+                                                                                WebkitLineClamp: 2,
+                                                                                WebkitBoxOrient: 'vertical',
+                                                                                overflow: 'hidden',
+                                                                                lineHeight: '1.3',
+                                                                            }}
+                                                                            title={company.companyName}
+                                                                        >
+                                                                            {company.companyName}
+                                                                        </label>
+                                                                        <div className="flex items-center gap-1 flex-shrink-0" style={{ width: '140px' }}>
+                                                                            <input
+                                                                                type="text"
+                                                                                value={(combo.companySkus && combo.companySkus[company.id]) || ''}
+                                                                                onChange={(e) => updateVariationCompanySku(comboIndex, company.id, e.target.value)}
+                                                                                placeholder="Enter SKU *"
+                                                                                required
                                                                                 className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                                             />
                                                                         </div>
@@ -1011,7 +1060,8 @@ const ProductModal = ({
                                                             length: '',
                                                             width: '',
                                                             height: '',
-                                                            companyPrices: {}
+                                                            companyPrices: {},
+                                                            companySkus: {}
                                                         })));
                                                     }
                                                 }}

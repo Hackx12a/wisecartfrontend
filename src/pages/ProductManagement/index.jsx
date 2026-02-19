@@ -230,10 +230,14 @@ const ProductManagement = () => {
           const dims = v.dimensions ? v.dimensions.split('×') : ['', '', ''];
 
           const companyPricesMap = {};
+          const companySkusMap = {};
           if (v.companyPrices) {
             v.companyPrices.forEach(cp => {
               if (cp.company?.id) {
                 companyPricesMap[cp.company.id] = cp.price;
+                if (cp.companySku) {
+                  companySkusMap[cp.company.id] = cp.companySku;
+                }
               }
             });
           }
@@ -250,7 +254,8 @@ const ProductManagement = () => {
             height: dims[2] || '',
             imageUrl: v.imageUrl || '',
             unitPrice: v.unitPrice || null,
-            companyPrices: companyPricesMap
+            companyPrices: companyPricesMap,
+            companySkus: companySkusMap
           };
         });
 
@@ -462,8 +467,8 @@ const ProductManagement = () => {
                 onClick={prevPage}
                 disabled={currentPage === 1}
                 className={`p-2 rounded-lg border ${currentPage === 1
-                    ? 'text-gray-400 cursor-not-allowed border-gray-200'
-                    : 'text-gray-700 hover:bg-gray-50 border-gray-300'
+                  ? 'text-gray-400 cursor-not-allowed border-gray-200'
+                  : 'text-gray-700 hover:bg-gray-50 border-gray-300'
                   }`}
               >
                 <ChevronLeft size={16} />
@@ -475,8 +480,8 @@ const ProductManagement = () => {
                     key={number}
                     onClick={() => paginate(number)}
                     className={`min-w-[40px] px-3 py-2 text-sm rounded-lg border ${currentPage === number
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'text-gray-700 hover:bg-gray-50 border-gray-300'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'text-gray-700 hover:bg-gray-50 border-gray-300'
                       }`}
                   >
                     {number}
@@ -488,8 +493,8 @@ const ProductManagement = () => {
                 onClick={nextPage}
                 disabled={currentPage === totalPages}
                 className={`p-2 rounded-lg border ${currentPage === totalPages
-                    ? 'text-gray-400 cursor-not-allowed border-gray-200'
-                    : 'text-gray-700 hover:bg-gray-50 border-gray-300'
+                  ? 'text-gray-400 cursor-not-allowed border-gray-200'
+                  : 'text-gray-700 hover:bg-gray-50 border-gray-300'
                   }`}
               >
                 <ChevronRight size={16} />

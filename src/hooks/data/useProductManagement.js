@@ -132,7 +132,8 @@ const useProductManagement = (api) => {
                     length: '',
                     width: '',
                     height: '',
-                    companyPrices: {}
+                    companyPrices: {},
+                    companySkus: {}
                 }];
             }
 
@@ -166,6 +167,7 @@ const useProductManagement = (api) => {
                     width: combo.width || '',
                     height: combo.height || '',
                     companyPrices: clonedPrices,
+                    companySkus: combo.companySkus ? { ...combo.companySkus } : {},
                     attributes: combo.attributes
                 });
             });
@@ -199,7 +201,8 @@ const useProductManagement = (api) => {
                         length: preserved.length,
                         width: preserved.width,
                         height: preserved.height,
-                        companyPrices: { ...preserved.companyPrices }
+                        companyPrices: { ...preserved.companyPrices },
+                        companySkus: { ...preserved.companySkus }
                     };
                 }
 
@@ -272,12 +275,12 @@ const useProductManagement = (api) => {
                         variationData.dimensions = `${l}×${w}×${h}`;
                     }
 
-                    // Build company prices for this variation
                     Object.entries(combo.companyPrices).forEach(([companyId, price]) => {
                         if (price && parseFloat(price) > 0) {
                             variationData.companyPrices.push({
                                 companyId: parseInt(companyId),
-                                price: parseFloat(price)
+                                price: parseFloat(price),
+                                companySku: combo.companySkus?.[companyId] || null
                             });
                         }
                     });
