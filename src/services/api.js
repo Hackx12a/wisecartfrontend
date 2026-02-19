@@ -2,7 +2,6 @@ import { toast } from 'react-hot-toast';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://152.42.235.205/api';
 
-
 const RATE_LIMIT_CONFIG = {
     maxRetries: 3,
     baseDelay: 500,
@@ -13,7 +12,6 @@ const RATE_LIMIT_CONFIG = {
 };
 
 let activeRetryToast = null;
-
 
 const decodeJWT = (token) => {
     try {
@@ -56,7 +54,6 @@ const getToken = () => {
     return token;
 };
 
-
 const calculateRetryDelay = (attempt) => {
     return Math.min(
         RATE_LIMIT_CONFIG.baseDelay * Math.pow(RATE_LIMIT_CONFIG.backoffMultiplier, attempt),
@@ -64,15 +61,19 @@ const calculateRetryDelay = (attempt) => {
     );
 };
 
+const clearRetryToast = () => {
+    if (activeRetryToast) {
+        toast.dismiss(activeRetryToast);
+        activeRetryToast = null;
+    }
+};
+
 const handleRateLimit = async (response, url, options, attempt = 0) => {
     if (response.status !== 429) return response;
 
     // Max retries reached
     if (attempt >= RATE_LIMIT_CONFIG.maxRetries) {
-        if (activeRetryToast) {
-            toast.dismiss(activeRetryToast);
-            activeRetryToast = null;
-        }
+        clearRetryToast();
         toast.error('⚠️ Server is busy. Please try again in a moment.');
         return response;
     }
@@ -98,12 +99,7 @@ const handleRateLimit = async (response, url, options, attempt = 0) => {
         if (!activeRetryToast) {
             activeRetryToast = toast.loading(
                 `⏳ Just a moment... retrying in ${delaySeconds}s`,
-                { id: 'rate-limit-retry', duration: finalDelay + 500 }
-            );
-        } else {
-            toast.loading(
-                `⏳ Just a moment... retrying in ${delaySeconds}s`,
-                { id: activeRetryToast, duration: finalDelay + 500 }
+                { duration: finalDelay + 1000 } // Add duration to auto-dismiss
             );
         }
     }
@@ -111,23 +107,19 @@ const handleRateLimit = async (response, url, options, attempt = 0) => {
     // Wait before retry
     await new Promise(resolve => setTimeout(resolve, finalDelay));
 
-    // Clear toast
-    if (activeRetryToast) {
-        toast.dismiss(activeRetryToast);
-        activeRetryToast = null;
-    }
+    // Clear toast before retry
+    clearRetryToast();
 
     // Retry the request
     return fetchWithAuthRetry(url, options, attempt + 1);
 };
-
 
 const fetchWithAuthRetry = async (url, options = {}, attempt = 0) => {
     const token = getToken();
 
     // Skip auth check for login/register endpoints
     if (!token && !url.includes('/auth/')) {
-        toast.error('🔒 Please log in to continue');
+        toast.error('🔒 Please log in to continue', { duration: 3000 });
         return {
             success: false,
             error: 'Authentication required',
@@ -152,15 +144,7 @@ const fetchWithAuthRetry = async (url, options = {}, attempt = 0) => {
             return handleRateLimit(response, url, options, attempt);
         }
 
-        // Clear retry toast on success
-        if (activeRetryToast && response.ok) {
-            toast.success('✅ Request completed!', {
-                id: activeRetryToast,
-                duration: 1000
-            });
-            activeRetryToast = null;
-        }
-
+        // Handle response
         return handleResponse(response);
 
     } catch (error) {
@@ -171,13 +155,9 @@ const fetchWithAuthRetry = async (url, options = {}, attempt = 0) => {
             return fetchWithAuthRetry(url, options, attempt + 1);
         }
 
-        if (activeRetryToast) {
-            toast.dismiss(activeRetryToast);
-            activeRetryToast = null;
-        }
-
+        clearRetryToast();
         console.error('Network error:', error);
-        toast.error('📡 Network error. Please check your connection.');
+        toast.error('📡 Network error. Please check your connection.', { duration: 3000 });
 
         return {
             success: false,
@@ -187,16 +167,16 @@ const fetchWithAuthRetry = async (url, options = {}, attempt = 0) => {
     }
 };
 
-
-
-
 const handleResponse = async (response) => {
+    // Clear any lingering retry toasts
+    clearRetryToast();
+
     // Handle 401 Unauthorized
     if (response.status === 401) {
         localStorage.removeItem('authToken');
         localStorage.removeItem('user');
 
-        toast.error('🔒 Session expired. Please log in again.');
+        toast.error('🔒 Session expired. Please log in again.', { duration: 3000 });
 
         if (!window.location.pathname.includes('/login')) {
             setTimeout(() => window.location.href = '/login', 1000);
@@ -217,21 +197,14 @@ const handleResponse = async (response) => {
             const text = await response.text();
 
             if (text?.trim()) {
-                // Try to parse as JSON
                 try {
                     const jsonError = JSON.parse(text);
-
-                    // Check if it has specific field errors in the 'errors' object
                     if (jsonError.errors && typeof jsonError.errors === 'object') {
-                        // Format field errors nicely
                         const fieldErrors = Object.entries(jsonError.errors)
                             .map(([field, message]) => `${field}: ${message}`)
                             .join(', ');
-
                         errorMessage = fieldErrors || jsonError.error || 'Validation failed';
-                    }
-                    // Fallback to general error message
-                    else if (jsonError.message) {
+                    } else if (jsonError.message) {
                         errorMessage = jsonError.message;
                     } else if (jsonError.error) {
                         errorMessage = jsonError.error;
@@ -239,7 +212,6 @@ const handleResponse = async (response) => {
                         errorMessage = text;
                     }
                 } catch {
-                    // If not JSON, use the text directly
                     errorMessage = text;
                 }
             }
@@ -249,7 +221,7 @@ const handleResponse = async (response) => {
 
         // Don't show error toast for rate limits (already handled)
         if (response.status !== 429) {
-            toast.error(`❌ ${errorMessage}`);
+            toast.error(`❌ ${errorMessage}`, { duration: 3000 });
         }
 
         return {
@@ -259,7 +231,7 @@ const handleResponse = async (response) => {
         };
     }
 
-
+    // Handle successful responses
     const contentType = response.headers.get('content-type');
 
     if (contentType?.includes('application/json')) {
@@ -296,7 +268,6 @@ const handleResponse = async (response) => {
         }
     }
 
-    // Text response
     const textData = await response.text();
     return {
         success: true,
@@ -304,7 +275,6 @@ const handleResponse = async (response) => {
         status: response.status
     };
 };
-
 
 const batchRequests = async (requests, delayBetween = 50) => {
     const results = [];
@@ -320,7 +290,6 @@ const batchRequests = async (requests, delayBetween = 50) => {
 
             results.push(result);
 
-            // Small delay between requests
             if (i < requests.length - 1) {
                 await new Promise(resolve => setTimeout(resolve, delayBetween));
             }
@@ -335,66 +304,38 @@ const batchRequests = async (requests, delayBetween = 50) => {
     return results;
 };
 
-
 export const api = {
-    /**
-     * GET request
-     */
-    get: (endpoint) =>
-        fetchWithAuthRetry(endpoint, { method: 'GET' }),
+    get: (endpoint) => fetchWithAuthRetry(endpoint, { method: 'GET' }),
 
-    /**
-     * POST request
-     */
-    post: (endpoint, data) =>
-        fetchWithAuthRetry(endpoint, {
-            method: 'POST',
-            body: JSON.stringify(data),
-        }),
+    post: (endpoint, data) => fetchWithAuthRetry(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(data),
+    }),
 
-    /**
-     * PATCH request
-     */
     patch: (endpoint, data = null, config = {}) => {
         const queryParams = config.params
             ? '?' + new URLSearchParams(config.params).toString()
             : '';
-
         return fetchWithAuthRetry(`${endpoint}${queryParams}`, {
             method: 'PATCH',
             body: data ? JSON.stringify(data) : undefined,
         });
     },
 
-    /**
-     * PUT request
-     */
-    put: (endpoint, data) =>
-        fetchWithAuthRetry(endpoint, {
-            method: 'PUT',
-            body: data ? JSON.stringify(data) : undefined,
-        }),
+    put: (endpoint, data) => fetchWithAuthRetry(endpoint, {
+        method: 'PUT',
+        body: data ? JSON.stringify(data) : undefined,
+    }),
 
-    /**
-     * DELETE request
-     */
-    delete: (endpoint) =>
-        fetchWithAuthRetry(endpoint, { method: 'DELETE' }),
+    delete: (endpoint) => fetchWithAuthRetry(endpoint, { method: 'DELETE' }),
 
-    /**
-     * Batch multiple requests with smart spacing
-     */
-    batch: (requests, delayBetween = 50) =>
-        batchRequests(requests, delayBetween),
+    batch: (requests, delayBetween = 50) => batchRequests(requests, delayBetween),
 
-    /**
-     * Upload file with multipart/form-data
-     */
     upload: async (endpoint, formData) => {
         const token = getToken();
 
         if (!token) {
-            toast.error('🔒 Please log in to continue');
+            toast.error('🔒 Please log in to continue', { duration: 3000 });
             return {
                 success: false,
                 error: 'Authentication required',
@@ -411,11 +352,10 @@ export const api = {
                 body: formData,
             });
 
-            // Handle auth errors
             if (response.status === 401) {
                 localStorage.removeItem('authToken');
                 localStorage.removeItem('user');
-                toast.error('🔒 Session expired');
+                toast.error('🔒 Session expired', { duration: 3000 });
                 setTimeout(() => window.location.href = '/login', 1000);
                 return {
                     success: false,
@@ -424,7 +364,6 @@ export const api = {
                 };
             }
 
-            // Handle rate limiting
             if (response.status === 429) {
                 return handleRateLimit(response, endpoint, {
                     method: 'POST',
@@ -432,10 +371,9 @@ export const api = {
                 });
             }
 
-            // Handle errors
             if (!response.ok) {
                 const errorMessage = await response.text() || 'Upload failed';
-                toast.error(`❌ ${errorMessage}`);
+                toast.error(`❌ ${errorMessage}`, { duration: 3000 });
                 return {
                     success: false,
                     error: errorMessage,
@@ -443,7 +381,6 @@ export const api = {
                 };
             }
 
-            // Success
             const data = await response.json();
             return {
                 success: true,
@@ -453,7 +390,7 @@ export const api = {
 
         } catch (error) {
             console.error('Upload error:', error);
-            toast.error('📡 Upload failed. Check your connection.');
+            toast.error('📡 Upload failed. Check your connection.', { duration: 3000 });
             return {
                 success: false,
                 error: 'Network error',
@@ -462,14 +399,11 @@ export const api = {
         }
     },
 
-    /**
-     * Download file as blob
-     */
     download: async (endpoint) => {
         const token = getToken();
 
         if (!token) {
-            toast.error('🔒 Please log in to continue');
+            toast.error('🔒 Please log in to continue', { duration: 3000 });
             return {
                 success: false,
                 error: 'Authentication required',
@@ -485,11 +419,10 @@ export const api = {
                 },
             });
 
-            // Handle auth errors
             if (response.status === 401) {
                 localStorage.removeItem('authToken');
                 localStorage.removeItem('user');
-                toast.error('🔒 Session expired');
+                toast.error('🔒 Session expired', { duration: 3000 });
                 setTimeout(() => window.location.href = '/login', 1000);
                 return {
                     success: false,
@@ -498,10 +431,9 @@ export const api = {
                 };
             }
 
-            // Handle errors
             if (!response.ok) {
                 const errorMessage = await response.text() || 'Download failed';
-                toast.error(`❌ ${errorMessage}`);
+                toast.error(`❌ ${errorMessage}`, { duration: 3000 });
                 return {
                     success: false,
                     error: errorMessage,
@@ -509,7 +441,6 @@ export const api = {
                 };
             }
 
-            // Success
             const blob = await response.blob();
             return {
                 success: true,
@@ -519,7 +450,7 @@ export const api = {
 
         } catch (error) {
             console.error('Download error:', error);
-            toast.error('📡 Download failed');
+            toast.error('📡 Download failed', { duration: 3000 });
             return {
                 success: false,
                 error: 'Network error',
@@ -528,48 +459,27 @@ export const api = {
         }
     },
 
-    /**
-     * Check if token is valid
-     */
     checkTokenValidity: () => {
         const token = localStorage.getItem('authToken');
         return token && !isTokenExpired(token);
     },
 
-    /**
-     * Get token expiration timestamp
-     */
     getTokenExpiration: () => {
         const token = localStorage.getItem('authToken');
         if (!token) return null;
-
         const decoded = decodeJWT(token);
         return decoded?.exp || null;
     },
 
-    /**
-     * Configure rate limit behavior
-     */
     configureRateLimit: (config) => {
         Object.assign(RATE_LIMIT_CONFIG, config);
     },
 
-    /**
-     * Get current rate limit configuration
-     */
     getRateLimitConfig: () => ({
         ...RATE_LIMIT_CONFIG
     }),
 
-    /**
-     * Manually clear retry toast
-     */
-    clearRetryToast: () => {
-        if (activeRetryToast) {
-            toast.dismiss(activeRetryToast);
-            activeRetryToast = null;
-        }
-    },
+    clearRetryToast: clearRetryToast,
 };
 
 export { API_BASE_URL };
