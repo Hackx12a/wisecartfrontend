@@ -991,345 +991,357 @@ const ProductModal = ({
                                         </h4>
                                     </div>
 
-                                    <div style={{ overflowX: 'auto', overflowY: 'auto', position: 'relative', maxHeight: '650px' }}>
-                                        <table className="w-full" style={{ minWidth: '1400px' }}>
-                                            <thead className="bg-gray-50 border-b border-gray-200" style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-                                                <tr>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase" style={{ position: 'sticky', left: 0, zIndex: 2, backgroundColor: '#f9fafb', width: '112px', minWidth: '112px', maxWidth: '112px' }}>Image</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-48" style={{ position: 'sticky', left: '112px', zIndex: 2, backgroundColor: '#f9fafb', boxShadow: '2px 0 4px rgba(0,0,0,0.08)' }}>Variation</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-40">SKU</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-40">UPC</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-32">Weight (kg)</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-64">Dimensions (L×W×H cm)</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-32">Unit Cost (₱)</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase" style={{ minWidth: '500px' }}>
-                                                        Company Prices <span className="text-red-500">*</span>
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-200">
-                                                {variationCombinations.map((combo, comboIndex) => (
-                                                    <tr key={comboIndex}>
-                                                        {/* Image */}
-                                                        <td className="px-4 py-3" style={{ position: 'sticky', left: 0, zIndex: 1, backgroundColor: 'white', width: '112px', minWidth: '112px', maxWidth: '112px' }}>
-                                                            {!combo.imageUrl ? (
-                                                                <div className="relative">
-                                                                    <input
-                                                                        type="file"
-                                                                        accept="image/*"
-                                                                        onChange={async (e) => {
-                                                                            const file = e.target.files[0];
-                                                                            if (file) {
-                                                                                const imageUrl = await handleImageUpload(file, true, comboIndex);
-                                                                                if (imageUrl) updateVariationCombination(comboIndex, 'imageUrl', imageUrl);
-                                                                            }
-                                                                            e.target.value = '';
-                                                                        }}
-                                                                        className="hidden"
-                                                                        id={`variation-image-${comboIndex}`}
-                                                                        disabled={uploadingVariationImage[comboIndex]}
-                                                                    />
-                                                                    <label
-                                                                        htmlFor={`variation-image-${comboIndex}`}
-                                                                        className={`flex items-center justify-center w-16 h-16 border-2 border-dashed rounded-lg cursor-pointer transition overflow-hidden ${uploadingVariationImage[comboIndex] ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-blue-500 bg-gray-50'}`}
-                                                                    >
-                                                                        {uploadingVariationImage[comboIndex]
-                                                                            ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-                                                                            : <Package size={16} className="text-gray-400" />}
-                                                                    </label>
-                                                                </div>
-                                                            ) : (
-                                                                <div className="relative group">
-                                                                    <div className="w-16 h-16 overflow-hidden rounded-lg border border-gray-200">
-                                                                        <img
-                                                                            src={getFileUrl(combo.imageUrl)}
-                                                                            alt="Variation"
-                                                                            className="w-full h-full object-cover"
-                                                                            onError={(e) => {
-                                                                                e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZTwvdGV4dD48L3N2Zz4=';
+                                    {/*
+                                      STICKY SCROLLBAR TECHNIQUE:
+                                      - Outer div: sticky positioned, fills viewport height minus offset
+                                        so both scrollbars are always visible without scrolling up
+                                      - Inner div: actual overflow container
+                                    */}
+                                    <div
+                                        style={{
+                                            position: 'sticky',
+                                            top: 0,           /* sticks to top of the modal's scroll container */
+                                            zIndex: 0,
+                                            maxHeight: '60vh', /* visible area — adjust as needed */
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                overflowX: 'auto',
+                                                overflowY: 'auto',
+                                                flex: 1,
+                                                position: 'relative',
+                                            }}
+                                        >
+                                            <table className="w-full" style={{ minWidth: '1400px' }}>
+                                                <thead className="bg-gray-50 border-b border-gray-200" style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                                                    <tr>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase" style={{ position: 'sticky', left: 0, zIndex: 2, backgroundColor: '#f9fafb', width: '112px', minWidth: '112px', maxWidth: '112px' }}>Image</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-48" style={{ position: 'sticky', left: '112px', zIndex: 2, backgroundColor: '#f9fafb', boxShadow: '2px 0 4px rgba(0,0,0,0.08)' }}>Variation</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-40">SKU</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-40">UPC</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-32">Weight (kg)</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-64">Dimensions (L×W×H cm)</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-32">Unit Cost (₱)</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase" style={{ minWidth: '500px' }}>
+                                                            Company Prices <span className="text-red-500">*</span>
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-200">
+                                                    {variationCombinations.map((combo, comboIndex) => (
+                                                        <tr key={comboIndex}>
+                                                            {/* Image */}
+                                                            <td className="px-4 py-3" style={{ position: 'sticky', left: 0, zIndex: 1, backgroundColor: 'white', width: '112px', minWidth: '112px', maxWidth: '112px' }}>
+                                                                {!combo.imageUrl ? (
+                                                                    <div className="relative">
+                                                                        <input
+                                                                            type="file"
+                                                                            accept="image/*"
+                                                                            onChange={async (e) => {
+                                                                                const file = e.target.files[0];
+                                                                                if (file) {
+                                                                                    const imageUrl = await handleImageUpload(file, true, comboIndex);
+                                                                                    if (imageUrl) updateVariationCombination(comboIndex, 'imageUrl', imageUrl);
+                                                                                }
+                                                                                e.target.value = '';
                                                                             }}
+                                                                            className="hidden"
+                                                                            id={`variation-image-${comboIndex}`}
+                                                                            disabled={uploadingVariationImage[comboIndex]}
                                                                         />
+                                                                        <label
+                                                                            htmlFor={`variation-image-${comboIndex}`}
+                                                                            className={`flex items-center justify-center w-16 h-16 border-2 border-dashed rounded-lg cursor-pointer transition overflow-hidden ${uploadingVariationImage[comboIndex] ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-blue-500 bg-gray-50'}`}
+                                                                        >
+                                                                            {uploadingVariationImage[comboIndex]
+                                                                                ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                                                                                : <Package size={16} className="text-gray-400" />}
+                                                                        </label>
                                                                     </div>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => updateVariationCombination(comboIndex, 'imageUrl', '')}
-                                                                        className="absolute -top-1.5 -right-1.5 p-0.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition opacity-0 group-hover:opacity-100 shadow-md"
-                                                                    >
-                                                                        <X size={10} />
-                                                                    </button>
-                                                                </div>
-                                                            )}
-                                                        </td>
-
-                                                        {/* Attributes */}
-                                                        <td className="px-4 py-3 w-48" style={{ position: 'sticky', left: '112px', zIndex: 1, backgroundColor: 'white', boxShadow: '2px 0 4px rgba(0,0,0,0.08)' }}>
-                                                            <div className="flex flex-wrap gap-1">
-                                                                {Object.entries(combo.attributes).map(([type, value]) => (
-                                                                    <span key={type} className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium whitespace-nowrap">
-                                                                        {type}: {value}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                        </td>
-
-                                                        {/* SKU */}
-                                                        <td className="px-4 py-3 w-40">
-                                                            <input
-                                                                type="text"
-                                                                value={combo.sku}
-                                                                onChange={(e) => updateVariationCombination(comboIndex, 'sku', e.target.value)}
-                                                                placeholder="Enter SKU *"
-                                                                required
-                                                                className="w-full min-w-[150px] px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                            />
-                                                        </td>
-
-                                                        {/* UPC */}
-                                                        <td className="px-4 py-3 w-40">
-                                                            <input
-                                                                type="text"
-                                                                value={combo.upc}
-                                                                onChange={(e) => updateVariationCombination(comboIndex, 'upc', e.target.value)}
-                                                                placeholder="Enter UPC *"
-                                                                required
-                                                                maxLength={13}
-                                                                className="w-full min-w-[150px] px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                            />
-                                                        </td>
-
-                                                        {/* Weight */}
-                                                        <td className="px-4 py-3 w-32">
-                                                            <input
-                                                                type="number"
-                                                                value={combo.weight || ''}
-                                                                onChange={(e) => updateVariationCombination(comboIndex, 'weight', e.target.value)}
-                                                                placeholder="0.00 *"
-                                                                step="0.01"
-                                                                min="0"
-                                                                required
-                                                                className="w-full min-w-[100px] px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                            />
-                                                        </td>
-
-                                                        {/* Dimensions */}
-                                                        <td className="px-4 py-3 w-64">
-                                                            <div className="flex items-center gap-2">
-                                                                {['length', 'width', 'height'].map((dim, i) => (
-                                                                    <React.Fragment key={dim}>
-                                                                        {i > 0 && <X size={12} className="text-gray-400 flex-shrink-0" />}
-                                                                        <input
-                                                                            type="number"
-                                                                            value={combo[dim] || ''}
-                                                                            onChange={(e) => updateVariationCombination(comboIndex, dim, e.target.value)}
-                                                                            placeholder={`${dim.charAt(0).toUpperCase()} *`}
-                                                                            step="0.01"
-                                                                            required
-                                                                            className="w-20 px-2 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                                        />
-                                                                    </React.Fragment>
-                                                                ))}
-                                                            </div>
-                                                        </td>
-
-                                                        {/* Unit Cost (read-only) */}
-                                                        <td className="px-4 py-3 w-32">
-                                                            <input
-                                                                type="text"
-                                                                value={combo.unitPrice ? `₱${parseFloat(combo.unitPrice).toFixed(2)}` : ''}
-                                                                disabled
-                                                                className="w-full min-w-[120px] px-3 py-2 text-sm border border-gray-300 rounded bg-gray-100 cursor-not-allowed text-gray-900"
-                                                                placeholder="Set via PO"
-                                                            />
-                                                            {!combo.unitPrice && <p className="text-xs text-gray-500 mt-1">Set in Purchase Orders</p>}
-                                                        </td>
-
-                                                        {/* ── Company Prices ── */}
-                                                        <td className="px-4 py-3" style={{ minWidth: '800px' }}>
-                                                            {/* Top row: Apply to all + Add Company */}
-                                                            <div className="flex items-center gap-4 mb-3 pb-2 border-b border-gray-200">
-                                                                {/* Apply to all */}
-                                                                <div className="flex items-center gap-2 flex-shrink-0">
-                                                                    <span className="text-xs font-semibold text-gray-600">Apply to all:</span>
-                                                                    <div className="flex items-center gap-1">
-                                                                        <span className="text-sm text-gray-500">₱</span>
-                                                                        <input
-                                                                            type="number"
-                                                                            placeholder="0.00"
-                                                                            step="0.01"
-                                                                            min="0"
-                                                                            id={`apply-all-price-${comboIndex}`}
-                                                                            className="w-24 px-2 py-1 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-blue-50"
-                                                                        />
-                                                                    </div>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            const input = document.getElementById(`apply-all-price-${comboIndex}`);
-                                                                            if (input?.value) applyPriceToAllCompanies(comboIndex, input.value);
-                                                                        }}
-                                                                        className="flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition font-medium"
-                                                                    >
-                                                                        <Copy size={12} />
-                                                                        Apply
-                                                                    </button>
-                                                                </div>
-
-                                                                <div className="w-px h-6 bg-gray-300"></div>
-
-                                                                {/* Add Company */}
-                                                                <div className="flex items-center gap-2 flex-1">
-                                                                    <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">Add Company:</span>
-                                                                    <div
-                                                                        className="relative flex-1"
-                                                                        ref={el => companyDropdownRefs.current[comboIndex] = el}
-                                                                    >
-                                                                        <div className="relative">
-                                                                            <input
-                                                                                type="text"
-                                                                                placeholder="Search and select company..."
-                                                                                value={companySearchTerm[comboIndex] || ''}
-                                                                                onChange={(e) => handleCompanySearchChange(comboIndex, e.target.value)}
-                                                                                onFocus={() => toggleCompanyDropdown(comboIndex, true)}
-                                                                                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-8"
+                                                                ) : (
+                                                                    <div className="relative group">
+                                                                        <div className="w-16 h-16 overflow-hidden rounded-lg border border-gray-200">
+                                                                            <img
+                                                                                src={getFileUrl(combo.imageUrl)}
+                                                                                alt="Variation"
+                                                                                className="w-full h-full object-cover"
+                                                                                onError={(e) => {
+                                                                                    e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZTwvdGV4dD48L3N2Zz4=';
+                                                                                }}
                                                                             />
-                                                                            {companyDropdownOpen[comboIndex] && (
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => toggleCompanyDropdown(comboIndex, false)}
-                                                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                                                                >
-                                                                                    <X size={14} />
-                                                                                </button>
-                                                                            )}
                                                                         </div>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => updateVariationCombination(comboIndex, 'imageUrl', '')}
+                                                                            className="absolute -top-1.5 -right-1.5 p-0.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition opacity-0 group-hover:opacity-100 shadow-md"
+                                                                        >
+                                                                            <X size={10} />
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </td>
 
-                                                                        {companyDropdownOpen[comboIndex] && (
-                                                                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
-                                                                                <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
-                                                                                    <span className="text-xs font-medium text-gray-600">
-                                                                                        {companies.filter(c =>
-                                                                                            !(selectedPriceCompanyIds[comboIndex] || []).includes(c.id) &&
-                                                                                            c.companyName.toLowerCase().includes((companySearchTerm[comboIndex] || '').toLowerCase())
-                                                                                        ).length} companies available
-                                                                                    </span>
-                                                                                    <button type="button" onClick={() => toggleCompanyDropdown(comboIndex, false)} className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-200 rounded">
-                                                                                        <X size={14} />
-                                                                                    </button>
-                                                                                </div>
+                                                            {/* Attributes */}
+                                                            <td className="px-4 py-3 w-48" style={{ position: 'sticky', left: '112px', zIndex: 1, backgroundColor: 'white', boxShadow: '2px 0 4px rgba(0,0,0,0.08)' }}>
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {Object.entries(combo.attributes).map(([type, value]) => (
+                                                                        <span key={type} className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium whitespace-nowrap">
+                                                                            {type}: {value}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            </td>
 
-                                                                                <div className="max-h-48 overflow-y-auto">
-                                                                                    {companies.filter(c =>
-                                                                                        !(selectedPriceCompanyIds[comboIndex] || []).includes(c.id) &&
-                                                                                        c.companyName.toLowerCase().includes((companySearchTerm[comboIndex] || '').toLowerCase())
-                                                                                    ).length > 0 ? (
-                                                                                        companies
-                                                                                            .filter(c =>
-                                                                                                !(selectedPriceCompanyIds[comboIndex] || []).includes(c.id) &&
-                                                                                                c.companyName.toLowerCase().includes((companySearchTerm[comboIndex] || '').toLowerCase())
-                                                                                            )
-                                                                                            .map(company => (
-                                                                                                <div
-                                                                                                    key={company.id}
-                                                                                                    onClick={() => {
-                                                                                                        togglePriceCompany(comboIndex, company.id);
-                                                                                                        handleCompanySearchChange(comboIndex, '');
-                                                                                                        toggleCompanyDropdown(comboIndex, false);
-                                                                                                    }}
-                                                                                                    className="px-3 py-2.5 hover:bg-blue-50 cursor-pointer transition border-b border-gray-100 last:border-b-0"
-                                                                                                >
-                                                                                                    <p className="text-sm font-medium text-gray-800">{company.companyName}</p>
-                                                                                                </div>
-                                                                                            ))
-                                                                                    ) : (
-                                                                                        <div className="px-3 py-4 text-sm text-gray-500 text-center">No companies found</div>
-                                                                                    )}
-                                                                                </div>
+                                                            {/* SKU */}
+                                                            <td className="px-4 py-3 w-40">
+                                                                <input
+                                                                    type="text"
+                                                                    value={combo.sku}
+                                                                    onChange={(e) => updateVariationCombination(comboIndex, 'sku', e.target.value)}
+                                                                    placeholder="Enter SKU *"
+                                                                    required
+                                                                    className="w-full min-w-[150px] px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                />
+                                                            </td>
 
-                                                                                <div className="px-3 py-2 border-t border-gray-100 bg-gray-50 rounded-b-lg">
+                                                            {/* UPC */}
+                                                            <td className="px-4 py-3 w-40">
+                                                                <input
+                                                                    type="text"
+                                                                    value={combo.upc}
+                                                                    onChange={(e) => updateVariationCombination(comboIndex, 'upc', e.target.value)}
+                                                                    placeholder="Enter UPC *"
+                                                                    required
+                                                                    maxLength={13}
+                                                                    className="w-full min-w-[150px] px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                />
+                                                            </td>
+
+                                                            {/* Weight */}
+                                                            <td className="px-4 py-3 w-32">
+                                                                <input
+                                                                    type="number"
+                                                                    value={combo.weight || ''}
+                                                                    onChange={(e) => updateVariationCombination(comboIndex, 'weight', e.target.value)}
+                                                                    placeholder="0.00 *"
+                                                                    step="0.01"
+                                                                    min="0"
+                                                                    required
+                                                                    className="w-full min-w-[100px] px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                />
+                                                            </td>
+
+                                                            {/* Dimensions */}
+                                                            <td className="px-4 py-3 w-64">
+                                                                <div className="flex items-center gap-2">
+                                                                    {['length', 'width', 'height'].map((dim, i) => (
+                                                                        <React.Fragment key={dim}>
+                                                                            {i > 0 && <X size={12} className="text-gray-400 flex-shrink-0" />}
+                                                                            <input
+                                                                                type="number"
+                                                                                value={combo[dim] || ''}
+                                                                                onChange={(e) => updateVariationCombination(comboIndex, dim, e.target.value)}
+                                                                                placeholder={`${dim.charAt(0).toUpperCase()} *`}
+                                                                                step="0.01"
+                                                                                required
+                                                                                className="w-20 px-2 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                            />
+                                                                        </React.Fragment>
+                                                                    ))}
+                                                                </div>
+                                                            </td>
+
+                                                            {/* Unit Cost (read-only) */}
+                                                            <td className="px-4 py-3 w-32">
+                                                                <input
+                                                                    type="text"
+                                                                    value={combo.unitPrice ? `₱${parseFloat(combo.unitPrice).toFixed(2)}` : ''}
+                                                                    disabled
+                                                                    className="w-full min-w-[120px] px-3 py-2 text-sm border border-gray-300 rounded bg-gray-100 cursor-not-allowed text-gray-900"
+                                                                    placeholder="Set via PO"
+                                                                />
+                                                                {!combo.unitPrice && <p className="text-xs text-gray-500 mt-1">Set in Purchase Orders</p>}
+                                                            </td>
+
+                                                            {/* ── Company Prices ── */}
+                                                            <td className="px-4 py-3" style={{ minWidth: '800px' }}>
+                                                                <div className="flex items-center gap-4 mb-3 pb-2 border-b border-gray-200">
+                                                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                                                        <span className="text-xs font-semibold text-gray-600">Apply to all:</span>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <span className="text-sm text-gray-500">₱</span>
+                                                                            <input
+                                                                                type="number"
+                                                                                placeholder="0.00"
+                                                                                step="0.01"
+                                                                                min="0"
+                                                                                id={`apply-all-price-${comboIndex}`}
+                                                                                className="w-24 px-2 py-1 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-blue-50"
+                                                                            />
+                                                                        </div>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                const input = document.getElementById(`apply-all-price-${comboIndex}`);
+                                                                                if (input?.value) applyPriceToAllCompanies(comboIndex, input.value);
+                                                                            }}
+                                                                            className="flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition font-medium"
+                                                                        >
+                                                                            <Copy size={12} />
+                                                                            Apply
+                                                                        </button>
+                                                                    </div>
+
+                                                                    <div className="w-px h-6 bg-gray-300"></div>
+
+                                                                    <div className="flex items-center gap-2 flex-1">
+                                                                        <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">Add Company:</span>
+                                                                        <div
+                                                                            className="relative flex-1"
+                                                                            ref={el => companyDropdownRefs.current[comboIndex] = el}
+                                                                        >
+                                                                            <div className="relative">
+                                                                                <input
+                                                                                    type="text"
+                                                                                    placeholder="Search and select company..."
+                                                                                    value={companySearchTerm[comboIndex] || ''}
+                                                                                    onChange={(e) => handleCompanySearchChange(comboIndex, e.target.value)}
+                                                                                    onFocus={() => toggleCompanyDropdown(comboIndex, true)}
+                                                                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-8"
+                                                                                />
+                                                                                {companyDropdownOpen[comboIndex] && (
                                                                                     <button
                                                                                         type="button"
                                                                                         onClick={() => toggleCompanyDropdown(comboIndex, false)}
-                                                                                        className="w-full py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition"
+                                                                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                                                                                     >
-                                                                                        Close
+                                                                                        <X size={14} />
                                                                                     </button>
-                                                                                </div>
+                                                                                )}
                                                                             </div>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
 
-                                                            {/* Selected companies table */}
-                                                            {(selectedPriceCompanyIds[comboIndex] || []).length > 0 && (
-                                                                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                                                    <div className="bg-gray-100 px-3 py-2 border-b border-gray-200">
-                                                                        <div className="grid grid-cols-3 gap-4">
-                                                                            <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Company</span>
-                                                                            <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Price (₱) <span className="text-red-500">*</span></span>
-                                                                            <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Company SKU <span className="text-red-500">*</span></span>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div className="divide-y divide-gray-200 max-h-[132px] overflow-y-auto">
-                                                                        {(selectedPriceCompanyIds[comboIndex] || []).map(companyId => {
-                                                                            const company = companies.find(c => c.id === companyId);
-                                                                            if (!company) return null;
-                                                                            return (
-                                                                                <div key={companyId} className="px-3 py-2 hover:bg-gray-50">
-                                                                                    <div className="grid grid-cols-3 gap-4 items-start">
-                                                                                        {/* Company name + remove */}
-                                                                                        <div className="flex items-center justify-between pr-2">
-                                                                                            <span className="text-sm font-medium text-gray-900 truncate" title={company.companyName}>
-                                                                                                {company.companyName}
-                                                                                            </span>
-                                                                                            <button
-                                                                                                type="button"
-                                                                                                onClick={() => togglePriceCompany(comboIndex, companyId)}
-                                                                                                className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded flex-shrink-0 ml-1"
-                                                                                                title="Remove company"
-                                                                                            >
-                                                                                                <X size={14} />
-                                                                                            </button>
-                                                                                        </div>
-
-                                                                                        {/* Price input */}
-                                                                                        <div className="flex items-center gap-1">
-                                                                                            <span className="text-sm text-gray-500 flex-shrink-0">₱</span>
-                                                                                            <input
-                                                                                                type="number"
-                                                                                                step="0.01"
-                                                                                                min="0"
-                                                                                                value={combo.companyPrices?.[companyId] ?? ''}
-                                                                                                onChange={(e) => updateVariationCompanyPrice(comboIndex, companyId, e.target.value)}
-                                                                                                placeholder="0.00"
-                                                                                                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                                                            />
-                                                                                        </div>
-
-                                                                                        {/* SKU input */}
-                                                                                        <div>
-                                                                                            <input
-                                                                                                type="text"
-                                                                                                value={combo.companySkus?.[companyId] ?? ''}
-                                                                                                onChange={(e) => updateVariationCompanySku(comboIndex, companyId, e.target.value)}
-                                                                                                placeholder="Enter SKU"
-                                                                                                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                                                            />
-                                                                                        </div>
+                                                                            {companyDropdownOpen[comboIndex] && (
+                                                                                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
+                                                                                    <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
+                                                                                        <span className="text-xs font-medium text-gray-600">
+                                                                                            {companies.filter(c =>
+                                                                                                !(selectedPriceCompanyIds[comboIndex] || []).includes(c.id) &&
+                                                                                                c.companyName.toLowerCase().includes((companySearchTerm[comboIndex] || '').toLowerCase())
+                                                                                            ).length} companies available
+                                                                                        </span>
+                                                                                        <button type="button" onClick={() => toggleCompanyDropdown(comboIndex, false)} className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-200 rounded">
+                                                                                            <X size={14} />
+                                                                                        </button>
+                                                                                    </div>
+                                                                                    <div className="max-h-48 overflow-y-auto">
+                                                                                        {companies.filter(c =>
+                                                                                            !(selectedPriceCompanyIds[comboIndex] || []).includes(c.id) &&
+                                                                                            c.companyName.toLowerCase().includes((companySearchTerm[comboIndex] || '').toLowerCase())
+                                                                                        ).length > 0 ? (
+                                                                                            companies
+                                                                                                .filter(c =>
+                                                                                                    !(selectedPriceCompanyIds[comboIndex] || []).includes(c.id) &&
+                                                                                                    c.companyName.toLowerCase().includes((companySearchTerm[comboIndex] || '').toLowerCase())
+                                                                                                )
+                                                                                                .map(company => (
+                                                                                                    <div
+                                                                                                        key={company.id}
+                                                                                                        onClick={() => {
+                                                                                                            togglePriceCompany(comboIndex, company.id);
+                                                                                                            handleCompanySearchChange(comboIndex, '');
+                                                                                                            toggleCompanyDropdown(comboIndex, false);
+                                                                                                        }}
+                                                                                                        className="px-3 py-2.5 hover:bg-blue-50 cursor-pointer transition border-b border-gray-100 last:border-b-0"
+                                                                                                    >
+                                                                                                        <p className="text-sm font-medium text-gray-800">{company.companyName}</p>
+                                                                                                    </div>
+                                                                                                ))
+                                                                                        ) : (
+                                                                                            <div className="px-3 py-4 text-sm text-gray-500 text-center">No companies found</div>
+                                                                                        )}
+                                                                                    </div>
+                                                                                    <div className="px-3 py-2 border-t border-gray-100 bg-gray-50 rounded-b-lg">
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={() => toggleCompanyDropdown(comboIndex, false)}
+                                                                                            className="w-full py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition"
+                                                                                        >
+                                                                                            Close
+                                                                                        </button>
                                                                                     </div>
                                                                                 </div>
-                                                                            );
-                                                                        })}
+                                                                            )}
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
+
+                                                                {(selectedPriceCompanyIds[comboIndex] || []).length > 0 && (
+                                                                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                                                        <div className="bg-gray-100 px-3 py-2 border-b border-gray-200">
+                                                                            <div className="grid grid-cols-3 gap-4">
+                                                                                <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Company</span>
+                                                                                <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Price (₱) <span className="text-red-500">*</span></span>
+                                                                                <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Company SKU <span className="text-red-500">*</span></span>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="divide-y divide-gray-200 max-h-[132px] overflow-y-auto">
+                                                                            {(selectedPriceCompanyIds[comboIndex] || []).map(companyId => {
+                                                                                const company = companies.find(c => c.id === companyId);
+                                                                                if (!company) return null;
+                                                                                return (
+                                                                                    <div key={companyId} className="px-3 py-2 hover:bg-gray-50">
+                                                                                        <div className="grid grid-cols-3 gap-4 items-start">
+                                                                                            <div className="flex items-center justify-between pr-2">
+                                                                                                <span className="text-sm font-medium text-gray-900 truncate" title={company.companyName}>
+                                                                                                    {company.companyName}
+                                                                                                </span>
+                                                                                                <button
+                                                                                                    type="button"
+                                                                                                    onClick={() => togglePriceCompany(comboIndex, companyId)}
+                                                                                                    className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded flex-shrink-0 ml-1"
+                                                                                                    title="Remove company"
+                                                                                                >
+                                                                                                    <X size={14} />
+                                                                                                </button>
+                                                                                            </div>
+                                                                                            <div className="flex items-center gap-1">
+                                                                                                <span className="text-sm text-gray-500 flex-shrink-0">₱</span>
+                                                                                                <input
+                                                                                                    type="number"
+                                                                                                    step="0.01"
+                                                                                                    min="0"
+                                                                                                    value={combo.companyPrices?.[companyId] ?? ''}
+                                                                                                    onChange={(e) => updateVariationCompanyPrice(comboIndex, companyId, e.target.value)}
+                                                                                                    placeholder="0.00"
+                                                                                                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                                                />
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <input
+                                                                                                    type="text"
+                                                                                                    value={combo.companySkus?.[companyId] ?? ''}
+                                                                                                    onChange={(e) => updateVariationCompanySku(comboIndex, companyId, e.target.value)}
+                                                                                                    placeholder="Enter SKU"
+                                                                                                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                                                />
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>{/* end inner scroll div */}
+                                    </div>{/* end sticky wrapper */}
 
                                     <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
                                         <div className="flex items-center justify-between">
