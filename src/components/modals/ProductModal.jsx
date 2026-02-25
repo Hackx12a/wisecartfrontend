@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     X, Package, Globe, Box, Tag, AlertCircle,
-    Edit2, Plus, Trash2, DollarSign, Copy, Search
+    Edit2, Plus, Trash2, Copy, Search
 } from 'lucide-react';
 import SearchableDropdown from '../common/SearchableDropdown';
 import CategoryInput from '../forms/CategoryInput';
@@ -31,69 +31,278 @@ const ProductModal = ({
     onClose,
     onSubmit
 }) => {
+    // ─── Helpers ────────────────────────────────────────────────────────────────
+
+    /**
+     * Safely update a single field inside a variation combination.
+     * Creates proper deep copies so we never mutate existing state.
+     */
     const updateVariationCombination = (index, field, value) => {
-        const newCombinations = [...variationCombinations];
-        newCombinations[index][field] = value;
-        setVariationCombinations(newCombinations);
+        setVariationCombinations(prev => {
+            const next = [...prev];
+            next[index] = { ...next[index], [field]: value };
+            return next;
+        });
     };
+
+    /**
+     * Update the selling price for one company inside one combo.
+     * Removing a price entry (empty / null) keeps the company row visible;
+     * the row is driven by selectedPriceCompanyIds, not by companyPrices.
+     */
+    const updateVariationCompanyPrice = (comboIndex, companyId, price) => {
+        setVariationCombinations(prev => {
+            const next = [...prev];
+            const combo = {
+                ...next[comboIndex],
+                companyPrices: { ...(next[comboIndex].companyPrices || {}) }
+            };
+            if (price === '' || price === null) {
+                delete combo.companyPrices[companyId];
+            } else {
+                combo.companyPrices[companyId] = price;
+            }
+            next[comboIndex] = combo;
+            return next;
+        });
+    };
+
+    /**
+     * Update the company-specific SKU for one company inside one combo.
+     */
+    const updateVariationCompanySku = (comboIndex, companyId, sku) => {
+        setVariationCombinations(prev => {
+            const next = [...prev];
+            const combo = {
+                ...next[comboIndex],
+                companySkus: { ...(next[comboIndex].companySkus || {}) }
+            };
+            combo.companySkus[companyId] = sku;
+            next[comboIndex] = combo;
+            return next;
+        });
+    };
+
+    /**
+     * Apply one price to every currently-selected company for a given combo.
+     */
+    const applyPriceToAllCompanies = (comboIndex, price) => {
+        if (!price) return;
+        setVariationCombinations(prev => {
+            const next = [...prev];
+            const combo = {
+                ...next[comboIndex],
+                companyPrices: { ...(next[comboIndex].companyPrices || {}) }
+            };
+            (selectedPriceCompanyIds[comboIndex] || []).forEach(id => {
+                combo.companyPrices[id] = price;
+            });
+            next[comboIndex] = combo;
+            return next;
+        });
+    };
+
+    // ─── State ───────────────────────────────────────────────────────────────────
 
     const [supplierSearch, setSupplierSearch] = useState('');
     const [supplierDropdownOpen, setSupplierDropdownOpen] = useState(false);
+
+    /**
+     * Per-combo list of selected company IDs.
+     * Shape: { [comboIndex]: number[] }
+     * This is the single source of truth for WHICH companies are shown in each
+     * combo's price table. variationCombinations.companyPrices holds the values.
+     */
+    const [selectedPriceCompanyIds, setSelectedPriceCompanyIds] = useState({});
+
+    const [companySearchTerm, setCompanySearchTerm] = useState({});
+    const [companyDropdownOpen, setCompanyDropdownOpen] = useState({});
+    const companyDropdownRefs = useRef({});
+
+    // Tracks which product ID has already been seeded.
+    // undefined = "never seeded this session"
+    // Stored as a ref so changing it never triggers a re-render.
+    const seededForProductId = useRef(undefined);
+
+    // ─── Click-outside handler for company dropdowns ─────────────────────────────
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            Object.keys(companyDropdownRefs.current).forEach((key) => {
+                const ref = companyDropdownRefs.current[key];
+                if (ref && !ref.contains(event.target)) {
+                    setCompanyDropdownOpen(prev => ({ ...prev, [key]: false }));
+                }
+            });
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // ─── Seed selectedPriceCompanyIds from existing combo data (edit mode) ──────
+    useEffect(() => {
+        const currentId = editingProduct?.id ?? null;
+
+        // Already seeded for this product session — do nothing.
+        if (seededForProductId.current === currentId) return;
+
+        // ── CRITICAL: If we're in EDIT mode but variationCombinations hasn't
+        // arrived yet (still empty), do NOT mark as seeded. Just wait.
+        // Marking it done here would cause the second fire (with real data)
+        // to be skipped by the guard above.
+        if (currentId !== null && (!variationCombinations || variationCombinations.length === 0)) {
+            setSelectedPriceCompanyIds({});
+            return; // intentionally NOT setting seededForProductId.current yet
+        }
+
+        // For "Add New" (currentId === null) with no combos, or edit mode with
+        // combos loaded — mark as seeded now so user edits aren't wiped.
+        seededForProductId.current = currentId;
+
+        if (!variationCombinations || variationCombinations.length === 0) {
+            setSelectedPriceCompanyIds({});
+            return;
+        }
+
+        const initialSelectedIds = {};
+
+        variationCombinations.forEach((combo, comboIndex) => {
+            const companyIds = new Set();
+
+            if (combo.companyPrices) {
+                Object.keys(combo.companyPrices).forEach(id => {
+                    const numId = parseInt(id, 10);
+                    if (!isNaN(numId)) companyIds.add(numId);
+                });
+            }
+            if (combo.companySkus) {
+                Object.keys(combo.companySkus).forEach(id => {
+                    const numId = parseInt(id, 10);
+                    if (!isNaN(numId)) companyIds.add(numId);
+                });
+            }
+
+            initialSelectedIds[comboIndex] = [...companyIds];
+        });
+
+        setSelectedPriceCompanyIds(initialSelectedIds);
+    }, [editingProduct?.id, variationCombinations]);
+
+    // ─── Company dropdown helpers ────────────────────────────────────────────────
+
+    const handleCompanySearchChange = (comboIndex, value) => {
+        setCompanySearchTerm(prev => ({ ...prev, [comboIndex]: value }));
+    };
+
+    const toggleCompanyDropdown = (comboIndex, isOpen) => {
+        setCompanyDropdownOpen(prev => ({ ...prev, [comboIndex]: isOpen }));
+    };
+
+    /**
+     * Toggle a company in/out of a specific combo's price list.
+     * When ADDING: initialises empty price + sku in variationCombinations.
+     * When REMOVING: deletes the price + sku from variationCombinations.
+     *
+     * Both operations are done synchronously in the same event so there are
+     * no race conditions between the two state slices.
+     */
+    const togglePriceCompany = (comboIndex, companyId) => {
+        setSelectedPriceCompanyIds(prev => {
+            const currentForVariant = prev[comboIndex] || [];
+            const isSelected = currentForVariant.includes(companyId);
+
+            const newForVariant = isSelected
+                ? currentForVariant.filter(x => x !== companyId)
+                : [...currentForVariant, companyId];
+
+            return { ...prev, [comboIndex]: newForVariant };
+        });
+
+        // Keep variationCombinations in sync — no deferred Promise needed.
+        setVariationCombinations(prev => {
+            const next = [...prev];
+            const combo = {
+                ...next[comboIndex],
+                companyPrices: { ...(next[comboIndex].companyPrices || {}) },
+                companySkus: { ...(next[comboIndex].companySkus || {}) }
+            };
+
+            const currentForVariant = selectedPriceCompanyIds[comboIndex] || [];
+            const isSelected = currentForVariant.includes(companyId);
+
+            if (isSelected) {
+                // Deselecting — remove the data
+                delete combo.companyPrices[companyId];
+                delete combo.companySkus[companyId];
+            } else {
+                // Selecting — seed empty entries so the input is controlled
+                combo.companyPrices[companyId] = '';
+                combo.companySkus[companyId] = '';
+            }
+
+            next[comboIndex] = combo;
+            return next;
+        });
+    };
+
+    // ─── Submit ──────────────────────────────────────────────────────────────────
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+
+        // Deduplicate supplier IDs
+        if (formData.supplierIds?.length > 0) {
+            formData.supplierIds = [...new Set(formData.supplierIds)];
+        }
+
+        // Strip prices/SKUs for companies that are no longer selected or have
+        // no price entered, so the backend receives clean data.
+        const cleanedCombinations = variationCombinations.map((combo, comboIndex) => {
+            const selectedIds = selectedPriceCompanyIds[comboIndex] || [];
+
+            const cleanedPrices = {};
+            const cleanedSkus = {};
+
+            selectedIds.forEach(companyId => {
+                const price = combo.companyPrices?.[companyId];
+                const sku = combo.companySkus?.[companyId];
+
+                if (price) cleanedPrices[companyId] = price;
+                if (sku !== undefined) cleanedSkus[companyId] = sku;
+            });
+
+            return {
+                ...combo,
+                companyPrices: cleanedPrices,
+                companySkus: cleanedSkus
+            };
+        });
+
+        setVariationCombinations(cleanedCombinations);
+        onSubmit(e);
+    };
+
+    // ─── Derived display values ──────────────────────────────────────────────────
 
     const filteredSuppliers = suppliers.filter(s =>
         s.name.toLowerCase().includes(supplierSearch.toLowerCase())
     );
 
-    const updateVariationCompanyPrice = (comboIndex, companyId, price) => {
-        const newCombinations = [...variationCombinations];
-        newCombinations[comboIndex].companyPrices[companyId] = price;
-        setVariationCombinations(newCombinations);
-    };
-
-
-    const formatPriceDisplay = (val) => {
-        if (val === '' || val === undefined || val === null) return '';
-        const str = String(val);
-        if (str.endsWith('.')) return str;
-        const num = parseFloat(str);
-        if (isNaN(num)) return str;
-        return num.toFixed(2);
-    };
-
-    const applyPriceToAllCompanies = (comboIndex, price) => {
-        const newCombinations = [...variationCombinations];
-        companies.forEach((company) => {
-            newCombinations[comboIndex].companyPrices[company.id] = price;
-        });
-        setVariationCombinations(newCombinations);
-    };
-
-    const updateVariationCompanySku = (comboIndex, companyId, sku) => {
-        const newCombinations = [...variationCombinations];
-        if (!newCombinations[comboIndex].companySkus) {
-            newCombinations[comboIndex].companySkus = {};
-        }
-        newCombinations[comboIndex].companySkus[companyId] = sku;
-        setVariationCombinations(newCombinations);
-    };
+    // ─── Render ──────────────────────────────────────────────────────────────────
 
     return (
         <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl max-w-7xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-xl w-[95vw] max-w-[1600px] max-h-[95vh] overflow-y-auto">
                 <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
                     <h2 className="text-xl font-bold text-gray-900">
                         {editingProduct ? 'Edit Product' : 'Add New Product'}
                     </h2>
-                    <button
-                        onClick={onClose}
-                        className="p-2 hover:bg-gray-100 rounded-lg transition"
-                    >
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition">
                         <X size={20} />
                     </button>
                 </div>
 
-                <form onSubmit={onSubmit} className="p-6 space-y-6">
-                    {/* Basic Information */}
+                <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                    {/* ── Basic Information ── */}
                     <div>
                         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                             <Package size={20} />
@@ -119,8 +328,6 @@ const ProductModal = ({
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Product Image
                                 </label>
-
-                                {/* Upload Area */}
                                 {!formData.imageUrl ? (
                                     <div className="relative">
                                         <input
@@ -130,10 +337,7 @@ const ProductModal = ({
                                                 const file = e.target.files[0];
                                                 if (file) {
                                                     const imageUrl = await handleImageUpload(file);
-                                                    if (imageUrl) {
-                                                        console.log('Setting imageUrl to:', imageUrl);
-                                                        setFormData(prev => ({ ...prev, imageUrl }));
-                                                    }
+                                                    if (imageUrl) setFormData(prev => ({ ...prev, imageUrl }));
                                                 }
                                                 e.target.value = '';
                                             }}
@@ -145,8 +349,7 @@ const ProductModal = ({
                                             htmlFor="product-image-upload"
                                             className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer transition ${uploadingImage
                                                 ? 'border-blue-400 bg-blue-50'
-                                                : 'border-gray-300 hover:border-blue-500 bg-gray-50 hover:bg-gray-100'
-                                                }`}
+                                                : 'border-gray-300 hover:border-blue-500 bg-gray-50 hover:bg-gray-100'}`}
                                         >
                                             {uploadingImage ? (
                                                 <div className="flex flex-col items-center">
@@ -168,13 +371,6 @@ const ProductModal = ({
                                             src={getFileUrl(formData.imageUrl)}
                                             alt="Product"
                                             className="h-40 w-40 object-cover rounded-lg border-2 border-gray-200"
-                                            onError={(e) => {
-                                                console.error('Image load error:', formData.imageUrl);
-                                                console.error('Full URL:', getFileUrl(formData.imageUrl));
-                                            }}
-                                            onLoad={() => {
-                                                console.log('Image loaded successfully:', formData.imageUrl);
-                                            }}
                                         />
                                         <button
                                             type="button"
@@ -197,9 +393,7 @@ const ProductModal = ({
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Category
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                                 <CategoryInput
                                     value={formData.category}
                                     onChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
@@ -222,7 +416,7 @@ const ProductModal = ({
                         </div>
                     </div>
 
-                    {/* Supplier & Origin */}
+                    {/* ── Supplier & Origin ── */}
                     <div>
                         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                             <Globe size={20} />
@@ -231,8 +425,6 @@ const ProductModal = ({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Suppliers</label>
-
-                                {/* Dropdown trigger button */}
                                 <div className="relative">
                                     <button
                                         type="button"
@@ -241,7 +433,7 @@ const ProductModal = ({
                                     >
                                         <span className={formData.supplierIds?.length > 0 ? 'text-gray-900' : 'text-gray-400'}>
                                             {formData.supplierIds?.length > 0
-                                                ? `${[...new Set(formData.supplierIds)].length} supplier(s) selected` // Show unique count
+                                                ? `${[...new Set(formData.supplierIds)].length} supplier(s) selected`
                                                 : 'Select suppliers...'}
                                         </span>
                                         <svg className={`w-4 h-4 text-gray-500 transition-transform ${supplierDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -249,10 +441,8 @@ const ProductModal = ({
                                         </svg>
                                     </button>
 
-                                    {/* Dropdown panel */}
                                     {supplierDropdownOpen && (
                                         <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
-                                            {/* Search inside dropdown */}
                                             <div className="p-2 border-b border-gray-100">
                                                 <div className="relative">
                                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
@@ -266,38 +456,25 @@ const ProductModal = ({
                                                     />
                                                 </div>
                                             </div>
-
-                                            {/* Supplier list */}
                                             <div className="max-h-52 overflow-y-auto">
                                                 {filteredSuppliers.map(supplier => {
                                                     const isSelected = formData.supplierIds?.includes(supplier.id);
                                                     return (
                                                         <div
                                                             key={`supplier-${supplier.id}`}
-                                                            onClick={(e) => {
-                                                                e.stopPropagation(); // Prevent event bubbling
-                                                                e.preventDefault(); // Prevent any default behavior
-                                                                handleSupplierToggle(supplier.id);
-                                                            }}
-                                                            onMouseDown={(e) => e.preventDefault()} // Prevent focus issues
+                                                            onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleSupplierToggle(supplier.id); }}
+                                                            onMouseDown={(e) => e.preventDefault()}
                                                             className={`flex items-center justify-between px-4 py-2.5 cursor-pointer hover:bg-blue-50 transition ${isSelected ? 'bg-blue-50' : ''}`}
                                                         >
                                                             <div>
                                                                 <p className="text-sm font-medium text-gray-800">{supplier.name}</p>
-                                                                {supplier.country && (
-                                                                    <p className="text-xs text-gray-500">{supplier.country}</p>
-                                                                )}
+                                                                {supplier.country && <p className="text-xs text-gray-500">{supplier.country}</p>}
                                                             </div>
-                                                            {isSelected && (
-                                                                <span className="text-blue-600">✓</span>
-                                                            )}
+                                                            {isSelected && <span className="text-blue-600">✓</span>}
                                                         </div>
                                                     );
                                                 })}
-
                                             </div>
-
-                                            {/* Close button */}
                                             <div className="p-2 border-t border-gray-100">
                                                 <button
                                                     type="button"
@@ -321,15 +498,12 @@ const ProductModal = ({
                                                 <Globe size={13} className="text-gray-400" />
                                                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide w-40">Country of Origin</span>
                                             </div>
-                                            <div className="w-8 flex-shrink-0"></div> {/* Spacer for remove button */}
+                                            <div className="w-8 flex-shrink-0"></div>
                                         </div>
-
                                         <div className="space-y-2">
-                                            {/* Use Set to ensure unique IDs when rendering */}
                                             {[...new Set(formData.supplierIds)].map(id => {
                                                 const supplier = suppliers.find(s => s.id === id);
                                                 if (!supplier) return null;
-
                                                 return (
                                                     <div key={`selected-${id}`} className="flex items-center gap-3 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg group hover:bg-blue-100 transition">
                                                         <div className="flex-1 min-w-0">
@@ -341,13 +515,10 @@ const ProductModal = ({
                                                                 {formData.supplierCountries?.[id] || supplier?.country || 'Not specified'}
                                                             </div>
                                                         </div>
-
-                                                        {/* Remove button */}
                                                         <button
                                                             type="button"
                                                             onClick={() => handleSupplierToggle(id)}
                                                             className="w-8 h-8 flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full transition opacity-0 group-hover:opacity-100 focus:opacity-100"
-                                                            title="Remove supplier"
                                                         >
                                                             <X size={16} />
                                                         </button>
@@ -355,16 +526,11 @@ const ProductModal = ({
                                                 );
                                             })}
                                         </div>
-
                                         {formData.supplierIds.length > 1 && (
                                             <div className="mt-3 flex justify-end">
                                                 <button
                                                     type="button"
-                                                    onClick={() => {
-                                                        if (window.confirm('Remove all suppliers?')) {
-                                                            formData.supplierIds.forEach(id => handleSupplierToggle(id));
-                                                        }
-                                                    }}
+                                                    onClick={() => { if (window.confirm('Remove all suppliers?')) formData.supplierIds.forEach(id => handleSupplierToggle(id)); }}
                                                     className="text-xs text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
                                                 >
                                                     <Trash2 size={12} />
@@ -403,7 +569,7 @@ const ProductModal = ({
                         </div>
                     </div>
 
-                    {/* Physical Details */}
+                    {/* ── Physical Details ── */}
                     <div>
                         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                             <Box size={20} />
@@ -477,41 +643,22 @@ const ProductModal = ({
                                         Dimensions (L×W×H cm) <span className="text-red-500">*</span>
                                     </label>
                                     <div className="flex items-center gap-2">
-                                        <input
-                                            type="number"
-                                            name="length"
-                                            value={formData.length}
-                                            onChange={handleInputChange}
-                                            placeholder="Length"
-                                            step="0.01"
-                                            min="0"
-                                            required={variationCombinations.length === 0}
-                                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                        <X size={16} className="text-gray-400" />
-                                        <input
-                                            type="number"
-                                            name="width"
-                                            value={formData.width}
-                                            onChange={handleInputChange}
-                                            placeholder="Width"
-                                            step="0.01"
-                                            min="0"
-                                            required={variationCombinations.length === 0}
-                                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                        <X size={16} className="text-gray-400" />
-                                        <input
-                                            type="number"
-                                            name="height"
-                                            value={formData.height}
-                                            onChange={handleInputChange}
-                                            placeholder="Height"
-                                            step="0.01"
-                                            min="0"
-                                            required={variationCombinations.length === 0}
-                                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
+                                        {['length', 'width', 'height'].map((dim, i) => (
+                                            <React.Fragment key={dim}>
+                                                {i > 0 && <X size={16} className="text-gray-400" />}
+                                                <input
+                                                    type="number"
+                                                    name={dim}
+                                                    value={formData[dim]}
+                                                    onChange={handleInputChange}
+                                                    placeholder={dim.charAt(0).toUpperCase() + dim.slice(1)}
+                                                    step="0.01"
+                                                    min="0"
+                                                    required={variationCombinations.length === 0}
+                                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                />
+                                            </React.Fragment>
+                                        ))}
                                     </div>
                                 </div>
                             )}
@@ -529,9 +676,7 @@ const ProductModal = ({
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Unit of Measure (UOM)
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Unit of Measure (UOM)</label>
                                 <input
                                     type="text"
                                     name="uom"
@@ -544,9 +689,7 @@ const ProductModal = ({
 
                             {variationCombinations.length === 0 && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Unit Cost (₱)
-                                    </label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Unit Cost (₱)</label>
                                     <input
                                         type="number"
                                         value={formData.unitCost || ''}
@@ -569,24 +712,19 @@ const ProductModal = ({
                                     <AlertCircle size={18} />
                                     <div>
                                         <p className="text-sm font-medium">SKU, UPC, Weight, Dimensions & Unit Cost Disabled</p>
-                                        <p className="text-xs mt-1">
-                                            This product has variations. Please set these values for each variation in the table below.
-                                        </p>
+                                        <p className="text-xs mt-1">This product has variations. Please set these values for each variation in the table below.</p>
                                     </div>
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    {/* Company Selling Price */}
-                    {variationCombinations.length === 0 && (
+                    {/* ── Company Selling Price (no-variation products only) ── */}
+                    {variationCombinations.length === 0 ? (
                         <div>
                             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                <DollarSign size={20} />
                                 Company Selling Price
-                                <span className="text-xs font-normal text-gray-500 ml-2">
-                                    (For products without variations)
-                                </span>
+                                <span className="text-xs font-normal text-gray-500 ml-2">(For products without variations)</span>
                             </h3>
                             <MultiCompanyPriceSelector
                                 companies={companies}
@@ -605,27 +743,21 @@ const ProductModal = ({
                             <p className="text-xs text-amber-600 mt-3 flex items-center gap-1">
                                 <AlertCircle size={14} />
                                 Note: Company base prices are only available for products without variations.
-                                If you add variations below, variation-specific pricing will be used instead.
                             </p>
                         </div>
-                    )}
-
-                    {/* Show disabled message when variations exist */}
-                    {variationCombinations.length > 0 && (
+                    ) : (
                         <div className="p-4 bg-gray-100 border border-gray-300 rounded-lg">
                             <div className="flex items-center gap-2 text-gray-600">
                                 <AlertCircle size={18} />
                                 <div>
                                     <p className="text-sm font-medium">Company Selling Price Disabled</p>
-                                    <p className="text-xs mt-1">
-                                        This product has variations. Please set company prices for each variation in the table below.
-                                    </p>
+                                    <p className="text-xs mt-1">This product has variations. Please set company prices for each variation in the table below.</p>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Product Variations */}
+                    {/* ── Product Variations ── */}
                     <div>
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -652,7 +784,6 @@ const ProductModal = ({
 
                             {variationTypes.map((varType, typeIndex) => (
                                 <div key={typeIndex} className="p-5 bg-gray-50 rounded-xl border border-gray-200">
-                                    {/* Variation Type Header */}
                                     <div className="flex items-center justify-between mb-4">
                                         <div className="flex items-center gap-3">
                                             <select
@@ -666,12 +797,9 @@ const ProductModal = ({
                                                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-medium"
                                             >
                                                 {['SIZE', 'COLOR', 'PACK', 'FLAVOR', 'MATERIAL', 'STYLE', 'VOLUME', 'OTHER'].map(type => (
-                                                    <option key={type} value={type}>
-                                                        {type.charAt(0) + type.slice(1).toLowerCase()}
-                                                    </option>
+                                                    <option key={type} value={type}>{type.charAt(0) + type.slice(1).toLowerCase()}</option>
                                                 ))}
                                             </select>
-
                                             {varType.type === 'OTHER' && (
                                                 <input
                                                     type="text"
@@ -686,25 +814,21 @@ const ProductModal = ({
                                                 />
                                             )}
                                         </div>
-
                                         <button
                                             type="button"
-                                            onClick={() => {
-                                                setVariationTypes(variationTypes.filter((_, i) => i !== typeIndex));
-                                            }}
+                                            onClick={() => setVariationTypes(variationTypes.filter((_, i) => i !== typeIndex))}
                                             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
                                         >
                                             <Trash2 size={18} />
                                         </button>
                                     </div>
 
-                                    {/* Add Value Input */}
                                     <div className="mb-4">
                                         {varType.type === 'SIZE' ? (
                                             <div className="flex gap-2">
                                                 <select
                                                     onChange={(e) => {
-                                                        if (e.target.value && e.target.value !== 'CUSTOM') {
+                                                        if (e.target.value) {
                                                             const newTypes = [...variationTypes];
                                                             if (!newTypes[typeIndex].values.includes(e.target.value)) {
                                                                 newTypes[typeIndex].values.push(e.target.value);
@@ -802,7 +926,7 @@ const ProductModal = ({
                                                     type="button"
                                                     onClick={() => {
                                                         const input = variationInputRefs.current[`input-${typeIndex}`];
-                                                        if (input && input.value) {
+                                                        if (input?.value) {
                                                             const value = input.value.trim();
                                                             if (value && !variationTypes[typeIndex].values.includes(value)) {
                                                                 const newTypes = [...variationTypes];
@@ -820,7 +944,6 @@ const ProductModal = ({
                                         )}
                                     </div>
 
-                                    {/* Values List */}
                                     {varType.values.length > 0 && (
                                         <div className="space-y-2">
                                             <p className="text-sm font-medium text-gray-700">
@@ -828,10 +951,7 @@ const ProductModal = ({
                                             </p>
                                             <div className="flex flex-wrap gap-2">
                                                 {varType.values.map((value, valueIndex) => (
-                                                    <div
-                                                        key={valueIndex}
-                                                        className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm"
-                                                    >
+                                                    <div key={valueIndex} className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm">
                                                         <span>{value}</span>
                                                         <button
                                                             type="button"
@@ -854,50 +974,44 @@ const ProductModal = ({
 
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setVariationTypes([...variationTypes, { type: 'SIZE', values: [], customType: '' }]);
-                                }}
+                                onClick={() => setVariationTypes([...variationTypes, { type: 'SIZE', values: [], customType: '' }])}
                                 className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 transition flex items-center justify-center gap-2"
                             >
                                 <Plus size={18} />
                                 {variationTypes.length === 0 ? 'Add Variation Type' : 'Add Another Variation Type'}
                             </button>
 
-                            {/* Variation Combinations Table */}
+                            {/* ── Variation Combinations Table ── */}
                             {variationCombinations.length > 0 && (
                                 <div className="mt-6 border border-gray-300 rounded-lg overflow-hidden">
-                                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3">
+                                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 flex items-center justify-between">
                                         <h4 className="text-white font-semibold flex items-center gap-2">
                                             <Package size={18} />
                                             Variation Combinations ({variationCombinations.length})
                                         </h4>
                                     </div>
 
-                                    <div style={{
-                                        overflowX: 'auto',
-                                        overflowY: 'auto',
-                                        position: 'relative',
-                                        maxHeight: '650px'
-                                    }}>
+                                    <div style={{ overflowX: 'auto', overflowY: 'auto', position: 'relative', maxHeight: '650px' }}>
                                         <table className="w-full" style={{ minWidth: '1400px' }}>
                                             <thead className="bg-gray-50 border-b border-gray-200" style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                                                 <tr>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-28" style={{ position: 'sticky', left: 0, zIndex: 2, backgroundColor: '#f9fafb', width: '112px', minWidth: '112px', maxWidth: '112px' }}>Image</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase" style={{ position: 'sticky', left: 0, zIndex: 2, backgroundColor: '#f9fafb', width: '112px', minWidth: '112px', maxWidth: '112px' }}>Image</th>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-48" style={{ position: 'sticky', left: '112px', zIndex: 2, backgroundColor: '#f9fafb', boxShadow: '2px 0 4px rgba(0,0,0,0.08)' }}>Variation</th>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-40">SKU</th>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-40">UPC</th>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-32">Weight (kg)</th>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-64">Dimensions (L×W×H cm)</th>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase w-32">Unit Cost (₱)</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase" style={{ minWidth: '360px' }}>Company Prices <span className="text-red-500">*</span></th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase" style={{ minWidth: '360px' }}>Company SKU <span className="text-red-500">*</span></th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase" style={{ minWidth: '500px' }}>
+                                                        Company Prices <span className="text-red-500">*</span>
+                                                    </th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-200">
                                                 {variationCombinations.map((combo, comboIndex) => (
                                                     <tr key={comboIndex}>
-                                                        {/* Image Upload */}
-                                                        <td className="px-4 py-3 w-28" style={{ position: 'sticky', left: 0, zIndex: 1, backgroundColor: 'white', width: '112px', minWidth: '112px', maxWidth: '112px' }}>
+                                                        {/* Image */}
+                                                        <td className="px-4 py-3" style={{ position: 'sticky', left: 0, zIndex: 1, backgroundColor: 'white', width: '112px', minWidth: '112px', maxWidth: '112px' }}>
                                                             {!combo.imageUrl ? (
                                                                 <div className="relative">
                                                                     <input
@@ -907,9 +1021,7 @@ const ProductModal = ({
                                                                             const file = e.target.files[0];
                                                                             if (file) {
                                                                                 const imageUrl = await handleImageUpload(file, true, comboIndex);
-                                                                                if (imageUrl) {
-                                                                                    updateVariationCombination(comboIndex, 'imageUrl', imageUrl);
-                                                                                }
+                                                                                if (imageUrl) updateVariationCombination(comboIndex, 'imageUrl', imageUrl);
                                                                             }
                                                                             e.target.value = '';
                                                                         }}
@@ -919,16 +1031,11 @@ const ProductModal = ({
                                                                     />
                                                                     <label
                                                                         htmlFor={`variation-image-${comboIndex}`}
-                                                                        className={`flex items-center justify-center w-16 h-16 border-2 border-dashed rounded-lg cursor-pointer transition overflow-hidden ${uploadingVariationImage[comboIndex]
-                                                                            ? 'border-blue-400 bg-blue-50'
-                                                                            : 'border-gray-300 hover:border-blue-500 bg-gray-50'
-                                                                            }`}
+                                                                        className={`flex items-center justify-center w-16 h-16 border-2 border-dashed rounded-lg cursor-pointer transition overflow-hidden ${uploadingVariationImage[comboIndex] ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-blue-500 bg-gray-50'}`}
                                                                     >
-                                                                        {uploadingVariationImage[comboIndex] ? (
-                                                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-                                                                        ) : (
-                                                                            <Package size={16} className="text-gray-400" />
-                                                                        )}
+                                                                        {uploadingVariationImage[comboIndex]
+                                                                            ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                                                                            : <Package size={16} className="text-gray-400" />}
                                                                     </label>
                                                                 </div>
                                                             ) : (
@@ -954,7 +1061,7 @@ const ProductModal = ({
                                                             )}
                                                         </td>
 
-                                                        {/* Variation Attributes */}
+                                                        {/* Attributes */}
                                                         <td className="px-4 py-3 w-48" style={{ position: 'sticky', left: '112px', zIndex: 1, backgroundColor: 'white', boxShadow: '2px 0 4px rgba(0,0,0,0.08)' }}>
                                                             <div className="flex flex-wrap gap-1">
                                                                 {Object.entries(combo.attributes).map(([type, value]) => (
@@ -1007,39 +1114,24 @@ const ProductModal = ({
                                                         {/* Dimensions */}
                                                         <td className="px-4 py-3 w-64">
                                                             <div className="flex items-center gap-2">
-                                                                <input
-                                                                    type="number"
-                                                                    value={combo.length}
-                                                                    onChange={(e) => updateVariationCombination(comboIndex, 'length', e.target.value)}
-                                                                    placeholder="L *"
-                                                                    step="0.01"
-                                                                    required
-                                                                    className="w-20 px-2 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                                />
-                                                                <X size={12} className="text-gray-400 flex-shrink-0" />
-                                                                <input
-                                                                    type="number"
-                                                                    value={combo.width}
-                                                                    onChange={(e) => updateVariationCombination(comboIndex, 'width', e.target.value)}
-                                                                    placeholder="W *"
-                                                                    step="0.01"
-                                                                    required
-                                                                    className="w-20 px-2 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                                />
-                                                                <X size={12} className="text-gray-400 flex-shrink-0" />
-                                                                <input
-                                                                    type="number"
-                                                                    value={combo.height}
-                                                                    onChange={(e) => updateVariationCombination(comboIndex, 'height', e.target.value)}
-                                                                    placeholder="H *"
-                                                                    step="0.01"
-                                                                    required
-                                                                    className="w-20 px-2 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                                />
+                                                                {['length', 'width', 'height'].map((dim, i) => (
+                                                                    <React.Fragment key={dim}>
+                                                                        {i > 0 && <X size={12} className="text-gray-400 flex-shrink-0" />}
+                                                                        <input
+                                                                            type="number"
+                                                                            value={combo[dim] || ''}
+                                                                            onChange={(e) => updateVariationCombination(comboIndex, dim, e.target.value)}
+                                                                            placeholder={`${dim.charAt(0).toUpperCase()} *`}
+                                                                            step="0.01"
+                                                                            required
+                                                                            className="w-20 px-2 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                        />
+                                                                    </React.Fragment>
+                                                                ))}
                                                             </div>
                                                         </td>
 
-                                                        {/* Unit Cost (Read-only) */}
+                                                        {/* Unit Cost (read-only) */}
                                                         <td className="px-4 py-3 w-32">
                                                             <input
                                                                 type="text"
@@ -1048,130 +1140,190 @@ const ProductModal = ({
                                                                 className="w-full min-w-[120px] px-3 py-2 text-sm border border-gray-300 rounded bg-gray-100 cursor-not-allowed text-gray-900"
                                                                 placeholder="Set via PO"
                                                             />
-                                                            {!combo.unitPrice && (
-                                                                <p className="text-xs text-gray-500 mt-1">
-                                                                    Set in Purchase Orders
-                                                                </p>
-                                                            )}
+                                                            {!combo.unitPrice && <p className="text-xs text-gray-500 mt-1">Set in Purchase Orders</p>}
                                                         </td>
 
-                                                        {/* ── Company Prices (UPDATED) ── */}
-                                                        <td className="px-4 py-3" style={{ minWidth: '360px' }}>
-                                                            {/* Apply-to-all row */}
-                                                            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-200">
-                                                                <span className="text-xs font-semibold text-gray-600 flex-shrink-0">Apply all:</span>
-                                                                <div className="flex items-center gap-1 flex-1">
-                                                                    <span className="text-sm text-gray-500 flex-shrink-0">₱</span>
-                                                                    <input
-                                                                        type="number"
-                                                                        placeholder="0.00"
-                                                                        step="0.01"
-                                                                        min="0"
-                                                                        id={`apply-all-price-${comboIndex}`}
-                                                                        className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-blue-50"
-                                                                    />
+                                                        {/* ── Company Prices ── */}
+                                                        <td className="px-4 py-3" style={{ minWidth: '800px' }}>
+                                                            {/* Top row: Apply to all + Add Company */}
+                                                            <div className="flex items-center gap-4 mb-3 pb-2 border-b border-gray-200">
+                                                                {/* Apply to all */}
+                                                                <div className="flex items-center gap-2 flex-shrink-0">
+                                                                    <span className="text-xs font-semibold text-gray-600">Apply to all:</span>
+                                                                    <div className="flex items-center gap-1">
+                                                                        <span className="text-sm text-gray-500">₱</span>
+                                                                        <input
+                                                                            type="number"
+                                                                            placeholder="0.00"
+                                                                            step="0.01"
+                                                                            min="0"
+                                                                            id={`apply-all-price-${comboIndex}`}
+                                                                            className="w-24 px-2 py-1 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-blue-50"
+                                                                        />
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const input = document.getElementById(`apply-all-price-${comboIndex}`);
+                                                                            if (input?.value) applyPriceToAllCompanies(comboIndex, input.value);
+                                                                        }}
+                                                                        className="flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition font-medium"
+                                                                    >
+                                                                        <Copy size={12} />
+                                                                        Apply
+                                                                    </button>
                                                                 </div>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        const input = document.getElementById(`apply-all-price-${comboIndex}`);
-                                                                        if (input && input.value) {
-                                                                            applyPriceToAllCompanies(comboIndex, input.value);
-                                                                        }
-                                                                    }}
-                                                                    className="flex-shrink-0 flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition font-medium"
-                                                                    title="Apply this price to all companies"
-                                                                >
-                                                                    <Copy size={12} />
-                                                                    Apply
-                                                                </button>
-                                                            </div>
 
-                                                            {/* Scrollable company list — shows 3 rows (~108px), scrollable beyond */}
-                                                            <div
-                                                                className="space-y-1.5 overflow-y-auto pr-1"
-                                                                style={{ maxHeight: '108px' }}
-                                                            >
-                                                                {companies.map((company) => (
-                                                                    <div key={company.id} className="flex items-center gap-2">
-                                                                        {/* Company name: wraps to 2 lines, no ellipsis */}
-                                                                        <label
-                                                                            className="text-xs text-gray-700 font-medium flex-shrink-0"
-                                                                            style={{
-                                                                                width: '200px',
-                                                                                display: '-webkit-box',
-                                                                                WebkitLineClamp: 2,
-                                                                                WebkitBoxOrient: 'vertical',
-                                                                                overflow: 'hidden',
-                                                                                lineHeight: '1.3',
-                                                                            }}
-                                                                            title={company.companyName}
-                                                                        >
-                                                                            {company.companyName}
-                                                                        </label>
-                                                                        <div className="flex items-center gap-1 flex-shrink-0" style={{ width: '140px' }}>
-                                                                            <span className="text-sm text-gray-500">₱</span>
+                                                                <div className="w-px h-6 bg-gray-300"></div>
+
+                                                                {/* Add Company */}
+                                                                <div className="flex items-center gap-2 flex-1">
+                                                                    <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">Add Company:</span>
+                                                                    <div
+                                                                        className="relative flex-1"
+                                                                        ref={el => companyDropdownRefs.current[comboIndex] = el}
+                                                                    >
+                                                                        <div className="relative">
                                                                             <input
                                                                                 type="text"
-                                                                                inputMode="decimal"
-                                                                                value={formatPriceDisplay(combo.companyPrices[company.id])}
-                                                                                onChange={(e) => {
-                                                                                    const val = e.target.value;
-                                                                                    if (/^\d*\.?\d*$/.test(val)) {
-                                                                                        updateVariationCompanyPrice(comboIndex, company.id, val);
-                                                                                    }
-                                                                                }}
-                                                                                onBlur={(e) => {
-                                                                                    const val = parseFloat(e.target.value);
-                                                                                    if (!isNaN(val)) {
-                                                                                        updateVariationCompanyPrice(comboIndex, company.id, val.toFixed(2));
-                                                                                    }
-                                                                                }}
-                                                                                placeholder="0.00 *"
-                                                                                required
-                                                                                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                                placeholder="Search and select company..."
+                                                                                value={companySearchTerm[comboIndex] || ''}
+                                                                                onChange={(e) => handleCompanySearchChange(comboIndex, e.target.value)}
+                                                                                onFocus={() => toggleCompanyDropdown(comboIndex, true)}
+                                                                                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-8"
                                                                             />
+                                                                            {companyDropdownOpen[comboIndex] && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => toggleCompanyDropdown(comboIndex, false)}
+                                                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                                                                >
+                                                                                    <X size={14} />
+                                                                                </button>
+                                                                            )}
                                                                         </div>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </td>
 
-                                                        <td className="px-4 py-3" style={{ minWidth: '360px' }}>
-                                                            <div className="mb-2 pb-2 border-b border-transparent" style={{ height: '32px' }} />
-                                                            <div
-                                                                className="space-y-1.5 overflow-y-auto pr-1"
-                                                                style={{ maxHeight: '108px' }}
-                                                            >
-                                                                {companies.map((company) => (
-                                                                    <div key={company.id} className="flex items-center gap-2">
-                                                                        <label
-                                                                            className="text-xs text-gray-700 font-medium flex-shrink-0"
-                                                                            style={{
-                                                                                width: '200px',
-                                                                                display: '-webkit-box',
-                                                                                WebkitLineClamp: 2,
-                                                                                WebkitBoxOrient: 'vertical',
-                                                                                overflow: 'hidden',
-                                                                                lineHeight: '1.3',
-                                                                            }}
-                                                                            title={company.companyName}
-                                                                        >
-                                                                            {company.companyName}
-                                                                        </label>
-                                                                        <div className="flex items-center gap-1 flex-shrink-0" style={{ width: '140px' }}>
-                                                                            <input
-                                                                                type="text"
-                                                                                value={(combo.companySkus && combo.companySkus[company.id]) || ''}
-                                                                                onChange={(e) => updateVariationCompanySku(comboIndex, company.id, e.target.value)}
-                                                                                placeholder="Enter SKU *"
-                                                                                required
-                                                                                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                                            />
+                                                                        {companyDropdownOpen[comboIndex] && (
+                                                                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
+                                                                                <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
+                                                                                    <span className="text-xs font-medium text-gray-600">
+                                                                                        {companies.filter(c =>
+                                                                                            !(selectedPriceCompanyIds[comboIndex] || []).includes(c.id) &&
+                                                                                            c.companyName.toLowerCase().includes((companySearchTerm[comboIndex] || '').toLowerCase())
+                                                                                        ).length} companies available
+                                                                                    </span>
+                                                                                    <button type="button" onClick={() => toggleCompanyDropdown(comboIndex, false)} className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-200 rounded">
+                                                                                        <X size={14} />
+                                                                                    </button>
+                                                                                </div>
+
+                                                                                <div className="max-h-48 overflow-y-auto">
+                                                                                    {companies.filter(c =>
+                                                                                        !(selectedPriceCompanyIds[comboIndex] || []).includes(c.id) &&
+                                                                                        c.companyName.toLowerCase().includes((companySearchTerm[comboIndex] || '').toLowerCase())
+                                                                                    ).length > 0 ? (
+                                                                                        companies
+                                                                                            .filter(c =>
+                                                                                                !(selectedPriceCompanyIds[comboIndex] || []).includes(c.id) &&
+                                                                                                c.companyName.toLowerCase().includes((companySearchTerm[comboIndex] || '').toLowerCase())
+                                                                                            )
+                                                                                            .map(company => (
+                                                                                                <div
+                                                                                                    key={company.id}
+                                                                                                    onClick={() => {
+                                                                                                        togglePriceCompany(comboIndex, company.id);
+                                                                                                        handleCompanySearchChange(comboIndex, '');
+                                                                                                        toggleCompanyDropdown(comboIndex, false);
+                                                                                                    }}
+                                                                                                    className="px-3 py-2.5 hover:bg-blue-50 cursor-pointer transition border-b border-gray-100 last:border-b-0"
+                                                                                                >
+                                                                                                    <p className="text-sm font-medium text-gray-800">{company.companyName}</p>
+                                                                                                </div>
+                                                                                            ))
+                                                                                    ) : (
+                                                                                        <div className="px-3 py-4 text-sm text-gray-500 text-center">No companies found</div>
+                                                                                    )}
+                                                                                </div>
+
+                                                                                <div className="px-3 py-2 border-t border-gray-100 bg-gray-50 rounded-b-lg">
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => toggleCompanyDropdown(comboIndex, false)}
+                                                                                        className="w-full py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition"
+                                                                                    >
+                                                                                        Close
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Selected companies table */}
+                                                            {(selectedPriceCompanyIds[comboIndex] || []).length > 0 && (
+                                                                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                                                    <div className="bg-gray-100 px-3 py-2 border-b border-gray-200">
+                                                                        <div className="grid grid-cols-3 gap-4">
+                                                                            <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Company</span>
+                                                                            <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Price (₱) <span className="text-red-500">*</span></span>
+                                                                            <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Company SKU <span className="text-red-500">*</span></span>
                                                                         </div>
                                                                     </div>
-                                                                ))}
-                                                            </div>
+
+                                                                    <div className="divide-y divide-gray-200 max-h-[132px] overflow-y-auto">
+                                                                        {(selectedPriceCompanyIds[comboIndex] || []).map(companyId => {
+                                                                            const company = companies.find(c => c.id === companyId);
+                                                                            if (!company) return null;
+                                                                            return (
+                                                                                <div key={companyId} className="px-3 py-2 hover:bg-gray-50">
+                                                                                    <div className="grid grid-cols-3 gap-4 items-start">
+                                                                                        {/* Company name + remove */}
+                                                                                        <div className="flex items-center justify-between pr-2">
+                                                                                            <span className="text-sm font-medium text-gray-900 truncate" title={company.companyName}>
+                                                                                                {company.companyName}
+                                                                                            </span>
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => togglePriceCompany(comboIndex, companyId)}
+                                                                                                className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded flex-shrink-0 ml-1"
+                                                                                                title="Remove company"
+                                                                                            >
+                                                                                                <X size={14} />
+                                                                                            </button>
+                                                                                        </div>
+
+                                                                                        {/* Price input */}
+                                                                                        <div className="flex items-center gap-1">
+                                                                                            <span className="text-sm text-gray-500 flex-shrink-0">₱</span>
+                                                                                            <input
+                                                                                                type="number"
+                                                                                                step="0.01"
+                                                                                                min="0"
+                                                                                                value={combo.companyPrices?.[companyId] ?? ''}
+                                                                                                onChange={(e) => updateVariationCompanyPrice(comboIndex, companyId, e.target.value)}
+                                                                                                placeholder="0.00"
+                                                                                                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                                            />
+                                                                                        </div>
+
+                                                                                        {/* SKU input */}
+                                                                                        <div>
+                                                                                            <input
+                                                                                                type="text"
+                                                                                                value={combo.companySkus?.[companyId] ?? ''}
+                                                                                                onChange={(e) => updateVariationCompanySku(comboIndex, companyId, e.target.value)}
+                                                                                                placeholder="Enter SKU"
+                                                                                                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                                            />
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -1179,9 +1331,8 @@ const ProductModal = ({
                                         </table>
                                     </div>
 
-                                    {/* Bulk Actions */}
                                     <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
-                                        <div className="flex items-center justify-end">
+                                        <div className="flex items-center justify-between">
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -1197,6 +1348,7 @@ const ProductModal = ({
                                                             companyPrices: {},
                                                             companySkus: {}
                                                         })));
+                                                        setSelectedPriceCompanyIds({});
                                                     }
                                                 }}
                                                 className="text-sm text-red-600 hover:text-red-700 font-medium"
@@ -1210,7 +1362,7 @@ const ProductModal = ({
                         </div>
                     </div>
 
-                    {/* Submit Buttons */}
+                    {/* ── Submit Buttons ── */}
                     <div className="flex gap-3 pt-4 border-t border-gray-200">
                         <button
                             type="button"

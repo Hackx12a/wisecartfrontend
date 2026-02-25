@@ -86,25 +86,8 @@ const ProductManagement = () => {
     if (formData.supplierIds?.length > 0) {
       const uniqueIds = [...new Set(formData.supplierIds)];
       if (uniqueIds.length !== formData.supplierIds.length) {
-        console.log('Cleaning up duplicates:', {
-          before: formData.supplierIds,
-          after: uniqueIds
-        });
-        setFormData(prev => ({
-          ...prev,
-          supplierIds: uniqueIds
-        }));
+        setFormData(prev => ({ ...prev, supplierIds: uniqueIds }));
       }
-    }
-  }, [formData.supplierIds]);
-
-  useEffect(() => {
-    if (formData.supplierIds?.length > 0) {
-      console.log('Current supplierIds:', formData.supplierIds);
-      console.log('Unique supplierIds:', [...new Set(formData.supplierIds)]);
-      console.log('Count discrepancy:',
-        formData.supplierIds.length - [...new Set(formData.supplierIds)].length
-      );
     }
   }, [formData.supplierIds]);
 
@@ -118,16 +101,13 @@ const ProductManagement = () => {
 
   const getSortedProducts = (products) => {
     if (!sortConfig.key) return products;
-
     return [...products].sort((a, b) => {
       let aValue = a[sortConfig.key];
       let bValue = b[sortConfig.key];
-
       if (sortConfig.key === 'createdAt') {
         aValue = aValue ? new Date(aValue).getTime() : 0;
         bValue = bValue ? new Date(bValue).getTime() : 0;
       }
-
       if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
       if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
@@ -147,54 +127,27 @@ const ProductManagement = () => {
   const handleSupplierToggle = (supplierId) => {
     const id = parseInt(supplierId);
     setFormData(prev => {
-      // Ensure we're working with unique IDs from the start
       const currentIds = [...new Set(prev.supplierIds || [])];
       const exists = currentIds.includes(id);
-
-      let newIds;
-      if (exists) {
-        newIds = currentIds.filter(sid => sid !== id);
-      } else {
-        newIds = [...currentIds, id];
-      }
-
-      // Update supplier countries
+      const newIds = exists ? currentIds.filter(sid => sid !== id) : [...currentIds, id];
       const newSupplierCountries = { ...prev.supplierCountries };
       if (!exists) {
         const supplier = suppliers.find(s => s.id === id);
-        if (supplier?.country) {
-          newSupplierCountries[id] = supplier.country;
-        }
+        if (supplier?.country) newSupplierCountries[id] = supplier.country;
       } else {
         delete newSupplierCountries[id];
       }
-
-      return {
-        ...prev,
-        supplierIds: newIds,
-        supplierCountries: newSupplierCountries
-      };
+      return { ...prev, supplierIds: newIds, supplierCountries: newSupplierCountries };
     });
   };
 
   const handleEdit = (product) => {
     setEditingProduct(product);
 
-    const companyPricesObj = {};
-    if (product.companyPrices) {
-      product.companyPrices.forEach(cp => {
-        if (cp.company?.id) {
-          companyPricesObj[cp.company.id] = cp.price;
-        }
-      });
-    }
-
     const companyBasePricesObj = {};
-    if (product.companyBasePrices && product.companyBasePrices.length > 0) {
+    if (product.companyBasePrices?.length > 0) {
       product.companyBasePrices.forEach(cbp => {
-        if (cbp.company?.id) {
-          companyBasePricesObj[cbp.company.id] = cbp.basePrice;
-        }
+        if (cbp.company?.id) companyBasePricesObj[cbp.company.id] = cbp.basePrice;
       });
     }
 
@@ -202,24 +155,18 @@ const ProductManagement = () => {
 
     const supplierCountries = {};
     if (product.suppliers) {
-      product.suppliers.forEach(s => {
-        if (s.country) supplierCountries[s.id] = s.country;
-      });
+      product.suppliers.forEach(s => { if (s.country) supplierCountries[s.id] = s.country; });
     }
-
-    const supplierIds = product.suppliers
-      ? [...new Set(product.suppliers.map(s => s.id))]
-      : [];
 
     setFormData({
       productName: product.productName || '',
       category: product.category || '',
       upc: product.upc || '',
       sku: product.sku || '',
-      supplierIds: product.suppliers ? product.suppliers.map(s => s.id) : [],
+      supplierIds: product.suppliers ? [...new Set(product.suppliers.map(s => s.id))] : [],
       supplierCountries,
       countryOfOrigin: product.countryOfOrigin || '',
-      companyPrices: companyPricesObj,
+      companyPrices: {},
       companyBasePrices: companyBasePricesObj,
       assignToRemainingBase: false,
       remainingBasePriceValue: '',
@@ -238,116 +185,99 @@ const ProductManagement = () => {
       variations: []
     });
 
-    setVariationTypes([]);
-    setVariationCombinations([]);
-
+    // Build variation types
     if (product.variations && product.variations.length > 0) {
       const typeMap = new Map();
 
       product.variations.forEach(v => {
         let attrs = {};
-        if (v.attributesJson) {
-          try {
-            attrs = JSON.parse(v.attributesJson);
-          } catch (e) {
-            attrs = { [v.variationType]: v.variationValue };
-          }
-        } else {
+        try {
+          attrs = v.attributesJson ? JSON.parse(v.attributesJson) : { [v.variationType]: v.variationValue };
+        } catch (e) {
           attrs = { [v.variationType]: v.variationValue };
         }
 
         Object.entries(attrs).forEach(([type, value]) => {
           if (!typeMap.has(type)) {
             const isCustomType = !['SIZE', 'COLOR', 'PACK', 'FLAVOR', 'MATERIAL', 'STYLE', 'VOLUME'].includes(type);
-            typeMap.set(type, {
-              type: isCustomType ? 'OTHER' : type,
-              values: [],
-              customType: isCustomType ? type : ''
-            });
+            typeMap.set(type, { type: isCustomType ? 'OTHER' : type, values: [], customType: isCustomType ? type : '' });
           }
-
           if (!typeMap.get(type).values.includes(value)) {
             typeMap.get(type).values.push(value);
           }
         });
       });
 
-      const types = Array.from(typeMap.values());
-      setVariationTypes(types);
+      setVariationTypes(Array.from(typeMap.values()));
 
-      setTimeout(() => {
-        const combos = product.variations.map(v => {
-          let attrs = {};
-          if (v.attributesJson) {
-            try {
-              attrs = JSON.parse(v.attributesJson);
-            } catch (e) {
-              attrs = { [v.variationType]: v.variationValue };
+      // Build combos with company prices and SKUs fully mapped
+      const combos = product.variations.map(v => {
+        let attrs = {};
+        try {
+          attrs = v.attributesJson ? JSON.parse(v.attributesJson) : { [v.variationType]: v.variationValue };
+        } catch (e) {
+          attrs = { [v.variationType]: v.variationValue };
+        }
+
+        const dims = v.dimensions ? v.dimensions.split('×') : ['', '', ''];
+
+        // Key fix: always populate companySkus even when companySku is empty string
+        const companyPricesMap = {};
+        const companySkusMap = {};
+        if (v.companyPrices && v.companyPrices.length > 0) {
+          v.companyPrices.forEach(cp => {
+            if (cp.company?.id != null) {
+              companyPricesMap[cp.company.id] = cp.price;
+              companySkusMap[cp.company.id] = cp.companySku ?? '';
             }
-          } else {
-            attrs = { [v.variationType]: v.variationValue };
-          }
+          });
+        }
 
-          const comboKey = Object.values(attrs).join('-');
-          const dims = v.dimensions ? v.dimensions.split('×') : ['', '', ''];
+        return {
+          id: v.id,
+          combination: Object.values(attrs).join('-'),
+          attributes: attrs,
+          sku: v.sku || '',
+          upc: v.upc || '',
+          weight: v.weight != null ? v.weight : '',
+          length: dims[0] || '',
+          width: dims[1] || '',
+          height: dims[2] || '',
+          imageUrl: v.imageUrl || '',
+          unitPrice: v.unitPrice || null,
+          companyPrices: companyPricesMap,
+          companySkus: companySkusMap
+        };
+      });
 
-          const companyPricesMap = {};
-          const companySkusMap = {};
-          if (v.companyPrices) {
-            v.companyPrices.forEach(cp => {
-              if (cp.company?.id) {
-                companyPricesMap[cp.company.id] = cp.price;
-                if (cp.companySku) {
-                  companySkusMap[cp.company.id] = cp.companySku;
-                }
-              }
-            });
-          }
-
-          return {
-            id: v.id,
-            combination: comboKey,
-            attributes: attrs,
-            sku: v.sku || '',
-            upc: v.upc || '',
-            weight: v.weight !== null && v.weight !== undefined ? v.weight : '',
-            length: dims[0] || '',
-            width: dims[1] || '',
-            height: dims[2] || '',
-            imageUrl: v.imageUrl || '',
-            unitPrice: v.unitPrice || null,
-            companyPrices: companyPricesMap,
-            companySkus: companySkusMap
-          };
-        });
-
-        setVariationCombinations(combos);
-      }, 100);
+      // CRITICAL: Set combos BEFORE showing the modal.
+      // ProductModal's seeding effect runs on mount — if combos are already
+      // populated when the modal mounts, selectedPriceCompanyIds is seeded
+      // correctly on the very first render. No setTimeout needed.
+      setVariationCombinations(combos);
+    } else {
+      setVariationTypes([]);
+      setVariationCombinations([]);
     }
 
     setShowModal(true);
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
-      return;
-    }
+    if (!window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) return;
 
     try {
       const response = await deleteProductHook(id);
-
-      if (response && response.success) {
+      if (response?.success) {
         toast.success('Product deleted successfully');
         await loadData();
-
         const filtered = getSortedProducts(
-          products.filter(product =>
-            product.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            product.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            product.upc?.toLowerCase().includes(searchTerm.toLowerCase())
+          products.filter(p =>
+            p.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.upc?.toLowerCase().includes(searchTerm.toLowerCase())
           )
         );
-
         if (filtered.length % itemsPerPage === 1 && currentPage > 1) {
           setCurrentPage(currentPage - 1);
         }
@@ -362,16 +292,13 @@ const ProductManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!formData.productName) {
       toast.error('Please fill in product name');
       return;
     }
-
     try {
       const response = await submitProductHook(formData, editingProduct, variationCombinations, companies);
-
-      if (response && response.success) {
+      if (response?.success) {
         toast.success(editingProduct ? 'Product updated successfully' : 'Product created successfully');
         setShowModal(false);
         resetForm();
@@ -400,11 +327,7 @@ const ProductManagement = () => {
   );
 
   const existingCategories = React.useMemo(() => {
-    return [...new Set(
-      products
-        .map(p => p.category)
-        .filter(cat => cat && cat.trim() !== '')
-    )].sort();
+    return [...new Set(products.map(p => p.category).filter(cat => cat?.trim()))].sort();
   }, [products]);
 
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -419,7 +342,6 @@ const ProductManagement = () => {
   const getPageNumbers = () => {
     const pageNumbers = [];
     const maxVisiblePages = 5;
-
     if (totalPages <= maxVisiblePages) {
       for (let i = 1; i <= totalPages; i++) pageNumbers.push(i);
     } else {
@@ -427,7 +349,6 @@ const ProductManagement = () => {
       const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
       for (let i = startPage; i <= endPage; i++) pageNumbers.push(i);
     }
-
     return pageNumbers;
   };
 
@@ -461,10 +382,7 @@ const ProductManagement = () => {
           />
         </div>
         <button
-          onClick={() => {
-            resetForm();
-            setShowModal(true);
-          }}
+          onClick={() => { resetForm(); setShowModal(true); }}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
         >
           <Plus size={20} />
@@ -523,42 +441,21 @@ const ProductManagement = () => {
             <div className="text-sm text-gray-700">
               Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredProducts.length)} of {filteredProducts.length} results
             </div>
-
             <div className="flex items-center gap-2">
-              <button
-                onClick={prevPage}
-                disabled={currentPage === 1}
-                className={`p-2 rounded-lg border ${currentPage === 1
-                  ? 'text-gray-400 cursor-not-allowed border-gray-200'
-                  : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-                  }`}
-              >
+              <button onClick={prevPage} disabled={currentPage === 1}
+                className={`p-2 rounded-lg border ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed border-gray-200' : 'text-gray-700 hover:bg-gray-50 border-gray-300'}`}>
                 <ChevronLeft size={16} />
               </button>
-
               <div className="flex items-center gap-1">
                 {getPageNumbers().map((number) => (
-                  <button
-                    key={number}
-                    onClick={() => paginate(number)}
-                    className={`min-w-[40px] px-3 py-2 text-sm rounded-lg border ${currentPage === number
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-                      }`}
-                  >
+                  <button key={number} onClick={() => paginate(number)}
+                    className={`min-w-[40px] px-3 py-2 text-sm rounded-lg border ${currentPage === number ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-700 hover:bg-gray-50 border-gray-300'}`}>
                     {number}
                   </button>
                 ))}
               </div>
-
-              <button
-                onClick={nextPage}
-                disabled={currentPage === totalPages}
-                className={`p-2 rounded-lg border ${currentPage === totalPages
-                  ? 'text-gray-400 cursor-not-allowed border-gray-200'
-                  : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-                  }`}
-              >
+              <button onClick={nextPage} disabled={currentPage === totalPages}
+                className={`p-2 rounded-lg border ${currentPage === totalPages ? 'text-gray-400 cursor-not-allowed border-gray-200' : 'text-gray-700 hover:bg-gray-50 border-gray-300'}`}>
                 <ChevronRight size={16} />
               </button>
             </div>
@@ -587,10 +484,7 @@ const ProductManagement = () => {
           setSelectedSupplier={setSelectedSupplier}
           handleInputChange={handleInputChange}
           handleSupplierToggle={handleSupplierToggle}
-          onClose={() => {
-            setShowModal(false);
-            resetForm();
-          }}
+          onClose={() => { setShowModal(false); resetForm(); }}
           onSubmit={handleSubmit}
         />
       )}
