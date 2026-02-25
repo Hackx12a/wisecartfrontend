@@ -96,7 +96,7 @@ const InventoryManagement = () => {
   });
 
   // Pagination hooks
-  const productPagination = usePaginationControl(8);
+  const productPagination = usePaginationControl(10);
   const stockPagination = usePaginationControl(10);
   const transactionPagination = usePaginationControl(10);
 

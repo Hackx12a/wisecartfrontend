@@ -1,12 +1,15 @@
 import React from 'react';
-import { BarChart3, CheckCircle, ShoppingCart, Truck, Clock, Eye } from 'lucide-react';
+import { BarChart3, CheckCircle, ShoppingCart, Truck, Clock, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const ProductSummaryTable = ({ 
   currentProductSummaries, 
   filteredProductSummaries, 
   productIndexOfFirstItem, 
   productIndexOfLastItem,
-  handleViewTransactions 
+  handleViewTransactions,
+  productCurrentPage,
+  productTotalPages,
+  setProductCurrentPage
 }) => {
   return (
     <div className="bg-white rounded-xl shadow overflow-hidden mb-6">
@@ -72,10 +75,7 @@ const ProductSummaryTable = ({
                 const displayUpc = isVariation ? (product.variationUpc || product.upc) : product.upc;
 
                 return (
-                  <tr
-                    key={uniqueKey}
-                    className="hover:bg-gray-50"
-                  >
+                  <tr key={uniqueKey} className="hover:bg-gray-50">
                     <td className="px-3 py-3">
                       <div className="max-w-[200px]">
                         <div className="font-medium text-gray-900 text-sm break-words whitespace-normal leading-tight">
@@ -95,9 +95,7 @@ const ProductSummaryTable = ({
                     </td>
                     <td className="px-3 py-3 text-xs">
                       <div className="space-y-1">
-                        <div className="font-medium">
-                          SKU: {displaySku || 'N/A'}
-                        </div>
+                        <div className="font-medium">SKU: {displaySku || 'N/A'}</div>
                         {displayUpc && displayUpc !== 'N/A' && (
                           <div className="text-gray-500">UPC: {displayUpc}</div>
                         )}
@@ -176,6 +174,67 @@ const ProductSummaryTable = ({
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {filteredProductSummaries.length > 0 && (
+        <div className="px-6 py-4 border-t border-gray-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-sm text-gray-700">
+            Showing {productIndexOfFirstItem + 1} to {Math.min(productIndexOfLastItem, filteredProductSummaries.length)} of {filteredProductSummaries.length} products
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setProductCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={productCurrentPage === 1}
+              className={`p-2 rounded-lg border ${
+                productCurrentPage === 1
+                  ? 'text-gray-400 cursor-not-allowed border-gray-200'
+                  : 'text-gray-700 hover:bg-gray-50 border-gray-300'
+              }`}
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            <div className="flex items-center gap-1">
+              {Array.from({ length: productTotalPages }, (_, i) => i + 1)
+                .filter(num =>
+                  num === 1 ||
+                  num === productTotalPages ||
+                  (num >= productCurrentPage - 1 && num <= productCurrentPage + 1)
+                )
+                .map((number, index, array) => {
+                  const showEllipsis = index < array.length - 1 && array[index + 1] !== number + 1;
+                  return (
+                    <React.Fragment key={number}>
+                      <button
+                        onClick={() => setProductCurrentPage(number)}
+                        className={`min-w-[36px] px-2 py-1 text-sm rounded-lg border ${
+                          productCurrentPage === number
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'text-gray-700 hover:bg-gray-50 border-gray-300'
+                        }`}
+                      >
+                        {number}
+                      </button>
+                      {showEllipsis && <span className="px-1 text-gray-500">...</span>}
+                    </React.Fragment>
+                  );
+                })}
+            </div>
+
+            <button
+              onClick={() => setProductCurrentPage(prev => Math.min(prev + 1, productTotalPages))}
+              disabled={productCurrentPage === productTotalPages}
+              className={`p-2 rounded-lg border ${
+                productCurrentPage === productTotalPages
+                  ? 'text-gray-400 cursor-not-allowed border-gray-200'
+                  : 'text-gray-700 hover:bg-gray-50 border-gray-300'
+              }`}
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

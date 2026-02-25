@@ -22,20 +22,20 @@ const InventoryRecordsManagement = () => {
   const [toBranchFilter, setToBranchFilter] = useState('');
   const [startDateFilter, setStartDateFilter] = useState('');
   const [endDateFilter, setEndDateFilter] = useState('');
-  
+
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState('create');
   const [selectedInventory, setSelectedInventory] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
-  
+
   const [products, setProducts] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
   const [branches, setBranches] = useState([]);
-  
+
   const [selectedProductForAdd, setSelectedProductForAdd] = useState('');
   const [tempQuantity, setTempQuantity] = useState(1);
-  
+
   const [formData, setFormData] = useState({
     inventoryType: 'STOCK_IN',
     fromWarehouseId: '',
@@ -75,7 +75,7 @@ const InventoryRecordsManagement = () => {
       try {
         setActionLoading(true);
         setLoadingMessage('Loading data...');
-        
+
         const [productsRes, warehousesRes, branchesRes] = await Promise.all([
           api.get('/products'),
           api.get('/warehouse'),
@@ -89,7 +89,7 @@ const InventoryRecordsManagement = () => {
         setProducts(productsData);
         setWarehouses(warehousesData);
         setBranches(branchesData);
-        
+
         await loadData();
       } catch (error) {
         console.error('Failed to load initial data', error);
@@ -253,7 +253,7 @@ const InventoryRecordsManagement = () => {
 
         const fullInventory = fullInventoryRes.data;
         setSelectedInventory(fullInventory);
-        
+
         setFormData({
           inventoryType: fullInventory.inventoryType,
           fromWarehouseId: fullInventory.fromWarehouse?.id || '',
@@ -279,11 +279,11 @@ const InventoryRecordsManagement = () => {
         for (let i = 0; i < fullInventory.items.length; i++) {
           const item = fullInventory.items[i];
           if (item.product?.id) {
-            const locationType = fullInventory.fromWarehouse ? 'warehouse' : fullInventory.fromBranch ? 'branch' : 
-                               fullInventory.toWarehouse ? 'warehouse' : 'branch';
-            const locationId = fullInventory.fromWarehouse?.id || fullInventory.fromBranch?.id || 
-                             fullInventory.toWarehouse?.id || fullInventory.toBranch?.id;
-            
+            const locationType = fullInventory.fromWarehouse ? 'warehouse' : fullInventory.fromBranch ? 'branch' :
+              fullInventory.toWarehouse ? 'warehouse' : 'branch';
+            const locationId = fullInventory.fromWarehouse?.id || fullInventory.fromBranch?.id ||
+              fullInventory.toWarehouse?.id || fullInventory.toBranch?.id;
+
             if (locationId && locationType) {
               await loadLocationStock(
                 item.product.id,
@@ -395,10 +395,10 @@ const InventoryRecordsManagement = () => {
     if (hasLocation) {
       setTimeout(() => {
         const locationType = formData.fromWarehouseId ? 'warehouse' : formData.fromBranchId ? 'branch' :
-                           formData.toWarehouseId ? 'warehouse' : 'branch';
-        const locationId = formData.fromWarehouseId || formData.fromBranchId || 
-                         formData.toWarehouseId || formData.toBranchId;
-        
+          formData.toWarehouseId ? 'warehouse' : 'branch';
+        const locationId = formData.fromWarehouseId || formData.fromBranchId ||
+          formData.toWarehouseId || formData.toBranchId;
+
         loadLocationStock(
           selectedOption.originalProductId,
           selectedOption.originalVariationId,
@@ -445,10 +445,10 @@ const InventoryRecordsManagement = () => {
         if (hasLocation) {
           setTimeout(() => {
             const locationType = formData.fromWarehouseId ? 'warehouse' : formData.fromBranchId ? 'branch' :
-                               formData.toWarehouseId ? 'warehouse' : 'branch';
-            const locationId = formData.fromWarehouseId || formData.fromBranchId || 
-                             formData.toWarehouseId || formData.toBranchId;
-            
+              formData.toWarehouseId ? 'warehouse' : 'branch';
+            const locationId = formData.fromWarehouseId || formData.fromBranchId ||
+              formData.toWarehouseId || formData.toBranchId;
+
             loadLocationStock(
               selectedOption.originalProductId,
               selectedOption.originalVariationId,
@@ -576,7 +576,7 @@ const InventoryRecordsManagement = () => {
     try {
       setActionLoading(true);
       setLoadingMessage(modalMode === 'create' ? 'Creating inventory record...' : 'Updating inventory record...');
-      
+
       const payload = {
         ...formData,
         status: 'PENDING'
@@ -632,9 +632,9 @@ const InventoryRecordsManagement = () => {
     try {
       setActionLoading(true);
       setLoadingMessage('Confirming inventory...');
-      
+
       await confirmInventory(inventory.id, currentUser);
-      
+
       alert(`✅ Inventory confirmed successfully!\n\n${inventory.inventoryType} record has been processed and stock levels have been updated.`);
       await loadData();
     } catch (error) {
@@ -703,7 +703,7 @@ const InventoryRecordsManagement = () => {
       await deleteInventory(id);
       alert('✅ Inventory deleted successfully');
       await loadData();
-      
+
       if (filteredInventories.length % 10 === 1 && currentPage > 1) {
         setCurrentPage(currentPage - 1);
       }
@@ -803,6 +803,7 @@ const InventoryRecordsManagement = () => {
     setSearchTerm('');
     setStatusFilter('ALL');
   };
+
 
   return (
     <>
