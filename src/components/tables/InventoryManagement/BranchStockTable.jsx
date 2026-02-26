@@ -1,13 +1,16 @@
 import React from 'react';
-import { Store, CheckCircle, ShoppingCart, Truck, Clock, Eye } from 'lucide-react';
+import { Store, CheckCircle, ShoppingCart, Truck, Clock, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { parseDate } from '../../../utils/dateUtils';
 
-const BranchStockTable = ({ 
-  currentBranchStocks, 
-  filteredBranchStocks, 
-  stockIndexOfFirstItem, 
+const BranchStockTable = ({
+  currentBranchStocks,
+  filteredBranchStocks,
+  stockIndexOfFirstItem,
   stockIndexOfLastItem,
-  handleViewStockTransactions 
+  handleViewStockTransactions,
+  stockCurrentPage,
+  branchStockTotalPages,
+  setStockCurrentPage
 }) => {
   return (
     <div className="bg-white rounded-xl shadow overflow-hidden">
@@ -170,6 +173,30 @@ const BranchStockTable = ({
           </tbody>
         </table>
       </div>
+      {branchStockTotalPages > 1 && (
+        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+          <p className="text-sm text-gray-500">
+            Showing {stockIndexOfFirstItem + 1}–{stockIndexOfLastItem} of {filteredBranchStocks.length} records
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setStockCurrentPage(stockCurrentPage - 1)}
+              disabled={stockCurrentPage === 1}
+              className="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <span className="text-sm text-gray-700">Page {stockCurrentPage} of {branchStockTotalPages}</span>
+            <button
+              onClick={() => setStockCurrentPage(stockCurrentPage + 1)}
+              disabled={stockCurrentPage === branchStockTotalPages}
+              className="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
