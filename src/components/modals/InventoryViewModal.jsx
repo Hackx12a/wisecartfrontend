@@ -8,7 +8,7 @@ const InventoryViewModal = ({ selectedInventory, onClose, onConfirm }) => {
 
   return (
     <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-6">
-      <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
+      <div className="bg-white rounded-2xl max-w-7xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
         <div className="p-8 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white rounded-t-2xl">
           <h2 className="text-2xl font-bold text-gray-900">Inventory Record Details</h2>
           <button
@@ -137,7 +137,7 @@ const InventoryViewModal = ({ selectedInventory, onClose, onConfirm }) => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">Product</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">Quantity</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 w-48">Quantity</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -169,7 +169,7 @@ const InventoryViewModal = ({ selectedInventory, onClose, onConfirm }) => {
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-900 font-semibold">
+                          <td className="px-6 py-4 text-sm text-gray-900 font-semibold w-48">
                             {item.quantity.toLocaleString()}
                           </td>
                         </tr>

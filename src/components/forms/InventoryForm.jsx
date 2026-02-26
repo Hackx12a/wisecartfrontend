@@ -368,7 +368,7 @@ const InventoryForm = ({
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Variation</th>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Stock</th>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
-                                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase w-28">Quantity</th>
+                                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase w-44">Quantity</th>
                                         <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase w-20">Action</th>
                                     </tr>
                                 </thead>
@@ -488,7 +488,7 @@ const InventoryForm = ({
                                                         value={item.quantity || ''}
                                                         onChange={e => onItemChange(i, 'quantity', e.target.value)}
                                                         required
-                                                        className={`w-full px-3 py-2 border rounded-lg text-center font-semibold ${stockInfo && item.quantity > (stockInfo.availableQuantity ?? stockInfo.quantity) && formData.inventoryType !== 'STOCK_IN'
+                                                        className={`w-full px-3 py-2 border rounded-lg text-center font-semibold min-w-[140px] ${stockInfo && item.quantity > (stockInfo.availableQuantity ?? stockInfo.quantity) && formData.inventoryType !== 'STOCK_IN'
                                                             ? 'border-red-300 bg-red-50 text-red-900'
                                                             : 'border-gray-300'
                                                             }`}
