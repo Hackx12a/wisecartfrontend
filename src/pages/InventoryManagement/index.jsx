@@ -118,7 +118,6 @@ const InventoryManagement = () => {
   const branchStockTotalPages = stockPagination.getTotalPages(filteredBranchStocks.length);
   const transactionTotalPages = transactionPagination.getTotalPages(filteredInventories.length);
 
-  // Set up global loadData
   useEffect(() => {
     loadData();
     window.loadData = loadData;

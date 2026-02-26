@@ -13,7 +13,7 @@ export const useTransactionHandlers = () => {
       setViewingId(transaction.id);
       setActionLoading(true);
       setLoadingMessage('Loading transaction details...');
-      
+
       if (transaction.inventoryType === 'SALE') {
         let saleId;
 
@@ -109,7 +109,6 @@ export const useTransactionHandlers = () => {
           setShowStockDetails(false);
           setShowTransactionsModal(true);
         } catch (saleErr) {
-          console.error('Failed to fetch sale details:', saleErr);
           toast.error('Failed to load sale details. Please try again.');
         }
         return;
@@ -206,7 +205,6 @@ export const useTransactionHandlers = () => {
           setShowTransactionsModal(true);
           return;
         } catch (deliveryErr) {
-          console.error('Failed to fetch delivery details:', deliveryErr);
           toast.error('Failed to load delivery details. Please try again.');
           return;
         }
@@ -270,12 +268,10 @@ export const useTransactionHandlers = () => {
         setShowTransactionsModal(true);
 
       } catch (err) {
-        console.error('Failed to load inventory details:', err);
         toast.error('Failed to load transaction details: ' + (err.message || 'Unknown error'));
       }
 
     } catch (err) {
-      console.error('Failed to load transaction details:', err);
       if (err.message.includes('404') || err.message.includes('not found')) {
         toast.error('Transaction details not found. The record may have been deleted.');
       } else if (err.message.includes('401') || err.message.includes('unauthorized')) {
@@ -332,11 +328,11 @@ export const useTransactionHandlers = () => {
       }
 
       const transactionsData = transactionsRes.success ? transactionsRes.data || [] : [];
+
       setProductTransactions(transactionsData);
       setShowStockDetails(showStock);
       setShowTransactionsModal(true);
     } catch (err) {
-      console.error('Failed to load product transactions:', err);
       toast.error('Failed to load transaction history');
     } finally {
       setActionLoading(false);
@@ -379,7 +375,7 @@ export const useTransactionHandlers = () => {
 
       const transactionsData = transactionsRes.success ? transactionsRes.data || [] : [];
       let filteredTransactions = transactionsData;
-      
+
       if (locationType === 'warehouse' && stock.warehouseId) {
         filteredTransactions = transactionsData.filter(t => {
           const transactionType = t.transactionType || t.inventoryType;
@@ -394,8 +390,11 @@ export const useTransactionHandlers = () => {
             return t.fromWarehouse?.id === stock.warehouseId && t.action === 'SUBTRACT';
           }
 
-          if (transactionType === 'STOCK_IN') {
-            return t.toWarehouse?.id === stock.warehouseId;
+          if (transactionType === 'STOCK_IN' || t.action === 'ADD') {
+            if (t.toWarehouse?.id) {
+              return t.toWarehouse.id === stock.warehouseId;
+            }
+            return t.action === 'ADD';
           }
 
           if (transactionType === 'RETURN') {
@@ -437,7 +436,6 @@ export const useTransactionHandlers = () => {
       setProductTransactions(filteredTransactions);
       setShowTransactionsModal(true);
     } catch (err) {
-      console.error('Failed to load stock transactions:', err);
       toast.error('Failed to load transactions');
     } finally {
       setActionLoading(false);

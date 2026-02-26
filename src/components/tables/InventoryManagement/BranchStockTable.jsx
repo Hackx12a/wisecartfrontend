@@ -173,26 +173,58 @@ const BranchStockTable = ({
           </tbody>
         </table>
       </div>
-      {branchStockTotalPages > 1 && (
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-          <p className="text-sm text-gray-500">
-            Showing {stockIndexOfFirstItem + 1}–{stockIndexOfLastItem} of {filteredBranchStocks.length} records
-          </p>
+      {filteredBranchStocks.length > 0 && (
+        <div className="px-6 py-4 border-t border-gray-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-sm text-gray-700">
+            Showing {stockIndexOfFirstItem + 1} to {Math.min(stockIndexOfLastItem, filteredBranchStocks.length)} of {filteredBranchStocks.length} records
+          </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setStockCurrentPage(stockCurrentPage - 1)}
+              onClick={() => setStockCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={stockCurrentPage === 1}
-              className="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+              className={`p-2 rounded-lg border ${stockCurrentPage === 1
+                  ? 'text-gray-400 cursor-not-allowed border-gray-200'
+                  : 'text-gray-700 hover:bg-gray-50 border-gray-300'
+                }`}
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={16} />
             </button>
-            <span className="text-sm text-gray-700">Page {stockCurrentPage} of {branchStockTotalPages}</span>
+
+            <div className="flex items-center gap-1">
+              {Array.from({ length: branchStockTotalPages }, (_, i) => i + 1)
+                .filter(num =>
+                  num === 1 ||
+                  num === branchStockTotalPages ||
+                  (num >= stockCurrentPage - 1 && num <= stockCurrentPage + 1)
+                )
+                .map((number, index, array) => {
+                  const showEllipsis = index < array.length - 1 && array[index + 1] !== number + 1;
+                  return (
+                    <React.Fragment key={number}>
+                      <button
+                        onClick={() => setStockCurrentPage(number)}
+                        className={`min-w-[36px] px-2 py-1 text-sm rounded-lg border ${stockCurrentPage === number
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'text-gray-700 hover:bg-gray-50 border-gray-300'
+                          }`}
+                      >
+                        {number}
+                      </button>
+                      {showEllipsis && <span className="px-1 text-gray-500">...</span>}
+                    </React.Fragment>
+                  );
+                })}
+            </div>
+
             <button
-              onClick={() => setStockCurrentPage(stockCurrentPage + 1)}
+              onClick={() => setStockCurrentPage(prev => Math.min(prev + 1, branchStockTotalPages))}
               disabled={stockCurrentPage === branchStockTotalPages}
-              className="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+              className={`p-2 rounded-lg border ${stockCurrentPage === branchStockTotalPages
+                  ? 'text-gray-400 cursor-not-allowed border-gray-200'
+                  : 'text-gray-700 hover:bg-gray-50 border-gray-300'
+                }`}
             >
-              <ChevronRight size={18} />
+              <ChevronRight size={16} />
             </button>
           </div>
         </div>

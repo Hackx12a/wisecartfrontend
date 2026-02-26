@@ -22,12 +22,46 @@ export const filterProductSummaries = (productSummaries, productSearchTerm, show
 };
 
 export const filterWarehouseStocks = (warehouseStocks, stockSearchTerm, warehouseFilters) => {
-  return warehouseStocks.filter(stock => {
-    const matchesSearch =
-      stock.productName?.toLowerCase().includes(stockSearchTerm.toLowerCase()) ||
-      stock.warehouseName?.toLowerCase().includes(stockSearchTerm.toLowerCase()) ||
-      stock.sku?.toLowerCase().includes(stockSearchTerm.toLowerCase());
+  // If no search term, return all stocks with other filters applied
+  if (!stockSearchTerm || stockSearchTerm.trim() === '') {
+    return warehouseStocks.filter(stock => {
+      const matchesWarehouse = !warehouseFilters.warehouse ||
+        stock.warehouseName === warehouseFilters.warehouse;
 
+      const matchesMinQty = !warehouseFilters.minQty || (stock.quantity || 0) >= parseInt(warehouseFilters.minQty);
+      const matchesMaxQty = !warehouseFilters.maxQty || (stock.quantity || 0) <= parseInt(warehouseFilters.maxQty);
+
+      const stockDate = parseDate(stock.lastUpdated);
+      const matchesStartDate = !warehouseFilters.startDate || (stockDate && stockDate >= new Date(warehouseFilters.startDate));
+      const matchesEndDate = !warehouseFilters.endDate || (stockDate && stockDate <= new Date(warehouseFilters.endDate + 'T23:59:59'));
+
+      return matchesWarehouse && matchesMinQty && matchesMaxQty && matchesStartDate && matchesEndDate;
+    });
+  }
+
+  const searchLower = stockSearchTerm.toLowerCase().trim();
+
+  return warehouseStocks.filter(stock => {
+    // Get all possible searchable fields
+    const searchableFields = [
+      stock.productName,
+      stock.warehouseName,
+      stock.productSku,
+      stock.variationSku,
+      stock.productUpc,
+      stock.variationUpc,
+      stock.variationName,
+      stock.combinationDisplay
+    ].filter(field => field != null); // Remove null/undefined values
+
+    // Check if any field matches the search term
+    const matchesSearch = searchableFields.some(field =>
+      field.toLowerCase().includes(searchLower)
+    );
+
+    if (!matchesSearch) return false;
+
+    // Apply other filters
     const matchesWarehouse = !warehouseFilters.warehouse ||
       stock.warehouseName === warehouseFilters.warehouse;
 
@@ -38,17 +72,23 @@ export const filterWarehouseStocks = (warehouseStocks, stockSearchTerm, warehous
     const matchesStartDate = !warehouseFilters.startDate || (stockDate && stockDate >= new Date(warehouseFilters.startDate));
     const matchesEndDate = !warehouseFilters.endDate || (stockDate && stockDate <= new Date(warehouseFilters.endDate + 'T23:59:59'));
 
-    return matchesSearch && matchesWarehouse && matchesMinQty && matchesMaxQty &&
-      matchesStartDate && matchesEndDate;
+    return matchesWarehouse && matchesMinQty && matchesMaxQty && matchesStartDate && matchesEndDate;
   });
 };
 
 export const filterBranchStocks = (branchStocks, stockSearchTerm, branchFilters) => {
   return branchStocks.filter(stock => {
-    const matchesSearch =
-      stock.productName?.toLowerCase().includes(stockSearchTerm.toLowerCase()) ||
-      stock.branchName?.toLowerCase().includes(stockSearchTerm.toLowerCase()) ||
-      stock.sku?.toLowerCase().includes(stockSearchTerm.toLowerCase());
+    const searchLower = stockSearchTerm.toLowerCase();
+    const effectiveSku = stock.variationSku || stock.productSku || stock.sku || '';
+    const effectiveUpc = stock.variationUpc || stock.productUpc || stock.upc || '';
+
+    const matchesSearch = !stockSearchTerm ||
+      stock.productName?.toLowerCase().includes(searchLower) ||
+      stock.branchName?.toLowerCase().includes(searchLower) ||
+      effectiveSku.toLowerCase().includes(searchLower) ||
+      effectiveUpc.toLowerCase().includes(searchLower) ||
+      stock.variationName?.toLowerCase().includes(searchLower) ||
+      stock.combinationDisplay?.toLowerCase().includes(searchLower);
 
     const matchesBranch = !branchFilters.branch ||
       stock.branchName === branchFilters.branch;
