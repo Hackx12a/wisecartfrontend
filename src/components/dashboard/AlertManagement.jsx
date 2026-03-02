@@ -414,6 +414,11 @@ const AlertManagement = ({ showNotifications, setShowNotifications, alerts, load
                                 <div className="bg-white p-3 rounded-lg border border-gray-200">
                                   <p className="text-xs text-gray-500">Product</p>
                                   <p className="font-semibold text-gray-900 truncate">{alertItem.product.productName}</p>
+                                  {alertItem.variationLabel && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 mt-1 rounded text-xs bg-blue-100 text-blue-700 font-medium">
+                                      {alertItem.variationLabel}
+                                    </span>
+                                  )}
                                   <p className="text-xs text-gray-500 truncate">{alertItem.product.sku}</p>
                                 </div>
                               )}
