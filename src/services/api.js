@@ -2,6 +2,52 @@ import { toast } from 'react-hot-toast';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://152.42.235.205/api';
 
+
+// ─── Inactivity logout (1 hour) ──────────────────────────────────
+const INACTIVITY_LIMIT = 60 * 60 * 1000; // 1 hour
+let inactivityTimer = null;
+
+const resetInactivityTimer = () => {
+    localStorage.setItem('lastActivity', Date.now().toString());
+    clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+        handleInactivityLogout();
+    }, INACTIVITY_LIMIT);
+};
+
+const handleInactivityLogout = () => {
+    clearTimeout(inactivityTimer);
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+    localStorage.removeItem('lastActivity');
+    toast.error('⏰ You have been logged out due to 1 hour of inactivity.', { duration: 5000 });
+    if (!window.location.pathname.includes('/login')) {
+        setTimeout(() => { window.location.href = '/login'; }, 1500);
+    }
+};
+
+export const startActivityTracking = () => {
+    // Check if already expired on page load / tab restore
+    const lastActivity = localStorage.getItem('lastActivity');
+    if (lastActivity) {
+        const elapsed = Date.now() - parseInt(lastActivity);
+        if (elapsed > INACTIVITY_LIMIT) {
+            handleInactivityLogout();
+            return;
+        }
+    }
+
+    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    events.forEach(e => window.addEventListener(e, resetInactivityTimer, { passive: true }));
+    resetInactivityTimer(); // start timer immediately
+};
+
+export const stopActivityTracking = () => {
+    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    events.forEach(e => window.removeEventListener(e, resetInactivityTimer));
+    clearTimeout(inactivityTimer);
+};
+
 const RATE_LIMIT_CONFIG = {
     maxRetries: 3,
     baseDelay: 500,
@@ -173,10 +219,22 @@ const handleResponse = async (response) => {
 
     // Handle 401 Unauthorized
     if (response.status === 401) {
+        stopActivityTracking();
         localStorage.removeItem('authToken');
         localStorage.removeItem('user');
+        localStorage.removeItem('lastActivity');
 
-        toast.error('🔒 Session expired. Please log in again.', { duration: 3000 });
+        // Check if backend flagged inactivity specifically
+        try {
+            const data = await response.clone().json();
+            if (data?.reason === 'inactivity') {
+                toast.error('⏰ Logged out due to 1 hour of inactivity.', { duration: 5000 });
+            } else {
+                toast.error('🔒 Session expired. Please log in again.', { duration: 3000 });
+            }
+        } catch {
+            toast.error('🔒 Session expired. Please log in again.', { duration: 3000 });
+        }
 
         if (!window.location.pathname.includes('/login')) {
             setTimeout(() => window.location.href = '/login', 1000);
@@ -219,7 +277,6 @@ const handleResponse = async (response) => {
             errorMessage = response.statusText || 'Request failed';
         }
 
-        // Don't show error toast for rate limits (already handled)
         if (response.status !== 429) {
             toast.error(`❌ ${errorMessage}`, { duration: 3000 });
         }

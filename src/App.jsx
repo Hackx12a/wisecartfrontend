@@ -15,8 +15,18 @@ import Layout from './components/layout/Layout';
 import Supplier from './pages/SupplierManagement';
 import ProcurementManagement from './pages/ProcurementManagement/index.jsx';
 import { AuthProvider, AuthLoading, ProtectedRoute, AdminRoute } from './context/AuthContext';
+import { startActivityTracking, stopActivityTracking } from './services/api';
+import { useEffect } from 'react';
 
 function App() {
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      startActivityTracking();
+    }
+    return () => stopActivityTracking();
+  }, []);
+
   return (
     <Router>
       <AuthProvider>
@@ -51,7 +61,7 @@ function App() {
             } />
 
 
-            
+
 
             <Route path="/deliveries" element={
               <ProtectedRoute>
@@ -122,7 +132,7 @@ function App() {
 
             {/* Redirect root to dashboard */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            
+
             {/* 404 Page */}
             <Route path="*" element={<NotFound />} />
           </Routes>

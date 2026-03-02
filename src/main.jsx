@@ -15,12 +15,10 @@ import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <AuthProvider>
-      <App />
-      <Toaster
-        position="top-right"
-        toastOptions={{ duration: 4000 }}
-      />
-    </AuthProvider>
+    <App />
+    <Toaster
+      position="top-right"
+      toastOptions={{ duration: 4000 }}
+    />
   </React.StrictMode>
 );
