@@ -7,12 +7,28 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://152.42.235.20
 const INACTIVITY_LIMIT = 60 * 60 * 1000; // 1 hour
 let inactivityTimer = null;
 
+let lastPingTime = 0;
+const PING_INTERVAL = 5 * 60 * 1000; // ping backend every 5 minutes of activity
+
 const resetInactivityTimer = () => {
     localStorage.setItem('lastActivity', Date.now().toString());
     clearTimeout(inactivityTimer);
     inactivityTimer = setTimeout(() => {
         handleInactivityLogout();
     }, INACTIVITY_LIMIT);
+
+    // Ping backend every 5 minutes to keep server-side session alive
+    const now = Date.now();
+    if (now - lastPingTime > PING_INTERVAL) {
+        lastPingTime = now;
+        const token = localStorage.getItem('authToken');
+        if (token) {
+            fetch(`${API_BASE_URL}/auth/activity`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            }).catch(() => { }); // silent — don't disrupt UX
+        }
+    }
 };
 
 const handleInactivityLogout = () => {
@@ -27,23 +43,31 @@ const handleInactivityLogout = () => {
 };
 
 export const startActivityTracking = () => {
-    // Check if already expired on page load / tab restore
-    const lastActivity = localStorage.getItem('lastActivity');
-    if (lastActivity) {
-        const elapsed = Date.now() - parseInt(lastActivity);
-        if (elapsed > INACTIVITY_LIMIT) {
-            handleInactivityLogout();
-            return;
+    // On tab restore/focus: only logout if truly expired AND no recent API activity
+    const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+            const lastActivity = localStorage.getItem('lastActivity');
+            if (lastActivity) {
+                const elapsed = Date.now() - parseInt(lastActivity);
+                if (elapsed > INACTIVITY_LIMIT) {
+                    handleInactivityLogout();
+                    return;
+                }
+            }
+            // Tab came back into focus — reset timer
+            resetInactivityTimer();
         }
-    }
+    };
 
-    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
     events.forEach(e => window.addEventListener(e, resetInactivityTimer, { passive: true }));
     resetInactivityTimer(); // start timer immediately
 };
 
 export const stopActivityTracking = () => {
-    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
     events.forEach(e => window.removeEventListener(e, resetInactivityTimer));
     clearTimeout(inactivityTimer);
 };
@@ -277,7 +301,7 @@ const handleResponse = async (response) => {
             errorMessage = response.statusText || 'Request failed';
         }
 
-        if (response.status !== 429) {
+        if (response.status !== 429 && errorMessage.length <= 300) {
             toast.error(`❌ ${errorMessage}`, { duration: 3000 });
         }
 

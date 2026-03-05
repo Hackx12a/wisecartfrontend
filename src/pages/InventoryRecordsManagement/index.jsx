@@ -647,6 +647,7 @@ const InventoryRecordsManagement = () => {
     }
   };
 
+  
   const handleDelete = async (id) => {
     const inventory = inventories.find(inv => inv.id === id);
     const userRole = localStorage.getItem('userRole') || 'USER';
@@ -657,39 +658,18 @@ const InventoryRecordsManagement = () => {
         return;
       }
 
-      try {
-        setActionLoading(true);
-        setLoadingMessage('Checking if inventory can be deleted...');
+      const confirmDelete = window.confirm(
+        '⚠️ Warning: Deleting CONFIRMED Inventory\n\n' +
+        'This inventory has been confirmed and stock changes have been applied.\n\n' +
+        'Deleting will:\n' +
+        '• Permanently remove this inventory record\n' +
+        '• Reverse all stock changes that were applied\n' +
+        '• Cannot be undone\n\n' +
+        'Are you absolutely sure you want to delete this record?'
+      );
 
-        const canModify = await checkCanModify(id);
-        setActionLoading(false);
-        setLoadingMessage('');
+      if (!confirmDelete) return;
 
-        if (!canModify) {
-          alert('❌ Cannot delete this inventory record\n\nThe stock from this inventory has already been used in deliveries or sales.\n\nDeleting this would create stock inconsistencies.\n\nContact your administrator if you need to adjust this record.');
-          return;
-        }
-
-        const confirmDelete = window.confirm(
-          '⚠️ Warning: Deleting CONFIRMED Inventory\n\n' +
-          'This inventory has been confirmed but the stock hasn\'t been used yet.\n\n' +
-          'Deleting will:\n' +
-          '• Permanently remove this inventory record\n' +
-          '• Reverse all stock changes that were applied\n' +
-          '• Cannot be undone\n\n' +
-          'Are you absolutely sure you want to delete this record?'
-        );
-
-        if (!confirmDelete) {
-          return;
-        }
-      } catch (error) {
-        console.error('Error checking if can modify:', error);
-        setActionLoading(false);
-        setLoadingMessage('');
-        alert('Failed to check if inventory can be deleted. Please try again.');
-        return;
-      }
     } else {
       if (!window.confirm('Are you sure you want to delete this inventory record?')) {
         return;
@@ -700,7 +680,13 @@ const InventoryRecordsManagement = () => {
       setActionLoading(true);
       setLoadingMessage('Deleting inventory record...');
 
-      await deleteInventory(id);
+      const result = await deleteInventory(id);
+
+      if (result && result.success === false) {
+        alert('❌ ' + (result.error || 'Failed to delete inventory'));
+        return;
+      }
+
       alert('✅ Inventory deleted successfully');
       await loadData();
 
@@ -709,7 +695,7 @@ const InventoryRecordsManagement = () => {
       }
     } catch (error) {
       console.error('❌ Delete error:', error);
-      alert('❌ Failed to delete: ' + error.message);
+      alert('❌ ' + (error.message || 'Failed to delete inventory'));
     } finally {
       setActionLoading(false);
       setLoadingMessage('');

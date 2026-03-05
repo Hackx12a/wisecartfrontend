@@ -233,24 +233,10 @@ export const useDeliveries = () => {
   };
 
   const sortDeliveriesByStatus = (deliveriesList) => {
-    const statusOrder = {
-      'PREPARING': 1,
-      'IN_TRANSIT': 2,
-      'DELIVERED': 3,
-      'CANCELLED': 4
-    };
-
     return [...deliveriesList].sort((a, b) => {
-      const dateA = new Date(a.date);
-      const dateB = new Date(b.date);
-
-      if (dateB - dateA !== 0) {
-        return dateB - dateA;
-      }
-
-      const orderA = statusOrder[a.status] || 999;
-      const orderB = statusOrder[b.status] || 999;
-      return orderA - orderB;
+      const createdA = new Date(a.createdAt || a.date);
+      const createdB = new Date(b.createdAt || b.date);
+      return createdB - createdA;
     });
   };
 
@@ -261,19 +247,22 @@ export const useDeliveries = () => {
         return false;
       }
 
-      if (filters.warehouseId && delivery.warehouses) {
-        const hasWarehouse = delivery.warehouses.some(wh => wh.id === filters.warehouseId);
-        if (!hasWarehouse) {
-          return false;
-        }
+      if (filters.warehouseId) {
+        const warehouses = delivery.warehouses || [];
+        const hasWarehouse =
+          warehouses.some(wh => String(wh.id) === String(filters.warehouseId)) ||
+          String(delivery.warehouseId) === String(filters.warehouseId);
+        if (!hasWarehouse) return false;
       }
 
-      if (filters.companyId && delivery.company?.id !== filters.companyId) {
-        return false;
+      if (filters.companyId) {
+        const deliveryCompanyId = delivery.company?.id ?? delivery.companyId;
+        if (String(deliveryCompanyId) !== String(filters.companyId)) return false;
       }
 
-      if (filters.branchId && delivery.branch?.id !== filters.branchId) {
-        return false;
+      if (filters.branchId) {
+        const deliveryBranchId = delivery.branch?.id ?? delivery.branchId;
+        if (String(deliveryBranchId) !== String(filters.branchId)) return false;
       }
 
       if (filters.status && delivery.status !== filters.status) {
@@ -286,17 +275,13 @@ export const useDeliveries = () => {
         if (filters.startDate) {
           const startDate = new Date(filters.startDate);
           startDate.setHours(0, 0, 0, 0);
-          if (deliveryDate < startDate) {
-            return false;
-          }
+          if (deliveryDate < startDate) return false;
         }
 
         if (filters.endDate) {
           const endDate = new Date(filters.endDate);
           endDate.setHours(23, 59, 59, 999);
-          if (deliveryDate > endDate) {
-            return false;
-          }
+          if (deliveryDate > endDate) return false;
         }
       }
 

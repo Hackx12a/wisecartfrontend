@@ -20,6 +20,7 @@ const InventoryTable = ({
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
+              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">#</th>
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">From → To</th>
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
@@ -31,13 +32,16 @@ const InventoryTable = ({
           <tbody className="bg-white divide-y divide-gray-200">
             {inventories.length === 0 ? (
               <tr>
-                <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
                   {indexOfFirstItem === 0 ? 'No inventory records found' : 'No records on this page'}
                 </td>
               </tr>
             ) : (
               inventories.map((inventory) => (
                 <tr key={inventory.id} className="hover:bg-gray-50 transition">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
+                    {indexOfFirstItem + inventories.indexOf(inventory) + 1}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-3 py-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getTypeColor(inventory.inventoryType)}`}>
                       {inventory.inventoryType?.replace('_', ' ') || 'UNKNOWN'}
@@ -78,10 +82,10 @@ const InventoryTable = ({
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(inventory.dateProcessed).toLocaleDateString('en-US', { 
-                      year: 'numeric', 
-                      month: 'short', 
-                      day: 'numeric' 
+                    {new Date(inventory.dateProcessed).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
                     })}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -124,9 +128,8 @@ const InventoryTable = ({
                       <button
                         onClick={() => onEdit(inventory)}
                         disabled={actionLoading}
-                        className={`flex items-center gap-2 px-3 py-2 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded-lg transition ${
-                          actionLoading ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
+                        className={`flex items-center gap-2 px-3 py-2 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded-lg transition ${actionLoading ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
                         title={
                           inventory.status === 'CONFIRMED'
                             ? 'Edit (will check if modifiable)'
@@ -143,9 +146,8 @@ const InventoryTable = ({
                       <button
                         onClick={() => onDelete(inventory.id)}
                         disabled={actionLoading}
-                        className={`flex items-center gap-2 px-3 py-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-lg transition ${
-                          actionLoading ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
+                        className={`flex items-center gap-2 px-3 py-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-lg transition ${actionLoading ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
                         title={
                           inventory.status === 'CONFIRMED'
                             ? 'Delete (will check if modifiable)'
