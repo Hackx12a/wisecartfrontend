@@ -12,182 +12,226 @@ import usePagination from '../../hooks/ui/usePagination';
 import { getCurrentUser, isAdmin } from '../../utils/authUtils';
 import { api } from '../../services/api';
 
-// ─── Scrollable Error Modal with Glass Morphism ───────────────────────────
+// ─── Scrollable Error Modal ────────────────────────────────────────────────
 const DeleteErrorModal = ({ message, onClose }) => {
   if (!message) return null;
 
-  // Parse the error message into sections for better display
   const lines = message.split('\n');
 
-  // Extract delivery receipts and sales from the structured message
-  const deliverySection = [];
-  const salesSection = [];
-  let currentProduct = null;
+  // Parse into product → { deliveryReceipts[], saleRefs[] }
+  const productMap = {};
   let inDeliveries = false;
   let inSales = false;
+  let currentKey = null;
 
   lines.forEach(line => {
     if (line.includes('USED IN DELIVERIES')) { inDeliveries = true; inSales = false; return; }
-    if (line.includes('USED IN SALES')) { inSales = true; inDeliveries = false; return; }
+    if (line.includes('USED IN SALES'))      { inSales = true; inDeliveries = false; return; }
 
-    if (inDeliveries) {
+    if (inDeliveries || inSales) {
       if (line.trim().startsWith('•')) {
-        currentProduct = line.trim().replace('•', '').trim();
-        deliverySection.push({ product: currentProduct, receipts: [] });
-      } else if (line.trim().startsWith('-') && deliverySection.length > 0) {
-        deliverySection[deliverySection.length - 1].receipts.push(line.trim().replace('-', '').trim());
-      }
-    }
-    if (inSales) {
-      if (line.trim().startsWith('•')) {
-        currentProduct = line.trim().replace('•', '').trim();
-        salesSection.push({ product: currentProduct, refs: [] });
-      } else if (line.trim().startsWith('-') && salesSection.length > 0) {
-        salesSection[salesSection.length - 1].refs.push(line.trim().replace('-', '').trim());
+        currentKey = line.trim().replace('•', '').trim();
+        if (!productMap[currentKey]) productMap[currentKey] = { deliveryReceipts: [], saleRefs: [] };
+      } else if (line.trim().startsWith('-') && currentKey) {
+        const val = line.trim().replace(/^-\s*/, '').trim();
+        if (inDeliveries) productMap[currentKey].deliveryReceipts.push(val);
+        if (inSales)      productMap[currentKey].saleRefs.push(val);
       }
     }
   });
 
-  const hasStructuredData = deliverySection.length > 0 || salesSection.length > 0;
+  const products = Object.entries(productMap);
+  const hasStructuredData = products.length > 0;
+
+  // Color scheme per conflict type
+  const getConflictMeta = (hasDelivery, hasSale) => {
+    if (hasDelivery && hasSale) return {
+      borderColor: 'border-red-400',
+      headerBg:    'bg-red-50',
+      headerBorder:'border-b border-red-200',
+      leftBar:     'bg-red-500',
+      titleColor:  'text-red-900',
+      icon:        '⚠️',
+      label:       'Delivery + Sale Conflict',
+      labelBg:     'bg-red-100 text-red-700',
+    };
+    if (hasDelivery) return {
+      borderColor: 'border-blue-400',
+      headerBg:    'bg-blue-50',
+      headerBorder:'border-b border-blue-200',
+      leftBar:     'bg-blue-500',
+      titleColor:  'text-blue-900',
+      icon:        '📦',
+      label:       'Delivery Conflict',
+      labelBg:     'bg-blue-100 text-blue-700',
+    };
+    return {
+      borderColor: 'border-orange-400',
+      headerBg:    'bg-orange-50',
+      headerBorder:'border-b border-orange-200',
+      leftBar:     'bg-orange-500',
+      titleColor:  'text-orange-900',
+      icon:        '🛒',
+      label:       'Sale Conflict',
+      labelBg:     'bg-orange-100 text-orange-700',
+    };
+  };
+
+  const totalDeliveries = products.reduce((s, [, v]) => s + v.deliveryReceipts.length, 0);
+  const totalSales      = products.reduce((s, [, v]) => s + v.saleRefs.length, 0);
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-      {/* Backdrop with enhanced blur */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-md"
-        onClick={onClose}
-      />
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black bg-opacity-60 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal with glass morphism effect */}
-      <div className="relative w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden rounded-2xl shadow-2xl">
+      {/* Modal */}
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden border border-red-200">
 
-        {/* Glass background layers */}
-        <div className="absolute inset-0 bg-white/80 backdrop-blur-xl" />
-        <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-white/30" />
-
-        {/* Border overlay */}
-        <div className="absolute inset-0 border border-white/20 rounded-2xl pointer-events-none" />
-
-        {/* Content container */}
-        <div className="relative flex flex-col max-h-[85vh]">
-          {/* Header */}
-          <div className="flex items-center gap-3 px-6 py-5 border-b border-red-200/30 bg-red-500/5">
-            <div className="flex-shrink-0 w-10 h-10 bg-red-500/10 rounded-full flex items-center justify-center backdrop-blur-sm">
-              <AlertTriangle size={20} className="text-red-600" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-bold text-gray-900">Cannot Delete Inventory Record</h2>
-              <p className="text-sm text-red-600/90 mt-0.5">
-                Stock from this record has already been used in the following transactions
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 text-gray-500 hover:text-gray-700 transition-colors backdrop-blur-sm"
-            >
-              <X size={18} />
-            </button>
+        {/* ── Header ── */}
+        <div className="flex items-center gap-3 px-6 py-5 bg-red-50 border-b border-red-100 flex-shrink-0">
+          <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+            <AlertTriangle size={20} className="text-red-600" />
           </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-bold text-red-800">Cannot Delete Inventory Record</h2>
+            <p className="text-sm text-red-500 mt-0.5">
+              Stock has already been consumed by the transactions below
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-100 text-red-400 hover:text-red-600 transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
 
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+        {/* ── Summary pills ── */}
+        <div className="flex items-center gap-3 px-6 py-3 bg-gray-50 border-b border-gray-100 flex-shrink-0 flex-wrap">
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide mr-1">Conflicts:</span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-700 shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-gray-400 inline-block" />
+            {products.length} product{products.length !== 1 ? 's' : ''}
+          </span>
+          {totalDeliveries > 0 && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-200 rounded-full text-xs font-semibold text-blue-700 shadow-sm">
+              <Package size={11} />
+              {totalDeliveries} DR{totalDeliveries !== 1 ? 's' : ''}
+            </span>
+          )}
+          {totalSales > 0 && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-50 border border-orange-200 rounded-full text-xs font-semibold text-orange-700 shadow-sm">
+              <ShoppingCart size={11} />
+              {totalSales} sale{totalSales !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
 
-            {hasStructuredData ? (
-              <>
-                {/* Delivery Receipts Section */}
-                {deliverySection.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-7 h-7 bg-blue-500/10 rounded-lg flex items-center justify-center flex-shrink-0 backdrop-blur-sm">
-                        <Package size={14} className="text-blue-600" />
-                      </div>
-                      <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">
-                        Used in Deliveries
-                      </h3>
-                      <span className="ml-auto bg-blue-500/10 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full backdrop-blur-sm">
-                        {deliverySection.reduce((sum, d) => sum + d.receipts.length, 0)} receipt{deliverySection.reduce((sum, d) => sum + d.receipts.length, 0) !== 1 ? 's' : ''}
+        {/* ── Scrollable product cards ── */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+          {hasStructuredData ? (
+            <>
+              {products.map(([productName, { deliveryReceipts, saleRefs }], i) => {
+                const meta = getConflictMeta(deliveryReceipts.length > 0, saleRefs.length > 0);
+                return (
+                  <div
+                    key={i}
+                    className={`rounded-xl border-2 ${meta.borderColor} overflow-hidden shadow-sm`}
+                  >
+                    {/* Product header row */}
+                    <div className={`flex items-center gap-3 px-4 py-3 ${meta.headerBg} ${meta.headerBorder}`}>
+                      {/* Left accent bar */}
+                      <div className={`w-1 h-8 rounded-full ${meta.leftBar} flex-shrink-0`} />
+                      <span className="text-base">{meta.icon}</span>
+                      <span className={`font-semibold text-sm flex-1 min-w-0 truncate ${meta.titleColor}`}>
+                        {productName}
+                      </span>
+                      {/* Conflict type badge */}
+                      <span className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full ${meta.labelBg}`}>
+                        {meta.label}
                       </span>
                     </div>
 
-                    <div className="space-y-3">
-                      {deliverySection.map((entry, i) => (
-                        <div key={i} className="bg-blue-500/5 border border-blue-200/30 rounded-xl p-4 backdrop-blur-sm">
-                          <p className="font-medium text-gray-800 text-sm mb-2">📦 {entry.product}</p>
-                          <div className="flex flex-wrap gap-2">
-                            {entry.receipts.map((receipt, j) => (
+                    {/* Conflict detail rows */}
+                    <div className="px-4 py-3 bg-white space-y-3">
+
+                      {/* Delivery receipts */}
+                      {deliveryReceipts.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <Package size={12} className="text-blue-500 flex-shrink-0" />
+                            <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
+                              Delivery Receipt{deliveryReceipts.length !== 1 ? 's' : ''}
+                            </span>
+                            <span className="ml-auto bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                              {deliveryReceipts.length}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {deliveryReceipts.map((dr, j) => (
                               <span
                                 key={j}
-                                className="inline-flex items-center px-3 py-1 bg-white/70 border border-blue-200/50 text-blue-700 text-xs font-mono rounded-lg shadow-sm backdrop-blur-sm"
+                                className="inline-flex items-center px-2.5 py-1 bg-blue-50 border border-blue-200 text-blue-800 text-xs font-mono rounded-lg"
                               >
-                                {receipt}
+                                {dr}
                               </span>
                             ))}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                      )}
 
-                {/* Sales Section */}
-                {salesSection.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-7 h-7 bg-orange-500/10 rounded-lg flex items-center justify-center flex-shrink-0 backdrop-blur-sm">
-                        <ShoppingCart size={14} className="text-orange-600" />
-                      </div>
-                      <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">
-                        Used in Sales
-                      </h3>
-                      <span className="ml-auto bg-orange-500/10 text-orange-700 text-xs font-medium px-2 py-0.5 rounded-full backdrop-blur-sm">
-                        {salesSection.reduce((sum, s) => sum + s.refs.length, 0)} sale{salesSection.reduce((sum, s) => sum + s.refs.length, 0) !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-
-                    <div className="space-y-3">
-                      {salesSection.map((entry, i) => (
-                        <div key={i} className="bg-orange-500/5 border border-orange-200/30 rounded-xl p-4 backdrop-blur-sm">
-                          <p className="font-medium text-gray-800 text-sm mb-2">🛒 {entry.product}</p>
-                          <div className="flex flex-wrap gap-2">
-                            {entry.refs.map((ref, j) => (
+                      {/* Sales */}
+                      {saleRefs.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <ShoppingCart size={12} className="text-orange-500 flex-shrink-0" />
+                            <span className="text-xs font-semibold text-orange-600 uppercase tracking-wide">
+                              Sale Reference{saleRefs.length !== 1 ? 's' : ''}
+                            </span>
+                            <span className="ml-auto bg-orange-100 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                              {saleRefs.length}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {saleRefs.map((ref, j) => (
                               <span
                                 key={j}
-                                className="inline-flex items-center px-3 py-1 bg-white/70 border border-orange-200/50 text-orange-700 text-xs font-mono rounded-lg shadow-sm backdrop-blur-sm"
+                                className="inline-flex items-center px-2.5 py-1 bg-orange-50 border border-orange-200 text-orange-800 text-xs font-mono rounded-lg"
                               >
                                 {ref}
                               </span>
                             ))}
                           </div>
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
-                )}
-              </>
-            ) : (
-              /* Fallback: raw message if parsing didn't work */
-              <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono bg-white/50 backdrop-blur-sm rounded-xl p-4 border border-gray-200/30 leading-relaxed">
-                {message}
-              </pre>
-            )}
+                );
+              })}
 
-            {/* Footer note */}
-            <div className="bg-amber-500/5 border border-amber-200/30 rounded-xl p-4 backdrop-blur-sm">
-              <p className="text-sm text-amber-800/90 leading-relaxed">
-                <strong>ℹ️ To delete this record,</strong> you must first void or cancel all the delivery receipts and sales listed above, then try again.
-              </p>
-            </div>
-          </div>
+              {/* Footer note */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mt-1">
+                <p className="text-sm text-amber-800 leading-relaxed">
+                  <strong>ℹ️ To delete this record,</strong> you must first void or cancel all the delivery receipts and sales listed above, then try again.
+                </p>
+              </div>
+            </>
+          ) : (
+            <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono bg-gray-50 rounded-xl p-4 border border-gray-200 leading-relaxed">
+              {message}
+            </pre>
+          )}
+        </div>
 
-          {/* Footer button */}
-          <div className="flex-shrink-0 px-6 py-4 border-t border-gray-200/30 bg-gray-500/5">
-            <button
-              onClick={onClose}
-              className="w-full py-2.5 px-4 bg-gray-800/90 hover:bg-gray-900 text-white font-medium rounded-xl transition-colors text-sm backdrop-blur-sm"
-            >
-              Close
-            </button>
-          </div>
+        {/* ── Footer ── */}
+        <div className="flex-shrink-0 px-6 py-4 bg-gray-50 border-t border-gray-100">
+          <button
+            onClick={onClose}
+            className="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-900 text-white font-medium rounded-xl transition-colors text-sm"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
