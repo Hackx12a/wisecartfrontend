@@ -1,6 +1,6 @@
 // src/pages/InventoryRecordsManagement/index.jsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Check } from 'lucide-react';
+import { Plus, Check, X, AlertTriangle, Package, ShoppingCart } from 'lucide-react';
 import LoadingOverlay from '../../components/common/LoadingOverlay';
 import InventoryFilters from '../../components/filters/InventoryFilters';
 import InventoryTable from '../../components/tables/InventoryTable';
@@ -12,6 +12,179 @@ import usePagination from '../../hooks/ui/usePagination';
 import { getCurrentUser, isAdmin } from '../../utils/authUtils';
 import { api } from '../../services/api';
 
+// ─── Scrollable Error Modal ────────────────────────────────────────────────
+const DeleteErrorModal = ({ message, onClose }) => {
+  if (!message) return null;
+
+  // Parse the error message into sections for better display
+  const lines = message.split('\n');
+
+  // Extract delivery receipts and sales from the structured message
+  const deliverySection = [];
+  const salesSection = [];
+  let currentProduct = null;
+  let inDeliveries = false;
+  let inSales = false;
+
+  lines.forEach(line => {
+    if (line.includes('USED IN DELIVERIES')) { inDeliveries = true; inSales = false; return; }
+    if (line.includes('USED IN SALES')) { inSales = true; inDeliveries = false; return; }
+
+    if (inDeliveries) {
+      if (line.trim().startsWith('•')) {
+        currentProduct = line.trim().replace('•', '').trim();
+        deliverySection.push({ product: currentProduct, receipts: [] });
+      } else if (line.trim().startsWith('-') && deliverySection.length > 0) {
+        deliverySection[deliverySection.length - 1].receipts.push(line.trim().replace('-', '').trim());
+      }
+    }
+    if (inSales) {
+      if (line.trim().startsWith('•')) {
+        currentProduct = line.trim().replace('•', '').trim();
+        salesSection.push({ product: currentProduct, refs: [] });
+      } else if (line.trim().startsWith('-') && salesSection.length > 0) {
+        salesSection[salesSection.length - 1].refs.push(line.trim().replace('-', '').trim());
+      }
+    }
+  });
+
+  const hasStructuredData = deliverySection.length > 0 || salesSection.length > 0;
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black bg-opacity-60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden border border-red-100">
+
+        {/* Header */}
+        <div className="flex items-center gap-3 px-6 py-5 bg-red-50 border-b border-red-100 flex-shrink-0">
+          <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+            <AlertTriangle size={20} className="text-red-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-bold text-red-800">Cannot Delete Inventory Record</h2>
+            <p className="text-sm text-red-600 mt-0.5">
+              Stock from this record has already been used in the following transactions
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-100 text-red-400 hover:text-red-600 transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
+          {hasStructuredData ? (
+            <>
+              {/* Delivery Receipts Section */}
+              {deliverySection.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Package size={14} className="text-blue-600" />
+                    </div>
+                    <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">
+                      Used in Deliveries
+                    </h3>
+                    <span className="ml-auto bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">
+                      {deliverySection.reduce((sum, d) => sum + d.receipts.length, 0)} receipt{deliverySection.reduce((sum, d) => sum + d.receipts.length, 0) !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {deliverySection.map((entry, i) => (
+                      <div key={i} className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                        <p className="font-medium text-gray-800 text-sm mb-2">📦 {entry.product}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {entry.receipts.map((receipt, j) => (
+                            <span
+                              key={j}
+                              className="inline-flex items-center px-3 py-1 bg-white border border-blue-200 text-blue-700 text-xs font-mono rounded-lg shadow-sm"
+                            >
+                              {receipt}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Sales Section */}
+              {salesSection.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-7 h-7 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <ShoppingCart size={14} className="text-orange-600" />
+                    </div>
+                    <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">
+                      Used in Sales
+                    </h3>
+                    <span className="ml-auto bg-orange-100 text-orange-700 text-xs font-medium px-2 py-0.5 rounded-full">
+                      {salesSection.reduce((sum, s) => sum + s.refs.length, 0)} sale{salesSection.reduce((sum, s) => sum + s.refs.length, 0) !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {salesSection.map((entry, i) => (
+                      <div key={i} className="bg-orange-50 border border-orange-100 rounded-xl p-4">
+                        <p className="font-medium text-gray-800 text-sm mb-2">🛒 {entry.product}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {entry.refs.map((ref, j) => (
+                            <span
+                              key={j}
+                              className="inline-flex items-center px-3 py-1 bg-white border border-orange-200 text-orange-700 text-xs font-mono rounded-lg shadow-sm"
+                            >
+                              {ref}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            /* Fallback: raw message if parsing didn't work */
+            <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono bg-gray-50 rounded-xl p-4 border border-gray-200 leading-relaxed">
+              {message}
+            </pre>
+          )}
+
+          {/* Footer note */}
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <p className="text-sm text-amber-800 leading-relaxed">
+              <strong>ℹ️ To delete this record,</strong> you must first void or cancel all the delivery receipts and sales listed above, then try again.
+            </p>
+          </div>
+        </div>
+
+        {/* Footer button */}
+        <div className="flex-shrink-0 px-6 py-4 bg-gray-50 border-t border-gray-100">
+          <button
+            onClick={onClose}
+            className="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-900 text-white font-medium rounded-xl transition-colors text-sm"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Main Component ────────────────────────────────────────────────────────
 const InventoryRecordsManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -28,6 +201,9 @@ const InventoryRecordsManagement = () => {
   const [selectedInventory, setSelectedInventory] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+
+  // ── NEW: error modal state ────────────────────────────
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState(null);
 
   const [products, setProducts] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
@@ -106,8 +282,6 @@ const InventoryRecordsManagement = () => {
   // Memoized product options
   const productOptions = useMemo(() => {
     return products.flatMap(p => {
-
-
       if (p.variations && p.variations.length > 0) {
         return p.variations.map(v => {
           const uniqueId = `${p.id}_${v.id}`;
@@ -268,7 +442,6 @@ const InventoryRecordsManagement = () => {
         setWarehouseStocks({});
         setBranchStocks({});
 
-        // Load stock for each item
         for (let i = 0; i < fullInventory.items.length; i++) {
           const item = fullInventory.items[i];
           if (item.product?.id) {
@@ -352,7 +525,6 @@ const InventoryRecordsManagement = () => {
       return;
     }
 
-    // Check stock availability
     if (formData.inventoryType !== 'STOCK_IN') {
       const hasLocation = formData.fromWarehouseId || formData.fromBranchId ||
         formData.toWarehouseId || formData.toBranchId;
@@ -456,7 +628,6 @@ const InventoryRecordsManagement = () => {
     } else if (field === 'quantity') {
       const newQuantity = parseInt(value) || 1;
 
-      // Validate quantity against available stock
       if (formData.inventoryType !== 'STOCK_IN') {
         const item = newItems[index];
         const stockInfo = getItemStockInfo(index, item.productId, item.variationId);
@@ -520,7 +691,6 @@ const InventoryRecordsManagement = () => {
       return;
     }
 
-    // Check for duplicates
     const duplicates = formData.items.filter((item, index) =>
       formData.items.findIndex(i =>
         i.productId === item.productId &&
@@ -533,7 +703,6 @@ const InventoryRecordsManagement = () => {
       return;
     }
 
-    // Final validation for stock availability
     if (formData.inventoryType !== 'STOCK_IN') {
       const stockErrors = [];
       for (let i = 0; i < formData.items.length; i++) {
@@ -640,7 +809,7 @@ const InventoryRecordsManagement = () => {
     }
   };
 
-
+  // ── FIXED: handleDelete now uses a scrollable modal for long error messages ──
   const handleDelete = async (id) => {
     const inventory = inventories.find(inv => inv.id === id);
     const userRole = localStorage.getItem('userRole') || 'USER';
@@ -676,7 +845,8 @@ const InventoryRecordsManagement = () => {
       const result = await deleteInventory(id);
 
       if (result && result.success === false) {
-        alert('❌ ' + (result.error || 'Failed to delete inventory'));
+        // ── Show full error in scrollable modal instead of truncating alert ──
+        setDeleteErrorMessage(result.error || 'Failed to delete inventory');
         return;
       }
 
@@ -688,7 +858,19 @@ const InventoryRecordsManagement = () => {
       }
     } catch (error) {
       console.error('❌ Delete error:', error);
-      alert('❌ ' + (error.message || 'Failed to delete inventory'));
+      const errorMsg = error.message || 'Failed to delete inventory';
+
+      // ── Use modal for errors that contain DR receipt lists (long messages) ──
+      if (
+        errorMsg.includes('USED IN DELIVERIES') ||
+        errorMsg.includes('USED IN SALES') ||
+        errorMsg.includes('Cannot delete') ||
+        errorMsg.length > 200
+      ) {
+        setDeleteErrorMessage(errorMsg);
+      } else {
+        alert('❌ ' + errorMsg);
+      }
     } finally {
       setActionLoading(false);
       setLoadingMessage('');
@@ -783,10 +965,16 @@ const InventoryRecordsManagement = () => {
     setStatusFilter('ALL');
   };
 
-
   return (
     <>
       <LoadingOverlay show={loading || actionLoading} message={loadingMessage || ''} />
+
+      {/* ── Scrollable Delete Error Modal ── */}
+      <DeleteErrorModal
+        message={deleteErrorMessage}
+        onClose={() => setDeleteErrorMessage(null)}
+      />
+
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="p-6 max-w-full mx-auto px-8">
           <div className="mb-8">

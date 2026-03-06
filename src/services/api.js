@@ -80,7 +80,7 @@ const RATE_LIMIT_CONFIG = {
     showToast: true,
     autoRetry: true,
 };
-
+ 
 let activeRetryToast = null;
 
 const decodeJWT = (token) => {
