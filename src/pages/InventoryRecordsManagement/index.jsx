@@ -12,7 +12,7 @@ import usePagination from '../../hooks/ui/usePagination';
 import { getCurrentUser, isAdmin } from '../../utils/authUtils';
 import { api } from '../../services/api';
 
-// ─── Enterprise-Grade Delete Error Modal with Perfectly Aligned DR Cards ───
+// ─── Fixed Delete Error Modal with Perfect Alignment ─────────────────────
 const DeleteErrorModal = ({ message, onClose }) => {
   if (!message) return null;
 
@@ -44,476 +44,433 @@ const DeleteErrorModal = ({ message, onClose }) => {
   const hasStructuredData = products.length > 0;
 
   /**
-   * Parses: "DR-0001 (qty:5|status:DELIVERED)"
-   *      or "DR-0001 (qty:5)"            ← legacy / sales
-   * Returns: { label, qty, status }
+   * Parses the encoded ref string into a structured object.
+   *
+   * DR format:   "DR-0001 (qty:50|status:DELIVERED|from:Main Warehouse|to:Branch A)"
+   * Sale format: "SALE-12 (qty:30|status:INVOICED|branch:Branch A|company:Company X)"
+   * Legacy:      "DR-0001 (qty:5)"
+   *
+   * Returns: { label, qty, status, from, to, branch, company }
    */
   const parseRef = (raw) => {
-    const fullMatch = raw.match(/^(.+?)\s*\(qty:(\d+)\|status:([^)]+)\)\s*$/);
-    if (fullMatch) {
-      return {
-        label: fullMatch[1].trim(),
-        qty: parseInt(fullMatch[2], 10),
-        status: fullMatch[3].trim(),
-      };
-    }
-    const simpleMatch = raw.match(/^(.+?)\s*\(qty:(\d+)\)\s*$/);
-    if (simpleMatch) {
-      return { label: simpleMatch[1].trim(), qty: parseInt(simpleMatch[2], 10), status: null };
-    }
-    return { label: raw, qty: null, status: null };
-  };
+    const parenMatch = raw.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+    if (!parenMatch) return { label: raw, qty: null, status: null, from: null, to: null, branch: null, company: null };
 
-  // Professional status configurations with semantic colors
-  const statusConfig = {
-    DELIVERED: {
-      bg: 'bg-emerald-100',
-      text: 'text-emerald-800',
-      border: 'border-emerald-200',
-      dot: 'bg-emerald-500',
-      icon: '✓',
-      label: 'Delivered',
-      badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    },
-    IN_TRANSIT: {
-      bg: 'bg-amber-100',
-      text: 'text-amber-800',
-      border: 'border-amber-200',
-      dot: 'bg-amber-500',
-      icon: '⟳',
-      label: 'In Transit',
-      badge: 'bg-amber-50 text-amber-700 border-amber-200',
-    },
-    PREPARING: {
-      bg: 'bg-blue-100',
-      text: 'text-blue-800',
-      border: 'border-blue-200',
-      dot: 'bg-blue-500',
-      icon: '⚙',
-      label: 'Preparing',
-      badge: 'bg-blue-50 text-blue-700 border-blue-200',
-    },
-    PENDING: {
-      bg: 'bg-slate-100',
-      text: 'text-slate-800',
-      border: 'border-slate-200',
-      dot: 'bg-slate-500',
-      icon: '⏱',
-      label: 'Pending',
-      badge: 'bg-slate-50 text-slate-700 border-slate-200',
-    },
-  };
+    const label  = parenMatch[1].trim();
+    const inside = parenMatch[2];
 
-  const getStatusMeta = (status) => {
-    return statusConfig[status] || {
-      bg: 'bg-gray-100',
-      text: 'text-gray-800',
-      border: 'border-gray-200',
-      dot: 'bg-gray-500',
-      icon: '•',
-      label: status || 'Unknown',
-      badge: 'bg-gray-50 text-gray-700 border-gray-200',
+    const fields = {};
+    inside.split('|').forEach(part => {
+      const idx = part.indexOf(':');
+      if (idx !== -1) {
+        fields[part.slice(0, idx).trim()] = part.slice(idx + 1).trim();
+      }
+    });
+
+    return {
+      label,
+      qty:     fields.qty     ? parseInt(fields.qty, 10) : null,
+      status:  fields.status  || null,
+      from:    fields.from    || null,
+      to:      fields.to      || null,
+      branch:  fields.branch  || null,
+      company: fields.company || null,
     };
   };
 
-  // Sophisticated conflict type configurations
-  const conflictThemes = {
-    mixed: {
-      border: 'border-l-4 border-l-rose-500',
-      headerBg: 'bg-gradient-to-r from-rose-50/80 to-amber-50/80',
-      icon: '⚠️',
-      label: 'Mixed Transaction Conflict',
-      badge: 'bg-rose-100 text-rose-800 border-rose-200',
-      accent: 'text-rose-600',
-      shadow: 'shadow-rose-100',
-    },
-    delivery: {
-      border: 'border-l-4 border-l-blue-500',
-      headerBg: 'bg-gradient-to-r from-blue-50/80 to-indigo-50/80',
-      icon: '📦',
-      label: 'Delivery Conflict',
-      badge: 'bg-blue-100 text-blue-800 border-blue-200',
-      accent: 'text-blue-600',
-      shadow: 'shadow-blue-100',
-    },
-    sale: {
-      border: 'border-l-4 border-l-orange-500',
-      headerBg: 'bg-gradient-to-r from-orange-50/80 to-amber-50/80',
-      icon: '🛒',
-      label: 'Sale Conflict',
-      badge: 'bg-orange-100 text-orange-800 border-orange-200',
-      accent: 'text-orange-600',
-      shadow: 'shadow-orange-100',
-    },
+  /**
+   * Visual config per delivery status
+   */
+  const getStatusMeta = (status) => {
+    switch (status) {
+      case 'DELIVERED':
+        return {
+          bg: 'bg-green-500',
+          text: 'text-white',
+          border: 'border-green-400',
+          icon: '✅',
+          label: 'Delivered',
+        };
+      case 'IN_TRANSIT':
+        return {
+          bg: 'bg-yellow-400',
+          text: 'text-yellow-900',
+          border: 'border-yellow-300',
+          icon: '🚚',
+          label: 'In Transit',
+        };
+      case 'PREPARING':
+        return {
+          bg: 'bg-blue-400',
+          text: 'text-white',
+          border: 'border-blue-300',
+          icon: '📋',
+          label: 'Preparing',
+        };
+      case 'PENDING':
+        return {
+          bg: 'bg-gray-400',
+          text: 'text-white',
+          border: 'border-gray-300',
+          icon: '⏳',
+          label: 'Pending',
+        };
+      default:
+        return {
+          bg: 'bg-gray-300',
+          text: 'text-gray-800',
+          border: 'border-gray-200',
+          icon: '📦',
+          label: status || 'Unknown',
+        };
+    }
   };
 
-  const getConflictTheme = (hasDelivery, hasSale) => {
-    if (hasDelivery && hasSale) return conflictThemes.mixed;
-    if (hasDelivery) return conflictThemes.delivery;
-    return conflictThemes.sale;
+  // Color scheme per conflict type
+  const getConflictMeta = (hasDelivery, hasSale) => {
+    if (hasDelivery && hasSale) return {
+      borderColor: 'border-red-400',
+      headerBg:    'bg-red-50',
+      headerBorder:'border-b border-red-200',
+      leftBar:     'bg-red-500',
+      titleColor:  'text-red-900',
+      icon:        '⚠️',
+      label:       'Delivery + Sale Conflict',
+      labelBg:     'bg-red-100 text-red-700',
+    };
+    if (hasDelivery) return {
+      borderColor: 'border-blue-400',
+      headerBg:    'bg-blue-50',
+      headerBorder:'border-b border-blue-200',
+      leftBar:     'bg-blue-500',
+      titleColor:  'text-blue-900',
+      icon:        '📦',
+      label:       'Delivery Conflict',
+      labelBg:     'bg-blue-100 text-blue-700',
+    };
+    return {
+      borderColor: 'border-orange-400',
+      headerBg:    'bg-orange-50',
+      headerBorder:'border-b border-orange-200',
+      leftBar:     'bg-orange-500',
+      titleColor:  'text-orange-900',
+      icon:        '🛒',
+      label:       'Sale Conflict',
+      labelBg:     'bg-orange-100 text-orange-700',
+    };
   };
 
-  // Calculate totals
-  const totals = products.reduce((acc, [, { deliveryReceipts, saleRefs }]) => {
-    deliveryReceipts.forEach(dr => {
-      const { qty } = parseRef(dr);
-      if (qty) acc.deliveryQty += qty;
-    });
-    saleRefs.forEach(s => {
-      const { qty } = parseRef(s);
-      if (qty) acc.saleQty += qty;
-    });
-    acc.deliveryCount += deliveryReceipts.length;
-    acc.saleCount += saleRefs.length;
-    return acc;
-  }, { deliveryCount: 0, saleCount: 0, deliveryQty: 0, saleQty: 0 });
-
-  const totalBlockedQty = totals.deliveryQty + totals.saleQty;
+  const totalDeliveries    = products.reduce((s, [, v]) => s + v.deliveryReceipts.length, 0);
+  const totalSales         = products.reduce((s, [, v]) => s + v.saleRefs.length, 0);
+  const totalDeliveryQty   = products.reduce((s, [, v]) => s + v.deliveryReceipts.reduce((a, dr) => a + (parseRef(dr).qty ?? 0), 0), 0);
+  const totalSaleQty       = products.reduce((s, [, v]) => s + v.saleRefs.reduce((a, r)  => a + (parseRef(r).qty  ?? 0), 0), 0);
+  const grandTotalQty      = totalDeliveryQty + totalSaleQty;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
-      {/* Premium backdrop with multi-layer blur */}
-      <div 
-        className="absolute inset-0 bg-gradient-to-br from-slate-900/70 via-slate-900/60 to-slate-900/70 backdrop-blur-md"
-        onClick={onClose}
-      />
-      
-      {/* Modal with elevated design - ENLARGED WIDTH */}
-      <div className="relative w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden rounded-2xl shadow-2xl shadow-slate-900/20">
-        
-        {/* Glass background with subtle gradient */}
-        <div className="absolute inset-0 bg-white/95 backdrop-blur-xl" />
-        <div className="absolute inset-0 bg-gradient-to-br from-white via-white/95 to-slate-50/90" />
-        
-        {/* Decorative top accent */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 via-amber-500 to-orange-500" />
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black bg-opacity-60 backdrop-blur-sm" onClick={onClose} />
 
-        {/* Content container */}
-        <div className="relative flex flex-col max-h-[90vh]">
+      {/* Modal - Increased width for better spacing */}
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden border border-red-200">
 
-          {/* ── Premium Header with Impact Summary ── */}
-          <div className="px-8 pt-8 pb-6 border-b border-slate-200/50">
-            <div className="flex items-start gap-5">
-              {/* Warning icon with glow - ENLARGED */}
-              <div className="relative flex-shrink-0">
-                <div className="absolute inset-0 bg-rose-500/20 rounded-xl blur-lg" />
-                <div className="relative w-16 h-16 bg-gradient-to-br from-rose-500 to-rose-600 rounded-xl flex items-center justify-center shadow-lg shadow-rose-500/20">
-                  <AlertTriangle size={32} className="text-white" />
-                </div>
-              </div>
-
-              {/* Title section */}
-              <div className="flex-1 min-w-0">
-                <h2 className="text-3xl font-bold text-slate-900 mb-2">
-                  Delete Blocked
-                </h2>
-                <p className="text-base text-slate-600">
-                  This inventory record cannot be deleted because stock has been allocated to active transactions
-                </p>
-              </div>
-
-              {/* Close button - ENLARGED */}
-              <button
-                onClick={onClose}
-                className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all duration-200"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            {/* Impact metrics dashboard - ENLARGED GRID */}
-            <div className="grid grid-cols-4 gap-4 mt-8">
-              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200/50">
-                <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Products</div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-bold text-slate-900">{products.length}</span>
-                  <span className="text-sm text-slate-600">affected</span>
-                </div>
-              </div>
-              
-              {totals.deliveryCount > 0 && (
-                <div className="bg-blue-50 rounded-xl p-4 border border-blue-200/50">
-                  <div className="text-xs font-medium text-blue-600 uppercase tracking-wider mb-1">Deliveries</div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-blue-700">{totals.deliveryCount}</span>
-                    <span className="text-sm text-blue-600">DRs</span>
-                  </div>
-                  <div className="text-xs text-blue-600/80 mt-1">{totals.deliveryQty} units</div>
-                </div>
-              )}
-              
-              {totals.saleCount > 0 && (
-                <div className="bg-orange-50 rounded-xl p-4 border border-orange-200/50">
-                  <div className="text-xs font-medium text-orange-600 uppercase tracking-wider mb-1">Sales</div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-orange-700">{totals.saleCount}</span>
-                    <span className="text-sm text-orange-600">orders</span>
-                  </div>
-                  <div className="text-xs text-orange-600/80 mt-1">{totals.saleQty} units</div>
-                </div>
-              )}
-              
-              {totalBlockedQty > 0 && (
-                <div className="bg-rose-50 rounded-xl p-4 border border-rose-200/50">
-                  <div className="text-xs font-medium text-rose-600 uppercase tracking-wider mb-1">Total Blocked</div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-rose-700">{totalBlockedQty}</span>
-                    <span className="text-sm text-rose-600">units</span>
-                  </div>
-                </div>
-              )}
-            </div>
+        {/* ── Header ── */}
+        <div className="flex items-center gap-3 px-6 py-5 bg-red-50 border-b border-red-100 flex-shrink-0">
+          <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+            <AlertTriangle size={20} className="text-red-600" />
           </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-bold text-red-800">Cannot Delete Inventory Record</h2>
+            <p className="text-sm text-red-500 mt-0.5">
+              Stock has already been consumed by the transactions below
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-100 text-red-400 hover:text-red-600 transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
 
-          {/* ─── Scrollable Product Cards with Custom Scrollbar ─── */}
-          <div className="flex-1 overflow-y-auto px-8 py-6 space-y-5 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent hover:scrollbar-thumb-slate-300">
-            {hasStructuredData ? (
-              <>
-                {products.map(([productName, { deliveryReceipts, saleRefs }], index) => {
-                  const theme = getConflictTheme(deliveryReceipts.length > 0, saleRefs.length > 0);
-                  const productDrQty = deliveryReceipts.reduce((a, dr) => a + (parseRef(dr).qty ?? 0), 0);
-                  const productSaleQty = saleRefs.reduce((a, r) => a + (parseRef(r).qty ?? 0), 0);
-                  
-                  return (
-                    <div
-                      key={index}
-                      className={`group relative rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-sm overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 ${theme.border}`}
-                    >
-                      {/* Product Header - ENLARGED */}
-                      <div className={`px-6 py-5 ${theme.headerBg} border-b border-slate-200/50`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4 min-w-0">
-                            <span className="text-2xl filter drop-shadow-sm">{theme.icon}</span>
-                            <div className="min-w-0">
-                              <h3 className="text-lg font-semibold text-slate-900 truncate">
-                                {productName}
-                              </h3>
-                              <div className="flex items-center gap-3 mt-1.5">
-                                <span className={`text-xs font-medium px-3 py-1 rounded-full border ${theme.badge}`}>
-                                  {theme.label}
-                                </span>
-                                {(productDrQty + productSaleQty) > 0 && (
-                                  <span className="text-sm text-slate-500">
-                                    {productDrQty + productSaleQty} units affected
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          {productDrQty > 0 && productSaleQty > 0 && (
-                            <div className="flex gap-2 ml-4">
-                              {productDrQty > 0 && (
-                                <span className="text-sm bg-blue-100 text-blue-700 px-3 py-1.5 rounded-md border border-blue-200">
-                                  📦 {productDrQty}
-                                </span>
-                              )}
-                              {productSaleQty > 0 && (
-                                <span className="text-sm bg-orange-100 text-orange-700 px-3 py-1.5 rounded-md border border-orange-200">
-                                  🛒 {productSaleQty}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+        {/* ── Summary pills ── */}
+        <div className="flex items-center gap-3 px-6 py-3 bg-gray-50 border-b border-gray-100 flex-shrink-0 flex-wrap">
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide mr-1">Conflicts:</span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-700 shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-gray-400 inline-block" />
+            {products.length} product{products.length !== 1 ? 's' : ''}
+          </span>
+          {totalDeliveries > 0 && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-200 rounded-full text-xs font-semibold text-blue-700 shadow-sm">
+              <Package size={11} />
+              {totalDeliveries} DR{totalDeliveries !== 1 ? 's' : ''} · {totalDeliveryQty} pcs
+            </span>
+          )}
+          {totalSales > 0 && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-50 border border-orange-200 rounded-full text-xs font-semibold text-orange-700 shadow-sm">
+              <ShoppingCart size={11} />
+              {totalSales} sale{totalSales !== 1 ? 's' : ''} · {totalSaleQty} pcs
+            </span>
+          )}
+          {grandTotalQty > 0 && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 border border-red-300 rounded-full text-xs font-bold text-red-700 shadow-sm ml-auto">
+              Total blocked: {grandTotalQty} pcs
+            </span>
+          )}
+        </div>
 
-                      {/* Transactions Details - ENLARGED */}
-                      <div className="p-6 space-y-5">
-                        {/* Delivery Receipts - PERFECTLY ALIGNED GRID */}
-                        {deliveryReceipts.length > 0 && (
-                          <div>
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center">
-                                  <Package size={16} className="text-blue-700" />
-                                </div>
-                                <span className="text-base font-semibold text-blue-900">
-                                  Delivery Receipts
-                                </span>
-                              </div>
-                              <span className="text-sm bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full font-medium">
-                                {deliveryReceipts.length} item{deliveryReceipts.length !== 1 ? 's' : ''} · {productDrQty} units
+        {/* ── Scrollable product cards ── */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {hasStructuredData ? (
+            <>
+              {products.map(([productName, { deliveryReceipts, saleRefs }], i) => {
+                const meta = getConflictMeta(deliveryReceipts.length > 0, saleRefs.length > 0);
+                const productDrQty   = deliveryReceipts.reduce((a, dr) => a + (parseRef(dr).qty ?? 0), 0);
+                const productSaleQty = saleRefs.reduce((a, r) => a + (parseRef(r).qty ?? 0), 0);
+                const productTotalQty = productDrQty + productSaleQty;
+                
+                return (
+                  <div
+                    key={i}
+                    className={`rounded-xl border-2 ${meta.borderColor} overflow-hidden shadow-sm`}
+                  >
+                    {/* Product header row */}
+                    <div className={`flex items-center gap-3 px-4 py-3 ${meta.headerBg} ${meta.headerBorder}`}>
+                      <div className={`w-1 h-8 rounded-full ${meta.leftBar} flex-shrink-0`} />
+                      <span className="text-base">{meta.icon}</span>
+                      <span className={`font-semibold text-sm flex-1 min-w-0 truncate ${meta.titleColor}`}>
+                        {productName}
+                      </span>
+                      {productTotalQty > 0 && (
+                        <span className="flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full bg-white border border-gray-300 text-gray-700 mr-1">
+                          {productTotalQty} pcs total
+                        </span>
+                      )}
+                      <span className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full ${meta.labelBg}`}>
+                        {meta.label}
+                      </span>
+                    </div>
+
+                    {/* Conflict detail rows */}
+                    <div className="px-4 py-3 bg-white space-y-4">
+
+                      {/* ── Delivery receipts with status badges and route info ── */}
+                      {deliveryReceipts.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-3">
+                            <Package size={12} className="text-blue-500 flex-shrink-0" />
+                            <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
+                              Delivery Receipt{deliveryReceipts.length !== 1 ? 's' : ''}
+                            </span>
+                            <span className="ml-auto flex items-center gap-1.5">
+                              <span className="bg-blue-50 border border-blue-200 text-blue-600 text-xs font-semibold px-2 py-0.5 rounded-full">
+                                {productDrQty} pcs
                               </span>
-                            </div>
-                            
-                            {/* PERFECTLY ALIGNED DR CARDS - 3 column grid for wider modal */}
-                            <div className="grid grid-cols-3 gap-3">
-                              {deliveryReceipts.map((dr, idx) => {
-                                const { label, qty, status } = parseRef(dr);
-                                const statusMeta = status ? getStatusMeta(status) : null;
-                                
-                                return (
-                                  <div
-                                    key={idx}
-                                    className="group/receipt w-full"
-                                  >
-                                    {/* Fixed width card with consistent layout - ENLARGED */}
-                                    <div className="flex w-full bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow transition-all duration-200 overflow-hidden">
-                                      {/* DR Number - Fixed width */}
-                                      <div className="flex-none w-28 px-3 py-2 bg-slate-50 border-r border-slate-200">
-                                        <span className="block text-sm font-mono font-medium text-slate-700 truncate" title={label}>
-                                          {label}
-                                        </span>
-                                      </div>
-                                      
-                                      {/* Quantity - Fixed width */}
-                                      {qty && (
-                                        <>
-                                          <div className="flex-none w-20 px-3 py-2 bg-white border-r border-slate-200">
-                                            <span className="block text-sm font-semibold text-slate-900 text-center">
-                                              {qty} pcs
-                                            </span>
-                                          </div>
-                                        </>
-                                      )}
-                                      
-                                      {/* Status - Takes remaining space */}
-                                      {statusMeta && (
-                                        <div className="flex-1 min-w-0 px-3 py-2 bg-white">
-                                          <div className={`flex items-center justify-center gap-1.5 text-sm font-medium ${statusMeta.text}`}>
-                                            <span className={`w-2 h-2 rounded-full ${statusMeta.dot} flex-shrink-0`} />
-                                            <span className="truncate">{statusMeta.label}</span>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-
-                            {/* Status Legend */}
-                            {[...new Set(deliveryReceipts.map(dr => parseRef(dr).status).filter(Boolean))].length > 1 && (
-                              <div className="flex items-center gap-4 mt-4 pt-3 border-t border-slate-100">
-                                <span className="text-sm text-slate-400">Status:</span>
-                                {Object.entries(statusConfig)
-                                  .filter(([status]) => 
-                                    deliveryReceipts.some(dr => parseRef(dr).status === status)
-                                  )
-                                  .map(([status, config]) => (
-                                    <div key={status} className="flex items-center gap-1.5">
-                                      <span className={`w-2 h-2 rounded-full ${config.dot}`} />
-                                      <span className="text-sm text-slate-600">{config.label}</span>
-                                    </div>
-                                  ))
-                                }
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Sales - PERFECTLY ALIGNED GRID */}
-                        {saleRefs.length > 0 && (
-                          <div>
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 bg-orange-100 rounded-lg flex items-center justify-center">
-                                  <ShoppingCart size={16} className="text-orange-700" />
-                                </div>
-                                <span className="text-base font-semibold text-orange-900">
-                                  Sales Orders
-                                </span>
-                              </div>
-                              <span className="text-sm bg-orange-100 text-orange-700 px-3 py-1.5 rounded-full font-medium">
-                                {saleRefs.length} item{saleRefs.length !== 1 ? 's' : ''} · {productSaleQty} units
+                              <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                                {deliveryReceipts.length} DR{deliveryReceipts.length !== 1 ? 's' : ''}
                               </span>
-                            </div>
-                            
-                            {/* PERFECTLY ALIGNED SALE CARDS - 3 column grid */}
-                            <div className="grid grid-cols-3 gap-3">
-                              {saleRefs.map((ref, idx) => {
-                                const { label, qty } = parseRef(ref);
-                                return (
-                                  <div
-                                    key={idx}
-                                    className="group/receipt w-full"
-                                  >
-                                    {/* Fixed width card with consistent layout - ENLARGED */}
-                                    <div className="flex w-full bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-                                      {/* Reference Number - Fixed width */}
-                                      <div className="flex-none w-28 px-3 py-2 bg-slate-50 border-r border-slate-200">
-                                        <span className="block text-sm font-mono font-medium text-slate-700 truncate" title={label}>
-                                          {label}
-                                        </span>
-                                      </div>
-                                      
-                                      {/* Quantity - Takes remaining space */}
-                                      {qty && (
-                                        <div className="flex-1 px-3 py-2 bg-white">
-                                          <span className="block text-sm font-semibold text-slate-900 text-center">
+                            </span>
+                          </div>
+                          
+                          {/* Delivery Cards Grid - Fixed 2 columns for better alignment */}
+                          <div className="grid grid-cols-2 gap-3">
+                            {deliveryReceipts.map((dr, j) => {
+                              const { label, qty, status, from, to } = parseRef(dr);
+                              const sm = status ? getStatusMeta(status) : null;
+                              return (
+                                <div key={j} className="flex flex-col bg-white rounded-lg border border-blue-200 shadow-sm overflow-hidden">
+                                  {/* Main pill row */}
+                                  <div className="flex items-stretch w-full">
+                                    {/* DR number */}
+                                    <div className="flex-none w-24 px-2 py-1.5 bg-blue-50 border-r border-blue-200">
+                                      <span className="block text-xs font-mono font-medium text-blue-800 truncate" title={label}>
+                                        {label}
+                                      </span>
+                                    </div>
+                                    
+                                    {/* Quantity */}
+                                    {qty !== null && (
+                                      <>
+                                        <div className="flex-none w-16 px-2 py-1.5 bg-blue-500 border-r border-blue-300">
+                                          <span className="block text-xs font-bold text-white text-center">
                                             {qty} pcs
                                           </span>
                                         </div>
+                                      </>
+                                    )}
+                                    
+                                    {/* Status */}
+                                    {sm && (
+                                      <div className={`flex-1 min-w-0 px-2 py-1.5 ${sm.bg} flex items-center justify-center gap-1`}>
+                                        <span>{sm.icon}</span>
+                                        <span className={`text-xs font-bold truncate ${sm.text}`}>
+                                          {sm.label}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  {/* From → To route row */}
+                                  {(from || to) && (
+                                    <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50 border-t border-blue-100 text-[10px]">
+                                      <div className="flex items-center gap-1 min-w-0 flex-1">
+                                        <span className="text-blue-400 flex-shrink-0">🏭</span>
+                                        <span className="font-medium text-blue-700 truncate" title={from}>
+                                          {from || '?'}
+                                        </span>
+                                      </div>
+                                      <span className="text-gray-400 flex-shrink-0 mx-1">→</span>
+                                      <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
+                                        <span className="font-medium text-green-700 truncate" title={to}>
+                                          {to || '?'}
+                                        </span>
+                                        <span className="text-green-400 flex-shrink-0">🏪</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Status legend */}
+                          {[...new Set(deliveryReceipts.map(dr => parseRef(dr).status).filter(Boolean))].length > 1 && (
+                            <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 pt-2 border-t border-gray-100">
+                              <span className="text-xs text-gray-400 mr-1">Status:</span>
+                              {[
+                                { status: 'DELIVERED',  ...getStatusMeta('DELIVERED') },
+                                { status: 'IN_TRANSIT', ...getStatusMeta('IN_TRANSIT') },
+                                { status: 'PREPARING',  ...getStatusMeta('PREPARING') },
+                                { status: 'PENDING',    ...getStatusMeta('PENDING') },
+                              ]
+                                .filter(s => deliveryReceipts.some(dr => parseRef(dr).status === s.status))
+                                .map(s => (
+                                  <span key={s.status} className="inline-flex items-center gap-1 text-xs text-gray-500">
+                                    <span className={`w-2 h-2 rounded-full inline-block ${s.bg}`} />
+                                    {s.icon} {s.label}
+                                  </span>
+                                ))
+                              }
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* ── Sales with branch and company info ── */}
+                      {saleRefs.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-3">
+                            <ShoppingCart size={12} className="text-orange-500 flex-shrink-0" />
+                            <span className="text-xs font-semibold text-orange-600 uppercase tracking-wide">
+                              Sale Reference{saleRefs.length !== 1 ? 's' : ''}
+                            </span>
+                            <span className="ml-auto flex items-center gap-1.5">
+                              <span className="bg-orange-50 border border-orange-200 text-orange-600 text-xs font-semibold px-2 py-0.5 rounded-full">
+                                {productSaleQty} pcs
+                              </span>
+                              <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                                {saleRefs.length} sale{saleRefs.length !== 1 ? 's' : ''}
+                              </span>
+                            </span>
+                          </div>
+                          
+                          {/* Sale Cards Grid - Fixed 2 columns for consistency */}
+                          <div className="grid grid-cols-2 gap-3">
+                            {saleRefs.map((ref, j) => {
+                              const { label, qty, status, branch, company } = parseRef(ref);
+                              return (
+                                <div key={j} className="flex flex-col bg-white rounded-lg border border-orange-200 shadow-sm overflow-hidden">
+                                  {/* Main pill row */}
+                                  <div className="flex items-stretch w-full">
+                                    {/* Reference number */}
+                                    <div className="flex-none w-24 px-2 py-1.5 bg-orange-50 border-r border-orange-200">
+                                      <span className="block text-xs font-mono font-medium text-orange-800 truncate" title={label}>
+                                        {label}
+                                      </span>
+                                    </div>
+                                    
+                                    {/* Quantity */}
+                                    {qty !== null && (
+                                      <>
+                                        <div className="flex-none w-16 px-2 py-1.5 bg-orange-500 border-r border-orange-300">
+                                          <span className="block text-xs font-bold text-white text-center">
+                                            {qty} pcs
+                                          </span>
+                                        </div>
+                                      </>
+                                    )}
+                                    
+                                    {/* Status (if present) */}
+                                    {status && (
+                                      <div className={`flex-1 min-w-0 px-2 py-1.5 ${
+                                        status === 'INVOICED' 
+                                          ? 'bg-purple-500' 
+                                          : 'bg-yellow-400'
+                                      } flex items-center justify-center gap-1`}>
+                                        <span className="text-xs font-bold text-white truncate">
+                                          {status === 'INVOICED' ? '🧾 Invoiced' : '✅ Confirmed'}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Branch + Company info row */}
+                                  {(branch || company) && (
+                                    <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50 border-t border-orange-100 text-[10px]">
+                                      {branch && (
+                                        <div className="flex items-center gap-1 min-w-0 flex-1">
+                                          <span className="text-orange-400 flex-shrink-0">🏪</span>
+                                          <span className="font-medium text-orange-700 truncate" title={branch}>
+                                            {branch}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {branch && company && (
+                                        <span className="text-gray-300 flex-shrink-0 mx-1">·</span>
+                                      )}
+                                      {company && (
+                                        <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
+                                          <span className="font-medium text-gray-600 truncate" title={company}>
+                                            {company}
+                                          </span>
+                                          <span className="text-gray-400 flex-shrink-0">🏢</span>
+                                        </div>
                                       )}
                                     </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {/* Resolution Guide - ENLARGED */}
-                <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 rounded-xl p-6 border border-amber-200/60 mt-8">
-                  <div className="flex gap-5">
-                    <div className="flex-shrink-0 w-12 h-12 bg-amber-200/50 rounded-xl flex items-center justify-center">
-                      <span className="text-3xl">📋</span>
-                    </div>
-                    <div>
-                      <h4 className="text-lg font-semibold text-amber-900 mb-2">Required Actions</h4>
-                      <p className="text-base text-amber-800/90 leading-relaxed">
-                        Before deleting this inventory record, you must void or cancel all associated 
-                        delivery receipts and sales orders. Once all transactions are voided, the stock 
-                        will be released and you can safely delete this record.
-                      </p>
-                      <div className="flex items-center gap-6 mt-4 text-sm text-amber-700">
-                        <span className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-amber-500" />
-                          Void deliveries first
-                        </span>
-                        <span className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-amber-500" />
-                          Cancel sales orders
-                        </span>
-                        <span className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-amber-500" />
-                          Retry deletion
-                        </span>
-                      </div>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-              </>
-            ) : (
-              <div className="bg-slate-50 rounded-xl p-6 border border-slate-200">
-                <pre className="whitespace-pre-wrap text-sm text-slate-700 font-mono leading-relaxed">
-                  {message}
-                </pre>
-              </div>
-            )}
-          </div>
+                );
+              })}
 
-          {/* ─── Footer with Actions - ENLARGED ─── */}
-          <div className="relative flex-shrink-0 px-8 py-5 border-t border-slate-200/50 bg-gradient-to-b from-white to-slate-50/50">
-            <div className="flex items-center justify-end gap-4">
-              <button
-                onClick={onClose}
-                className="px-6 py-3 text-base font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={onClose}
-                className="px-6 py-3 text-base font-medium text-white bg-gradient-to-r from-slate-800 to-slate-900 rounded-xl hover:from-slate-900 hover:to-slate-950 transition-all duration-200 shadow-lg shadow-slate-900/20"
-              >
-                Close Window
-              </button>
-            </div>
-          </div>
+              {/* Footer note */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mt-2">
+                <p className="text-sm text-amber-800 leading-relaxed">
+                  <strong>ℹ️ To delete this record,</strong> you must first void or cancel all the delivery receipts and sales listed above, then try again.
+                </p>
+              </div>
+            </>
+          ) : (
+            <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono bg-gray-50 rounded-xl p-4 border border-gray-200 leading-relaxed">
+              {message}
+            </pre>
+          )}
+        </div>
+
+        {/* ── Footer ── */}
+        <div className="flex-shrink-0 px-6 py-4 bg-gray-50 border-t border-gray-100">
+          <button
+            onClick={onClose}
+            className="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-900 text-white font-medium rounded-xl transition-colors text-sm"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
