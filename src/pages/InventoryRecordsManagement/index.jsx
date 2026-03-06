@@ -44,7 +44,6 @@ const DeleteErrorModal = ({ message, onClose }) => {
   const products = Object.entries(productMap);
   const hasStructuredData = products.length > 0;
 
-  // Toggle product expansion
   const toggleProduct = (productIndex) => {
     setExpandedProducts(prev => ({
       ...prev,
@@ -52,28 +51,18 @@ const DeleteErrorModal = ({ message, onClose }) => {
     }));
   };
 
-  // Expand all products
   const expandAll = () => {
     const allExpanded = {};
-    products.forEach((_, index) => {
-      allExpanded[index] = true;
-    });
+    products.forEach((_, index) => { allExpanded[index] = true; });
     setExpandedProducts(allExpanded);
   };
 
-  // Collapse all products
-  const collapseAll = () => {
-    setExpandedProducts({});
-  };
+  const collapseAll = () => { setExpandedProducts({}); };
 
   /**
    * Parses the encoded ref string into a structured object.
-   *
    * DR format:   "DR-0001 (qty:50|status:DELIVERED|from:Main Warehouse|to:Branch A)"
    * Sale format: "SALE-12 (qty:30|status:INVOICED|branch:Branch A|company:Company X)"
-   * Legacy:      "DR-0001 (qty:5)"
-   *
-   * Returns: { label, qty, status, from, to, branch, company }
    */
   const parseRef = (raw) => {
     const parenMatch = raw.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
@@ -101,85 +90,28 @@ const DeleteErrorModal = ({ message, onClose }) => {
     };
   };
 
-  /**
-   * Visual config per delivery status
-   */
   const getStatusMeta = (status) => {
     switch (status) {
-      case 'DELIVERED':
-        return {
-          bg: 'bg-green-500/90',
-          text: 'text-white',
-          border: 'border-green-400',
-          icon: '✅',
-          label: 'Delivered',
-        };
-      case 'IN_TRANSIT':
-        return {
-          bg: 'bg-yellow-400/90',
-          text: 'text-yellow-900',
-          border: 'border-yellow-300',
-          icon: '🚚',
-          label: 'In Transit',
-        };
-      case 'PREPARING':
-        return {
-          bg: 'bg-blue-400/90',
-          text: 'text-white',
-          border: 'border-blue-300',
-          icon: '📋',
-          label: 'Preparing',
-        };
-      case 'PENDING':
-        return {
-          bg: 'bg-gray-400/90',
-          text: 'text-white',
-          border: 'border-gray-300',
-          icon: '⏳',
-          label: 'Pending',
-        };
-      default:
-        return {
-          bg: 'bg-gray-300/90',
-          text: 'text-gray-800',
-          border: 'border-gray-200',
-          icon: '📦',
-          label: status || 'Unknown',
-        };
+      case 'DELIVERED': return { bg: 'bg-green-500/90', text: 'text-white', border: 'border-green-400', icon: '✅', label: 'Delivered' };
+      case 'IN_TRANSIT': return { bg: 'bg-yellow-400/90', text: 'text-yellow-900', border: 'border-yellow-300', icon: '🚚', label: 'In Transit' };
+      case 'PREPARING': return { bg: 'bg-blue-400/90', text: 'text-white', border: 'border-blue-300', icon: '📋', label: 'Preparing' };
+      case 'PENDING': return { bg: 'bg-gray-400/90', text: 'text-white', border: 'border-gray-300', icon: '⏳', label: 'Pending' };
+      default: return { bg: 'bg-gray-300/90', text: 'text-gray-800', border: 'border-gray-200', icon: '📦', label: status || 'Unknown' };
     }
   };
 
-  // Color scheme per conflict type with transparency
   const getConflictMeta = (hasDelivery, hasSale) => {
     if (hasDelivery && hasSale) return {
-      borderColor: 'border-red-400/70',
-      headerBg: 'bg-red-50/80',
-      headerBorder: 'border-b border-red-200/70',
-      leftBar: 'bg-red-500/80',
-      titleColor: 'text-red-900',
-      icon: '⚠️',
-      label: 'Delivery + Sale Conflict',
-      labelBg: 'bg-red-100/80 text-red-700',
+      borderColor: 'border-red-400/70', headerBg: 'bg-red-50/80', headerBorder: 'border-b border-red-200/70',
+      leftBar: 'bg-red-500/80', titleColor: 'text-red-900', icon: '⚠️', label: 'Delivery + Sale Conflict', labelBg: 'bg-red-100/80 text-red-700',
     };
     if (hasDelivery) return {
-      borderColor: 'border-blue-400/70',
-      headerBg: 'bg-blue-50/80',
-      headerBorder: 'border-b border-blue-200/70',
-      leftBar: 'bg-blue-500/80',
-      titleColor: 'text-blue-900',
-      icon: '📦',
-      label: 'Delivery Conflict',
-      labelBg: 'bg-blue-100/80 text-blue-700',
+      borderColor: 'border-blue-400/70', headerBg: 'bg-blue-50/80', headerBorder: 'border-b border-blue-200/70',
+      leftBar: 'bg-blue-500/80', titleColor: 'text-blue-900', icon: '📦', label: 'Delivery Conflict', labelBg: 'bg-blue-100/80 text-blue-700',
     };
     return {
-      borderColor: 'border-orange-400/70',
-      headerBg: 'bg-orange-50/80',
-      headerBorder: 'border-b border-orange-200/70',
-      leftBar: 'bg-orange-500/80',
-      titleColor: 'text-orange-900',
-      icon: '🛒',
-      label: 'Sale Conflict',
-      labelBg: 'bg-orange-100/80 text-orange-700',
+      borderColor: 'border-orange-400/70', headerBg: 'bg-orange-50/80', headerBorder: 'border-b border-orange-200/70',
+      leftBar: 'bg-orange-500/80', titleColor: 'text-orange-900', icon: '🛒', label: 'Sale Conflict', labelBg: 'bg-orange-100/80 text-orange-700',
     };
   };
 
@@ -189,53 +121,33 @@ const DeleteErrorModal = ({ message, onClose }) => {
   const totalSaleQty = products.reduce((s, [, v]) => s + v.saleRefs.reduce((a, r) => a + (parseRef(r).qty ?? 0), 0), 0);
   const grandTotalQty = totalDeliveryQty + totalSaleQty;
 
-  // Check if any products are expanded
-  const hasExpanded = Object.values(expandedProducts).some(v => v === true);
-
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-      {/* Backdrop with gradient transparency */}
-      <div
-        className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/60 backdrop-blur-md"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/60 backdrop-blur-md" onClick={onClose} />
 
-      {/* Modal with glass morphism effect */}
       <div className="relative w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden rounded-2xl shadow-2xl shadow-black/25">
-
-        {/* Glass background layers */}
         <div className="absolute inset-0 bg-white/90 backdrop-blur-xl" />
         <div className="absolute inset-0 bg-gradient-to-br from-white/80 via-white/90 to-white/80" />
-
-        {/* Subtle border with transparency */}
         <div className="absolute inset-0 border border-white/30 rounded-2xl pointer-events-none" />
-
-        {/* Top accent with gradient */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500/70 via-amber-500/70 to-orange-500/70" />
 
-        {/* Content container */}
         <div className="relative flex flex-col max-h-[90vh]">
 
-          {/* ── Header with transparency ── */}
+          {/* Header */}
           <div className="flex items-center gap-3 px-6 py-5 bg-red-500/10 border-b border-red-200/50 flex-shrink-0 backdrop-blur-sm">
             <div className="flex-shrink-0 w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center backdrop-blur-sm">
               <AlertTriangle size={20} className="text-red-600" />
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="text-lg font-bold text-red-800">Cannot Delete Inventory Record</h2>
-              <p className="text-sm text-red-600/80 mt-0.5">
-                Stock has already been consumed by the transactions below
-              </p>
+              <p className="text-sm text-red-600/80 mt-0.5">Stock has already been consumed by the transactions below</p>
             </div>
-            <button
-              onClick={onClose}
-              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 text-red-400 hover:text-red-600 transition-colors backdrop-blur-sm"
-            >
+            <button onClick={onClose} className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 text-red-400 hover:text-red-600 transition-colors backdrop-blur-sm">
               <X size={18} />
             </button>
           </div>
 
-          {/* ── Summary pills with expand/collapse controls ── */}
+          {/* Summary pills + expand/collapse controls */}
           <div className="flex items-center justify-between px-6 py-3 bg-gray-500/5 border-b border-gray-200/50 flex-shrink-0 backdrop-blur-sm">
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-xs font-medium text-gray-500 uppercase tracking-wide mr-1">Conflicts:</span>
@@ -261,29 +173,19 @@ const DeleteErrorModal = ({ message, onClose }) => {
                 </span>
               )}
             </div>
-
-            {/* Expand/Collapse Controls */}
             {products.length > 0 && (
               <div className="flex items-center gap-2 ml-4">
-                <button
-                  onClick={expandAll}
-                  className="px-3 py-1 text-xs font-medium text-gray-600 bg-white/70 border border-gray-200/60 rounded-full hover:bg-white/90 transition-colors backdrop-blur-sm flex items-center gap-1"
-                  title="Expand all products"
-                >
+                <button onClick={expandAll} className="px-3 py-1 text-xs font-medium text-gray-600 bg-white/70 border border-gray-200/60 rounded-full hover:bg-white/90 transition-colors backdrop-blur-sm flex items-center gap-1" title="Expand all products">
                   <span>▼</span> Expand All
                 </button>
-                <button
-                  onClick={collapseAll}
-                  className="px-3 py-1 text-xs font-medium text-gray-600 bg-white/70 border border-gray-200/60 rounded-full hover:bg-white/90 transition-colors backdrop-blur-sm flex items-center gap-1"
-                  title="Collapse all products"
-                >
+                <button onClick={collapseAll} className="px-3 py-1 text-xs font-medium text-gray-600 bg-white/70 border border-gray-200/60 rounded-full hover:bg-white/90 transition-colors backdrop-blur-sm flex items-center gap-1" title="Collapse all products">
                   <span>▶</span> Collapse All
                 </button>
               </div>
             )}
           </div>
 
-          {/* ── Scrollable product cards with transparency ── */}
+          {/* Scrollable product cards */}
           <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-300/50 scrollbar-track-transparent hover:scrollbar-thumb-gray-400/70">
             {hasStructuredData ? (
               <>
@@ -295,28 +197,13 @@ const DeleteErrorModal = ({ message, onClose }) => {
                   const isExpanded = expandedProducts[i] || false;
 
                   return (
-                    <div
-                      key={i}
-                      className={`rounded-xl border-2 ${meta.borderColor} overflow-hidden shadow-sm backdrop-blur-sm bg-white/80 transition-all duration-200`}
-                    >
-                      {/* Product header row - Clickable */}
-                      <div
-                        className={`flex items-center gap-3 px-4 py-3 ${meta.headerBg} ${meta.headerBorder} backdrop-blur-sm cursor-pointer hover:brightness-95 transition-all duration-200`}
-                        onClick={() => toggleProduct(i)}
-                      >
+                    <div key={i} className={`rounded-xl border-2 ${meta.borderColor} overflow-hidden shadow-sm backdrop-blur-sm bg-white/80 transition-all duration-200`}>
+                      {/* Product header - clickable */}
+                      <div className={`flex items-center gap-3 px-4 py-3 ${meta.headerBg} ${meta.headerBorder} backdrop-blur-sm cursor-pointer hover:brightness-95 transition-all duration-200`} onClick={() => toggleProduct(i)}>
                         <div className={`w-1 h-8 rounded-full ${meta.leftBar} flex-shrink-0`} />
-
-                        {/* Expand/collapse icon */}
-                        <span className="text-xs font-mono text-gray-500 w-5">
-                          {isExpanded ? '▼' : '▶'}
-                        </span>
-
+                        <span className="text-xs font-mono text-gray-500 w-5">{isExpanded ? '▼' : '▶'}</span>
                         <span className="text-base">{meta.icon}</span>
-                        <span className={`font-semibold text-sm flex-1 min-w-0 truncate ${meta.titleColor}`}>
-                          {productName}
-                        </span>
-
-                        {/* Quick stats - always visible */}
+                        <span className={`font-semibold text-sm flex-1 min-w-0 truncate ${meta.titleColor}`}>{productName}</span>
                         <div className="flex items-center gap-2">
                           {deliveryReceipts.length > 0 && (
                             <span className="flex items-center gap-1 text-xs bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-200/60">
@@ -331,24 +218,17 @@ const DeleteErrorModal = ({ message, onClose }) => {
                             </span>
                           )}
                         </div>
-
                         {productTotalQty > 0 && (
-                          <span className="flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full bg-white/80 border border-gray-300/60 text-gray-700 mr-1 backdrop-blur-sm">
-                            {productTotalQty} pcs
-                          </span>
+                          <span className="flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full bg-white/80 border border-gray-300/60 text-gray-700 mr-1 backdrop-blur-sm">{productTotalQty} pcs</span>
                         )}
-                        <span className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full ${meta.labelBg} backdrop-blur-sm`}>
-                          {meta.label}
-                        </span>
+                        <span className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full ${meta.labelBg} backdrop-blur-sm`}>{meta.label}</span>
                       </div>
 
                       {/* Collapsible content */}
-                      <div
-                        className={`transition-all duration-300 ease-in-out ${isExpanded ? 'opacity-100 max-h-[2000px]' : 'opacity-0 max-h-0 overflow-hidden'
-                          }`}
-                      >
+                      <div className={`transition-all duration-300 ease-in-out ${isExpanded ? 'opacity-100 max-h-[2000px]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
                         <div className="px-4 py-3 bg-white/60 backdrop-blur-sm space-y-4">
-                          {/* ── Delivery receipts with status badges and route info ── */}
+
+                          {/* Delivery receipts */}
                           {deliveryReceipts.length > 0 && (
                             <div>
                               <div className="flex items-center gap-1.5 mb-3">
@@ -357,47 +237,39 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                   Delivery Receipt{deliveryReceipts.length !== 1 ? 's' : ''}
                                 </span>
                                 <span className="ml-auto flex items-center gap-1.5">
-                                  <span className="bg-blue-500/10 border border-blue-200/60 text-blue-600 text-xs font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm">
-                                    {productDrQty} pcs
-                                  </span>
-                                  <span className="bg-blue-500/20 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
-                                    {deliveryReceipts.length} DR{deliveryReceipts.length !== 1 ? 's' : ''}
-                                  </span>
+                                  <span className="bg-blue-500/10 border border-blue-200/60 text-blue-600 text-xs font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm">{productDrQty} pcs</span>
+                                  <span className="bg-blue-500/20 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">{deliveryReceipts.length} DR{deliveryReceipts.length !== 1 ? 's' : ''}</span>
                                 </span>
                               </div>
 
-                              {/* Delivery Cards Grid */}
+                              {/* ── FIXED: DR Cards Grid — label cell no longer truncates ── */}
                               <div className="grid grid-cols-2 gap-3">
                                 {deliveryReceipts.map((dr, j) => {
                                   const { label, qty, status, from, to } = parseRef(dr);
                                   const sm = status ? getStatusMeta(status) : null;
                                   return (
-                                    <div key={j} className="flex flex-col bg-white/70 backdrop-blur-sm rounded-lg border border-blue-200/60 shadow-sm overflow-hidden h-full">
+                                    <div key={j} className="flex flex-col bg-white/70 backdrop-blur-sm rounded-lg border border-blue-200/60 shadow-sm overflow-hidden">
                                       {/* Main pill row */}
-                                      <div className="flex w-full">
-                                        {/* DR number */}
-                                        <div className="w-24 flex-shrink-0 px-2 py-1.5 bg-blue-500/10 border-r border-blue-200/60">
-                                          <span className="block text-xs font-mono font-medium text-blue-800 truncate" title={label}>
+                                      <div className="flex w-full min-h-[2rem]">
+                                        {/* DR number — FIXED: removed w-24/truncate, now wraps fully */}
+                                        <div className="flex-shrink-0 px-2 py-1.5 bg-blue-500/10 border-r border-blue-200/60" style={{ minWidth: '5rem', maxWidth: '10rem' }}>
+                                          <span className="block text-xs font-mono font-medium text-blue-800 break-all leading-tight">
                                             {label}
                                           </span>
                                         </div>
 
                                         {/* Quantity */}
-                                        {qty !== null ? (
-                                          <div className="w-16 flex-shrink-0 px-2 py-1.5 bg-blue-500/80 border-r border-blue-300/60">
-                                            <span className="block text-xs font-bold text-white text-center">
-                                              {qty} pcs
-                                            </span>
+                                        {qty !== null && (
+                                          <div className="w-16 flex-shrink-0 px-2 py-1.5 bg-blue-500/80 border-r border-blue-300/60 flex items-center justify-center">
+                                            <span className="text-xs font-bold text-white text-center whitespace-nowrap">{qty} pcs</span>
                                           </div>
-                                        ) : null}
+                                        )}
 
                                         {/* Status */}
                                         {sm ? (
                                           <div className={`flex-1 min-w-0 px-2 py-1.5 ${sm.bg} flex items-center justify-center gap-1 backdrop-blur-sm`}>
                                             <span>{sm.icon}</span>
-                                            <span className={`text-xs font-bold truncate ${sm.text}`}>
-                                              {sm.label}
-                                            </span>
+                                            <span className={`text-xs font-bold ${sm.text} whitespace-nowrap`}>{sm.label}</span>
                                           </div>
                                         ) : (
                                           <div className="flex-1 px-2 py-1.5 bg-gray-100/50" />
@@ -406,18 +278,14 @@ const DeleteErrorModal = ({ message, onClose }) => {
 
                                       {/* From → To route row */}
                                       {(from || to) ? (
-                                        <div className="flex items-center justify-between px-2 py-1.5 bg-gray-500/5 border-t border-blue-100/60 text-[10px] backdrop-blur-sm">
+                                        <div className="flex items-center justify-between px-2 py-1.5 bg-gray-500/5 border-t border-blue-100/60 text-[10px] backdrop-blur-sm gap-1">
                                           <div className="flex items-center gap-1 min-w-0 flex-1">
                                             <span className="text-blue-400/90 flex-shrink-0">🏭</span>
-                                            <span className="font-medium text-blue-700/90 truncate" title={from || ''}>
-                                              {from || 'Unknown'}
-                                            </span>
+                                            <span className="font-medium text-blue-700/90 break-words leading-tight" title={from || ''}>{from || 'Unknown'}</span>
                                           </div>
                                           <span className="text-gray-400/70 flex-shrink-0 mx-1">→</span>
                                           <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
-                                            <span className="font-medium text-green-700/90 truncate" title={to || ''}>
-                                              {to || 'Unknown'}
-                                            </span>
+                                            <span className="font-medium text-green-700/90 break-words leading-tight text-right" title={to || ''}>{to || 'Unknown'}</span>
                                             <span className="text-green-400/90 flex-shrink-0">🏪</span>
                                           </div>
                                         </div>
@@ -433,26 +301,24 @@ const DeleteErrorModal = ({ message, onClose }) => {
                               {[...new Set(deliveryReceipts.map(dr => parseRef(dr).status).filter(Boolean))].length > 1 && (
                                 <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 pt-2 border-t border-gray-200/50">
                                   <span className="text-xs text-gray-400 mr-1">Status:</span>
-                                  {[
-                                    { status: 'DELIVERED', ...getStatusMeta('DELIVERED') },
-                                    { status: 'IN_TRANSIT', ...getStatusMeta('IN_TRANSIT') },
-                                    { status: 'PREPARING', ...getStatusMeta('PREPARING') },
-                                    { status: 'PENDING', ...getStatusMeta('PENDING') },
-                                  ]
-                                    .filter(s => deliveryReceipts.some(dr => parseRef(dr).status === s.status))
-                                    .map(s => (
-                                      <span key={s.status} className="inline-flex items-center gap-1 text-xs text-gray-500">
-                                        <span className={`w-2 h-2 rounded-full inline-block ${s.bg.replace('/90', '')}`} />
-                                        {s.icon} {s.label}
-                                      </span>
-                                    ))
+                                  {['DELIVERED', 'IN_TRANSIT', 'PREPARING', 'PENDING']
+                                    .filter(s => deliveryReceipts.some(dr => parseRef(dr).status === s))
+                                    .map(s => {
+                                      const sm = getStatusMeta(s);
+                                      return (
+                                        <span key={s} className="inline-flex items-center gap-1 text-xs text-gray-500">
+                                          <span className={`w-2 h-2 rounded-full inline-block ${sm.bg.replace('/90', '')}`} />
+                                          {sm.icon} {sm.label}
+                                        </span>
+                                      );
+                                    })
                                   }
                                 </div>
                               )}
                             </div>
                           )}
 
-                          {/* ── Sales with branch and company info ── */}
+                          {/* Sales */}
                           {saleRefs.length > 0 && (
                             <div>
                               <div className="flex items-center gap-1.5 mb-3">
@@ -461,12 +327,8 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                   Sale Reference{saleRefs.length !== 1 ? 's' : ''}
                                 </span>
                                 <span className="ml-auto flex items-center gap-1.5">
-                                  <span className="bg-orange-500/10 border border-orange-200/60 text-orange-600 text-xs font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm">
-                                    {productSaleQty} pcs
-                                  </span>
-                                  <span className="bg-orange-500/20 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
-                                    {saleRefs.length} sale{saleRefs.length !== 1 ? 's' : ''}
-                                  </span>
+                                  <span className="bg-orange-500/10 border border-orange-200/60 text-orange-600 text-xs font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm">{productSaleQty} pcs</span>
+                                  <span className="bg-orange-500/20 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">{saleRefs.length} sale{saleRefs.length !== 1 ? 's' : ''}</span>
                                 </span>
                               </div>
 
@@ -475,32 +337,27 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                 {saleRefs.map((ref, j) => {
                                   const { label, qty, status, branch, company } = parseRef(ref);
                                   return (
-                                    <div key={j} className="flex flex-col bg-white/70 backdrop-blur-sm rounded-lg border border-orange-200/60 shadow-sm overflow-hidden h-full">
+                                    <div key={j} className="flex flex-col bg-white/70 backdrop-blur-sm rounded-lg border border-orange-200/60 shadow-sm overflow-hidden">
                                       {/* Main pill row */}
-                                      <div className="flex w-full">
-                                        {/* Reference number */}
-                                        <div className="w-24 flex-shrink-0 px-2 py-1.5 bg-orange-500/10 border-r border-orange-200/60">
-                                          <span className="block text-xs font-mono font-medium text-orange-800 truncate" title={label}>
+                                      <div className="flex w-full min-h-[2rem]">
+                                        {/* Reference number — FIXED: same treatment as DR */}
+                                        <div className="flex-shrink-0 px-2 py-1.5 bg-orange-500/10 border-r border-orange-200/60" style={{ minWidth: '5rem', maxWidth: '10rem' }}>
+                                          <span className="block text-xs font-mono font-medium text-orange-800 break-all leading-tight">
                                             {label}
                                           </span>
                                         </div>
 
                                         {/* Quantity */}
-                                        {qty !== null ? (
-                                          <div className="w-16 flex-shrink-0 px-2 py-1.5 bg-orange-500/80 border-r border-orange-300/60">
-                                            <span className="block text-xs font-bold text-white text-center">
-                                              {qty} pcs
-                                            </span>
+                                        {qty !== null && (
+                                          <div className="w-16 flex-shrink-0 px-2 py-1.5 bg-orange-500/80 border-r border-orange-300/60 flex items-center justify-center">
+                                            <span className="text-xs font-bold text-white text-center whitespace-nowrap">{qty} pcs</span>
                                           </div>
-                                        ) : null}
+                                        )}
 
                                         {/* Status */}
                                         {status ? (
-                                          <div className={`flex-1 min-w-0 px-2 py-1.5 ${status === 'INVOICED'
-                                              ? 'bg-purple-500/80'
-                                              : 'bg-yellow-400/80'
-                                            } flex items-center justify-center gap-1 backdrop-blur-sm`}>
-                                            <span className="text-xs font-bold text-white truncate">
+                                          <div className={`flex-1 min-w-0 px-2 py-1.5 ${status === 'INVOICED' ? 'bg-purple-500/80' : 'bg-yellow-400/80'} flex items-center justify-center gap-1 backdrop-blur-sm`}>
+                                            <span className="text-xs font-bold text-white whitespace-nowrap">
                                               {status === 'INVOICED' ? '🧾 Invoiced' : '✅ Confirmed'}
                                             </span>
                                           </div>
@@ -511,23 +368,17 @@ const DeleteErrorModal = ({ message, onClose }) => {
 
                                       {/* Branch + Company info row */}
                                       {(branch || company) ? (
-                                        <div className="flex items-center justify-between px-2 py-1.5 bg-gray-500/5 border-t border-orange-100/60 text-[10px] backdrop-blur-sm">
+                                        <div className="flex items-center justify-between px-2 py-1.5 bg-gray-500/5 border-t border-orange-100/60 text-[10px] backdrop-blur-sm gap-1">
                                           {branch && (
                                             <div className="flex items-center gap-1 min-w-0 flex-1">
                                               <span className="text-orange-400/90 flex-shrink-0">🏪</span>
-                                              <span className="font-medium text-orange-700/90 truncate" title={branch}>
-                                                {branch}
-                                              </span>
+                                              <span className="font-medium text-orange-700/90 break-words leading-tight" title={branch}>{branch}</span>
                                             </div>
                                           )}
-                                          {branch && company && (
-                                            <span className="text-gray-300/70 flex-shrink-0 mx-1">·</span>
-                                          )}
+                                          {branch && company && <span className="text-gray-300/70 flex-shrink-0 mx-1">·</span>}
                                           {company && (
                                             <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
-                                              <span className="font-medium text-gray-600/90 truncate" title={company}>
-                                                {company}
-                                              </span>
+                                              <span className="font-medium text-gray-600/90 break-words leading-tight text-right" title={company}>{company}</span>
                                               <span className="text-gray-400/90 flex-shrink-0">🏢</span>
                                             </div>
                                           )}
@@ -548,7 +399,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
                   );
                 })}
 
-                {/* Footer note with transparency */}
+                {/* Footer note */}
                 <div className="bg-amber-500/10 border border-amber-200/60 rounded-xl p-4 mt-2 backdrop-blur-sm">
                   <p className="text-sm text-amber-800/90 leading-relaxed">
                     <strong>ℹ️ To delete this record,</strong> you must first void or cancel all the delivery receipts and sales listed above, then try again.
@@ -562,12 +413,9 @@ const DeleteErrorModal = ({ message, onClose }) => {
             )}
           </div>
 
-          {/* ── Footer with transparency ── */}
+          {/* Footer */}
           <div className="flex-shrink-0 px-6 py-4 bg-gray-500/5 border-t border-gray-200/50 backdrop-blur-sm">
-            <button
-              onClick={onClose}
-              className="w-full py-2.5 px-4 bg-gray-800/90 hover:bg-gray-900 text-white font-medium rounded-xl transition-colors text-sm backdrop-blur-sm"
-            >
+            <button onClick={onClose} className="w-full py-2.5 px-4 bg-gray-800/90 hover:bg-gray-900 text-white font-medium rounded-xl transition-colors text-sm backdrop-blur-sm">
               Close
             </button>
           </div>
@@ -594,8 +442,6 @@ const InventoryRecordsManagement = () => {
   const [selectedInventory, setSelectedInventory] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
-
-  // ── NEW: error modal state ────────────────────────────
   const [deleteErrorMessage, setDeleteErrorMessage] = useState(null);
 
   const [products, setProducts] = useState([]);
@@ -619,46 +465,23 @@ const InventoryRecordsManagement = () => {
     items: []
   });
 
-  // Custom hooks
   const {
-    inventories,
-    loading,
-    canModifyStatus,
-    warehouseStocks,
-    branchStocks,
-    loadingStocks,
-    loadData,
-    loadLocationStock,
-    checkCanModify,
-    confirmInventory,
-    deleteInventory,
-    updateInventory,
-    createInventory,
-    setWarehouseStocks,
-    setBranchStocks
+    inventories, loading, canModifyStatus, warehouseStocks, branchStocks, loadingStocks,
+    loadData, loadLocationStock, checkCanModify, confirmInventory, deleteInventory,
+    updateInventory, createInventory, setWarehouseStocks, setBranchStocks
   } = useInventory();
 
-  // Load initial data
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         setActionLoading(true);
         setLoadingMessage('Loading data...');
-
         const [productsRes, warehousesRes, branchesRes] = await Promise.all([
-          api.get('/products'),
-          api.get('/warehouse'),
-          api.get('/branches')
+          api.get('/products'), api.get('/warehouse'), api.get('/branches')
         ]);
-
-        const productsData = productsRes.success ? productsRes.data || [] : [];
-        const warehousesData = warehousesRes.success ? warehousesRes.data || [] : [];
-        const branchesData = branchesRes.success ? branchesRes.data || [] : [];
-
-        setProducts(productsData);
-        setWarehouses(warehousesData);
-        setBranches(branchesData);
-
+        setProducts(productsRes.success ? productsRes.data || [] : []);
+        setWarehouses(warehousesRes.success ? warehousesRes.data || [] : []);
+        setBranches(branchesRes.success ? branchesRes.data || [] : []);
         await loadData();
       } catch (error) {
         console.error('Failed to load initial data', error);
@@ -668,52 +491,38 @@ const InventoryRecordsManagement = () => {
         setLoadingMessage('');
       }
     };
-
     loadInitialData();
   }, [loadData]);
 
-  // Memoized product options
   const productOptions = useMemo(() => {
     return products.flatMap(p => {
       if (p.variations && p.variations.length > 0) {
-        return p.variations.map(v => {
-          const uniqueId = `${p.id}_${v.id}`;
-          const displayName = p.productName;
-          const upc = v.upc || p.upc || 'No UPC';
-          const sku = v.sku || p.sku || 'No SKU';
-
-          return {
-            id: uniqueId,
-            parentProductId: p.id,
-            variationId: v.id,
-            originalProductId: p.id,
-            originalVariationId: v.id,
-            name: displayName,
-            subLabel: v.combinationDisplay || 'Variation',
-            fullName: p.productName,
-            upc: upc,
-            sku: sku,
-            price: v.price || p.price,
-            isVariation: true
-          };
-        });
+        return p.variations.map(v => ({
+          id: `${p.id}_${v.id}`,
+          parentProductId: p.id,
+          variationId: v.id,
+          originalProductId: p.id,
+          originalVariationId: v.id,
+          name: p.productName,
+          subLabel: v.combinationDisplay || 'Variation',
+          fullName: p.productName,
+          upc: v.upc || p.upc || 'No UPC',
+          sku: v.sku || p.sku || 'No SKU',
+          price: v.price || p.price,
+          isVariation: true
+        }));
       } else {
-        const uniqueId = `prod_${p.id}`;
-        const upc = p.upc || 'No UPC';
-        const sku = p.sku || 'No SKU';
-        const displayName = p.productName;
-
         return [{
-          id: uniqueId,
+          id: `prod_${p.id}`,
           parentProductId: p.id,
           variationId: null,
           originalProductId: p.id,
           originalVariationId: null,
-          name: displayName,
+          name: p.productName,
           subLabel: 'No variations',
           fullName: p.productName,
-          upc: upc,
-          sku: sku,
+          upc: p.upc || 'No UPC',
+          sku: p.sku || 'No SKU',
           price: p.price,
           isVariation: false
         }];
@@ -721,99 +530,54 @@ const InventoryRecordsManagement = () => {
     });
   }, [products]);
 
-  // Filter inventories
   const filteredInventories = inventories.filter(inventory => {
     const searchLower = searchTerm.toLowerCase();
-    const matchesSearch =
-      inventory.processedBy?.toLowerCase().includes(searchLower) ||
-      inventory.remarks?.toLowerCase().includes(searchLower);
-
+    const matchesSearch = inventory.processedBy?.toLowerCase().includes(searchLower) || inventory.remarks?.toLowerCase().includes(searchLower);
     const matchesStatus = statusFilter === 'ALL' || inventory.status === statusFilter;
     const matchesType = typeFilter === 'ALL' || inventory.inventoryType === typeFilter;
-
     const matchesFromWarehouse = !fromWarehouseFilter || inventory.fromWarehouse?.id === parseInt(fromWarehouseFilter);
     const matchesToWarehouse = !toWarehouseFilter || inventory.toWarehouse?.id === parseInt(toWarehouseFilter);
     const matchesFromBranch = !fromBranchFilter || inventory.fromBranch?.id === parseInt(fromBranchFilter);
     const matchesToBranch = !toBranchFilter || inventory.toBranch?.id === parseInt(toBranchFilter);
-
     const inventoryDate = new Date(inventory.dateProcessed);
     const matchesStartDate = !startDateFilter || inventoryDate >= new Date(startDateFilter);
     const matchesEndDate = !endDateFilter || inventoryDate <= new Date(endDateFilter + 'T23:59:59');
-
-    return matchesSearch && matchesStatus && matchesType &&
-      matchesFromWarehouse && matchesToWarehouse &&
-      matchesFromBranch && matchesToBranch &&
-      matchesStartDate && matchesEndDate;
+    return matchesSearch && matchesStatus && matchesType && matchesFromWarehouse && matchesToWarehouse && matchesFromBranch && matchesToBranch && matchesStartDate && matchesEndDate;
   });
 
-  // Sort by status (PENDING first, then CONFIRMED)
   const sortedInventories = [...filteredInventories].sort((a, b) => {
     const isAConfirmed = a.status === 'CONFIRMED' ? 1 : 0;
     const isBConfirmed = b.status === 'CONFIRMED' ? 1 : 0;
-    if (isAConfirmed !== isBConfirmed) {
-      return isAConfirmed - isBConfirmed;
-    }
+    if (isAConfirmed !== isBConfirmed) return isAConfirmed - isBConfirmed;
     return 0;
   });
 
-  // Pagination
-  const {
-    currentPage,
-    setCurrentPage,
-    currentItems: currentInventories,
-    totalPages,
-    indexOfFirstItem,
-    indexOfLastItem,
-    nextPage,
-    prevPage
-  } = usePagination(sortedInventories, 10);
+  const { currentPage, setCurrentPage, currentItems: currentInventories, totalPages, indexOfFirstItem, indexOfLastItem, nextPage, prevPage } = usePagination(sortedInventories, 10);
 
-  // Modal handlers
   const handleOpenModal = async (mode, inventory = null) => {
     setModalMode(mode);
-
     if (mode === 'create') {
       setSelectedInventory(null);
       setFormData({
-        inventoryType: 'STOCK_IN',
-        fromWarehouseId: '',
-        toWarehouseId: '',
-        fromBranchId: '',
-        toBranchId: '',
-        dateProcessed: new Date().toISOString().split('T')[0],
-        processedBy: getCurrentUser(),
-        remarks: '',
-        status: 'PENDING',
-        confirmedBy: '',
-        items: []
+        inventoryType: 'STOCK_IN', fromWarehouseId: '', toWarehouseId: '', fromBranchId: '', toBranchId: '',
+        dateProcessed: new Date().toISOString().split('T')[0], processedBy: getCurrentUser(),
+        remarks: '', status: 'PENDING', confirmedBy: '', items: []
       });
       setWarehouseStocks({});
       setBranchStocks({});
       setShowModal(true);
     } else if (mode === 'edit' && inventory) {
       if (inventory.status === 'CONFIRMED') {
-        alert('⚠️ CONFIRMED INVENTORY CANNOT BE EDITED\n\n' +
-          'Once an inventory is confirmed, it cannot be edited.\n\n' +
-          'Stock changes have been applied to the system.\n\n' +
-          'If you need to make changes:\n' +
-          '1. Delete this record (admin only, if stock hasn\'t been used)\n' +
-          '2. Create a new inventory record with the correct information\n\n' +
-          'Contact your administrator for assistance.');
+        alert('⚠️ CONFIRMED INVENTORY CANNOT BE EDITED\n\nOnce an inventory is confirmed, it cannot be edited.\n\nStock changes have been applied to the system.\n\nIf you need to make changes:\n1. Delete this record (admin only, if stock hasn\'t been used)\n2. Create a new inventory record with the correct information\n\nContact your administrator for assistance.');
         return;
       }
-
       try {
         setActionLoading(true);
         setLoadingMessage('Loading inventory details...');
-
         const fullInventoryRes = await api.get(`/inventories/${inventory.id}`);
-        if (!fullInventoryRes.success) {
-          throw new Error(fullInventoryRes.error || 'Failed to load inventory');
-        }
-
+        if (!fullInventoryRes.success) throw new Error(fullInventoryRes.error || 'Failed to load inventory');
         const fullInventory = fullInventoryRes.data;
         setSelectedInventory(fullInventory);
-
         setFormData({
           inventoryType: fullInventory.inventoryType,
           fromWarehouseId: fullInventory.fromWarehouse?.id || '',
@@ -825,36 +589,18 @@ const InventoryRecordsManagement = () => {
           remarks: fullInventory.remarks || '',
           status: 'PENDING',
           confirmedBy: fullInventory.confirmedBy || '',
-          items: fullInventory.items.map(item => ({
-            productId: item.product.id,
-            variationId: item.variationId || null,
-            quantity: item.quantity
-          }))
+          items: fullInventory.items.map(item => ({ productId: item.product.id, variationId: item.variationId || null, quantity: item.quantity }))
         });
-
         setWarehouseStocks({});
         setBranchStocks({});
-
         for (let i = 0; i < fullInventory.items.length; i++) {
           const item = fullInventory.items[i];
           if (item.product?.id) {
-            const locationType = fullInventory.fromWarehouse ? 'warehouse' : fullInventory.fromBranch ? 'branch' :
-              fullInventory.toWarehouse ? 'warehouse' : 'branch';
-            const locationId = fullInventory.fromWarehouse?.id || fullInventory.fromBranch?.id ||
-              fullInventory.toWarehouse?.id || fullInventory.toBranch?.id;
-
-            if (locationId && locationType) {
-              await loadLocationStock(
-                item.product.id,
-                item.variationId || null,
-                i,
-                locationId,
-                locationType
-              );
-            }
+            const locationType = fullInventory.fromWarehouse ? 'warehouse' : fullInventory.fromBranch ? 'branch' : fullInventory.toWarehouse ? 'warehouse' : 'branch';
+            const locationId = fullInventory.fromWarehouse?.id || fullInventory.fromBranch?.id || fullInventory.toWarehouse?.id || fullInventory.toBranch?.id;
+            if (locationId && locationType) await loadLocationStock(item.product.id, item.variationId || null, i, locationId, locationType);
           }
         }
-
         setActionLoading(false);
         setLoadingMessage('');
         setShowModal(true);
@@ -868,12 +614,8 @@ const InventoryRecordsManagement = () => {
       try {
         setActionLoading(true);
         setLoadingMessage('Loading inventory details...');
-
         const fullInventoryRes = await api.get(`/inventories/${inventory.id}`);
-        if (fullInventoryRes.success) {
-          setSelectedInventory(fullInventoryRes.data);
-        }
-
+        if (fullInventoryRes.success) setSelectedInventory(fullInventoryRes.data);
         setActionLoading(false);
         setLoadingMessage('');
         setShowModal(true);
@@ -893,209 +635,90 @@ const InventoryRecordsManagement = () => {
     setBranchStocks({});
   };
 
-  // Form handlers
   const handleAddProductToTable = () => {
-    if (!selectedProductForAdd) {
-      alert('Please select a product first');
-      return;
-    }
-
+    if (!selectedProductForAdd) { alert('Please select a product first'); return; }
     const selectedOption = productOptions.find(opt => opt.id === selectedProductForAdd);
-    if (!selectedOption) {
-      alert('Product not found');
-      return;
-    }
-
-    const isDuplicate = formData.items.some((item) => {
-      return (
-        item.productId === selectedOption.parentProductId &&
-        item.variationId === selectedOption.variationId
-      );
-    });
-
-    if (isDuplicate) {
-      alert('⚠️ This product variation is already added!\n\nPlease select a different variation or update the quantity of the existing item.');
-      return;
-    }
-
+    if (!selectedOption) { alert('Product not found'); return; }
+    const isDuplicate = formData.items.some(item => item.productId === selectedOption.parentProductId && item.variationId === selectedOption.variationId);
+    if (isDuplicate) { alert('⚠️ This product variation is already added!\n\nPlease select a different variation or update the quantity of the existing item.'); return; }
     if (formData.inventoryType !== 'STOCK_IN') {
-      const hasLocation = formData.fromWarehouseId || formData.fromBranchId ||
-        formData.toWarehouseId || formData.toBranchId;
-
+      const hasLocation = formData.fromWarehouseId || formData.fromBranchId || formData.toWarehouseId || formData.toBranchId;
       if (hasLocation) {
         const stockInfo = getItemStockInfo(-1, selectedOption.parentProductId, selectedOption.variationId);
         if (stockInfo) {
           const availableQty = stockInfo.availableQuantity ?? stockInfo.quantity ?? 0;
-          if (availableQty === 0) {
-            alert('❌ Cannot add this product!\n\n' +
-              `Product: ${selectedOption.fullName}\n` +
-              `Available Stock: ${availableQty}\n\n` +
-              'This product has no available stock at the selected location.\n' +
-              'Please select a different product or location.');
-            return;
-          }
+          if (availableQty === 0) { alert(`❌ Cannot add this product!\n\nProduct: ${selectedOption.fullName}\nAvailable Stock: ${availableQty}\n\nThis product has no available stock at the selected location.\nPlease select a different product or location.`); return; }
         }
       }
     }
-
-    const newItem = {
-      productId: selectedOption.parentProductId,
-      variationId: selectedOption.variationId,
-      quantity: ''
-    };
-
-    const newItems = [...formData.items, newItem];
+    const newItems = [...formData.items, { productId: selectedOption.parentProductId, variationId: selectedOption.variationId, quantity: '' }];
     setFormData({ ...formData, items: newItems });
-
-    const hasLocation = formData.fromWarehouseId || formData.fromBranchId ||
-      formData.toWarehouseId || formData.toBranchId;
-
+    const hasLocation = formData.fromWarehouseId || formData.fromBranchId || formData.toWarehouseId || formData.toBranchId;
     if (hasLocation) {
       setTimeout(() => {
-        const locationType = formData.fromWarehouseId ? 'warehouse' : formData.fromBranchId ? 'branch' :
-          formData.toWarehouseId ? 'warehouse' : 'branch';
-        const locationId = formData.fromWarehouseId || formData.fromBranchId ||
-          formData.toWarehouseId || formData.toBranchId;
-
-        loadLocationStock(
-          selectedOption.originalProductId,
-          selectedOption.originalVariationId,
-          newItems.length - 1,
-          locationId,
-          locationType
-        );
+        const locationType = formData.fromWarehouseId ? 'warehouse' : formData.fromBranchId ? 'branch' : formData.toWarehouseId ? 'warehouse' : 'branch';
+        const locationId = formData.fromWarehouseId || formData.fromBranchId || formData.toWarehouseId || formData.toBranchId;
+        loadLocationStock(selectedOption.originalProductId, selectedOption.originalVariationId, newItems.length - 1, locationId, locationType);
       }, 0);
     }
-
     setSelectedProductForAdd('');
   };
 
   const handleItemChange = async (index, field, value) => {
     const newItems = [...formData.items];
-
     if (field === 'productId') {
       const selectedOption = productOptions.find(opt => opt.id === value);
       if (selectedOption) {
-        const isDuplicate = formData.items.some((item, idx) => {
-          if (idx === index) return false;
-          return (
-            item.productId === selectedOption.parentProductId &&
-            item.variationId === selectedOption.variationId
-          );
-        });
-
-        if (isDuplicate) {
-          alert('⚠️ This product variation is already added!\n\nPlease select a different variation or update the quantity of the existing item.');
-          return;
-        }
-
-        newItems[index] = {
-          ...newItems[index],
-          productId: selectedOption.parentProductId,
-          variationId: selectedOption.variationId,
-        };
-
+        const isDuplicate = formData.items.some((item, idx) => idx !== index && item.productId === selectedOption.parentProductId && item.variationId === selectedOption.variationId);
+        if (isDuplicate) { alert('⚠️ This product variation is already added!\n\nPlease select a different variation or update the quantity of the existing item.'); return; }
+        newItems[index] = { ...newItems[index], productId: selectedOption.parentProductId, variationId: selectedOption.variationId };
         setFormData({ ...formData, items: newItems });
-
-        const hasLocation = formData.fromWarehouseId || formData.fromBranchId ||
-          formData.toWarehouseId || formData.toBranchId;
-
+        const hasLocation = formData.fromWarehouseId || formData.fromBranchId || formData.toWarehouseId || formData.toBranchId;
         if (hasLocation) {
           setTimeout(() => {
-            const locationType = formData.fromWarehouseId ? 'warehouse' : formData.fromBranchId ? 'branch' :
-              formData.toWarehouseId ? 'warehouse' : 'branch';
-            const locationId = formData.fromWarehouseId || formData.fromBranchId ||
-              formData.toWarehouseId || formData.toBranchId;
-
-            loadLocationStock(
-              selectedOption.originalProductId,
-              selectedOption.originalVariationId,
-              index,
-              locationId,
-              locationType
-            );
+            const locationType = formData.fromWarehouseId ? 'warehouse' : formData.fromBranchId ? 'branch' : formData.toWarehouseId ? 'warehouse' : 'branch';
+            const locationId = formData.fromWarehouseId || formData.fromBranchId || formData.toWarehouseId || formData.toBranchId;
+            loadLocationStock(selectedOption.originalProductId, selectedOption.originalVariationId, index, locationId, locationType);
           }, 0);
         }
         return;
       }
     } else if (field === 'quantity') {
       const newQuantity = value === '' ? '' : parseInt(value) || 1;
-
       if (newQuantity !== '' && formData.inventoryType !== 'STOCK_IN') {
         const item = newItems[index];
         const stockInfo = getItemStockInfo(index, item.productId, item.variationId);
         if (stockInfo) {
           const availableQty = stockInfo.availableQuantity ?? stockInfo.quantity ?? 0;
           if (newQuantity > availableQty) {
-            const selectedOption = productOptions.find(opt =>
-              opt.originalProductId === item.productId &&
-              opt.originalVariationId === item.variationId
-            );
-
-            alert('❌ Quantity Exceeds Available Stock!\n\n' +
-              `Product: ${selectedOption?.fullName || 'Unknown'}\n` +
-              `Available Stock: ${availableQty}\n` +
-              `Requested Quantity: ${newQuantity}\n\n` +
-              'Please enter a quantity that does not exceed the available stock.');
+            const selectedOption = productOptions.find(opt => opt.originalProductId === item.productId && opt.originalVariationId === item.variationId);
+            alert(`❌ Quantity Exceeds Available Stock!\n\nProduct: ${selectedOption?.fullName || 'Unknown'}\nAvailable Stock: ${availableQty}\nRequested Quantity: ${newQuantity}\n\nPlease enter a quantity that does not exceed the available stock.`);
             return;
           }
         }
       }
-
       newItems[index][field] = newQuantity;
     }
-
     setFormData({ ...formData, items: newItems });
   };
 
   const handleRemoveItem = (index) => {
     const newItems = formData.items.filter((_, i) => i !== index);
     setFormData({ ...formData, items: newItems });
-
     const newWarehouseStocks = { ...warehouseStocks };
     const newBranchStocks = { ...branchStocks };
-
-    Object.keys(warehouseStocks).forEach(key => {
-      if (key.startsWith(`${index}_`)) {
-        delete newWarehouseStocks[key];
-      }
-    });
-
-    Object.keys(branchStocks).forEach(key => {
-      if (key.startsWith(`${index}_`)) {
-        delete newBranchStocks[key];
-      }
-    });
-
+    Object.keys(warehouseStocks).forEach(key => { if (key.startsWith(`${index}_`)) delete newWarehouseStocks[key]; });
+    Object.keys(branchStocks).forEach(key => { if (key.startsWith(`${index}_`)) delete newBranchStocks[key]; });
     setWarehouseStocks(newWarehouseStocks);
     setBranchStocks(newBranchStocks);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!formData.processedBy) {
-      alert('Please enter processed by name');
-      return;
-    }
-
-    if (formData.items.length === 0) {
-      alert('Please add at least one item');
-      return;
-    }
-
-    const duplicates = formData.items.filter((item, index) =>
-      formData.items.findIndex(i =>
-        i.productId === item.productId &&
-        i.variationId === item.variationId
-      ) !== index
-    );
-
-    if (duplicates.length > 0) {
-      alert('Error: Duplicate items detected!');
-      return;
-    }
-
+    if (!formData.processedBy) { alert('Please enter processed by name'); return; }
+    if (formData.items.length === 0) { alert('Please add at least one item'); return; }
+    const duplicates = formData.items.filter((item, index) => formData.items.findIndex(i => i.productId === item.productId && i.variationId === item.variationId) !== index);
+    if (duplicates.length > 0) { alert('Error: Duplicate items detected!'); return; }
     if (formData.inventoryType !== 'STOCK_IN') {
       const stockErrors = [];
       for (let i = 0; i < formData.items.length; i++) {
@@ -1104,47 +727,22 @@ const InventoryRecordsManagement = () => {
         if (stockInfo) {
           const availableQty = stockInfo.availableQuantity ?? stockInfo.quantity ?? 0;
           if (item.quantity > availableQty) {
-            const selectedOption = productOptions.find(opt =>
-              opt.originalProductId === item.productId &&
-              opt.originalVariationId === item.variationId
-            );
-            stockErrors.push({
-              product: selectedOption?.fullName || `Product ${item.productId}`,
-              requested: item.quantity,
-              available: availableQty
-            });
+            const selectedOption = productOptions.find(opt => opt.originalProductId === item.productId && opt.originalVariationId === item.variationId);
+            stockErrors.push({ product: selectedOption?.fullName || `Product ${item.productId}`, requested: item.quantity, available: availableQty });
           }
         }
       }
-
       if (stockErrors.length > 0) {
-        const errorMessage = '❌ Cannot submit - Stock availability issues:\n\n' +
-          stockErrors.map(err =>
-            `• ${err.product}\n  Requested: ${err.requested} | Available: ${err.available}`
-          ).join('\n\n') +
-          '\n\nPlease adjust quantities or remove items with insufficient stock.';
-        alert(errorMessage);
+        alert('❌ Cannot submit - Stock availability issues:\n\n' + stockErrors.map(err => `• ${err.product}\n  Requested: ${err.requested} | Available: ${err.available}`).join('\n\n') + '\n\nPlease adjust quantities or remove items with insufficient stock.');
         return;
       }
     }
-
     try {
       setActionLoading(true);
       setLoadingMessage(modalMode === 'create' ? 'Creating inventory record...' : 'Updating inventory record...');
-
-      const payload = {
-        ...formData,
-        status: 'PENDING'
-      };
-
-      if (modalMode === 'create') {
-        await createInventory(payload);
-        alert('Inventory record created successfully as PENDING!');
-      } else {
-        await updateInventory(selectedInventory.id, payload);
-        alert('Inventory record updated successfully!');
-      }
-
+      const payload = { ...formData, status: 'PENDING' };
+      if (modalMode === 'create') { await createInventory(payload); alert('Inventory record created successfully as PENDING!'); }
+      else { await updateInventory(selectedInventory.id, payload); alert('Inventory record updated successfully!'); }
       handleCloseModal();
       await loadData();
       setCurrentPage(1);
@@ -1159,37 +757,18 @@ const InventoryRecordsManagement = () => {
 
   const handleConfirmInventory = async (inventory, confirmedByUser = null) => {
     let locationInfo = '';
-    if (inventory.inventoryType === 'STOCK_IN') {
-      locationInfo = `\n📦 Adding stock to: ${inventory.toWarehouse?.warehouseName || inventory.toBranch?.branchName}`;
-    } else if (inventory.inventoryType === 'TRANSFER') {
-      const from = inventory.fromWarehouse?.warehouseName || inventory.fromBranch?.branchName;
-      const to = inventory.toWarehouse?.warehouseName || inventory.toBranch?.branchName;
-      locationInfo = `\n📦 Transfer from: ${from}\n📍 Transfer to: ${to}`;
-    } else if (inventory.inventoryType === 'RETURN') {
-      const from = inventory.fromBranch?.branchName;
-      const to = inventory.toWarehouse?.warehouseName;
-      locationInfo = `\n📦 Return from: ${from}\n📍 Return to: ${to}`;
-    } else if (inventory.inventoryType === 'DAMAGE') {
-      locationInfo = `\n📦 Mark damaged at: ${inventory.toWarehouse?.warehouseName || inventory.toBranch?.branchName}`;
-    }
-
+    if (inventory.inventoryType === 'STOCK_IN') locationInfo = `\n📦 Adding stock to: ${inventory.toWarehouse?.warehouseName || inventory.toBranch?.branchName}`;
+    else if (inventory.inventoryType === 'TRANSFER') locationInfo = `\n📦 Transfer from: ${inventory.fromWarehouse?.warehouseName || inventory.fromBranch?.branchName}\n📍 Transfer to: ${inventory.toWarehouse?.warehouseName || inventory.toBranch?.branchName}`;
+    else if (inventory.inventoryType === 'RETURN') locationInfo = `\n📦 Return from: ${inventory.fromBranch?.branchName}\n📍 Return to: ${inventory.toWarehouse?.warehouseName}`;
+    else if (inventory.inventoryType === 'DAMAGE') locationInfo = `\n📦 Mark damaged at: ${inventory.toWarehouse?.warehouseName || inventory.toBranch?.branchName}`;
     const itemCount = inventory.items?.length || 0;
     const totalQty = inventory.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
-
-    const confirmMessage = `Are you sure you want to confirm this ${inventory.inventoryType} record?${locationInfo}\n\n📊 Items: ${itemCount}\n📦 Total Quantity: ${totalQty}\n\n⚠️ This will update stock levels and cannot be undone.`;
-
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
-
+    if (!window.confirm(`Are you sure you want to confirm this ${inventory.inventoryType} record?${locationInfo}\n\n📊 Items: ${itemCount}\n📦 Total Quantity: ${totalQty}\n\n⚠️ This will update stock levels and cannot be undone.`)) return;
     const currentUser = confirmedByUser || getCurrentUser() || 'System';
-
     try {
       setActionLoading(true);
       setLoadingMessage('Confirming inventory...');
-
       await confirmInventory(inventory.id, currentUser);
-
       alert(`✅ Inventory confirmed successfully!\n\n${inventory.inventoryType} record has been processed and stock levels have been updated.`);
       await loadData();
     } catch (error) {
@@ -1202,64 +781,27 @@ const InventoryRecordsManagement = () => {
     }
   };
 
-  // ── FIXED: handleDelete now uses a scrollable modal for long error messages ──
   const handleDelete = async (id) => {
     const inventory = inventories.find(inv => inv.id === id);
     const userRole = localStorage.getItem('userRole') || 'USER';
-
     if (inventory && inventory.status === 'CONFIRMED') {
-      if (userRole !== 'ADMIN') {
-        alert('⚠️ PERMISSION DENIED\n\nOnly administrators can delete CONFIRMED inventory records.\n\nPlease contact your system administrator if you need to delete this record.');
-        return;
-      }
-
-      const confirmDelete = window.confirm(
-        '⚠️ Warning: Deleting CONFIRMED Inventory\n\n' +
-        'This inventory has been confirmed and stock changes have been applied.\n\n' +
-        'Deleting will:\n' +
-        '• Permanently remove this inventory record\n' +
-        '• Reverse all stock changes that were applied\n' +
-        '• Cannot be undone\n\n' +
-        'Are you absolutely sure you want to delete this record?'
-      );
-
-      if (!confirmDelete) return;
-
+      if (userRole !== 'ADMIN') { alert('⚠️ PERMISSION DENIED\n\nOnly administrators can delete CONFIRMED inventory records.\n\nPlease contact your system administrator if you need to delete this record.'); return; }
+      if (!window.confirm('⚠️ Warning: Deleting CONFIRMED Inventory\n\nThis inventory has been confirmed and stock changes have been applied.\n\nDeleting will:\n• Permanently remove this inventory record\n• Reverse all stock changes that were applied\n• Cannot be undone\n\nAre you absolutely sure you want to delete this record?')) return;
     } else {
-      if (!window.confirm('Are you sure you want to delete this inventory record?')) {
-        return;
-      }
+      if (!window.confirm('Are you sure you want to delete this inventory record?')) return;
     }
-
     try {
       setActionLoading(true);
       setLoadingMessage('Deleting inventory record...');
-
       const result = await deleteInventory(id);
-
-      if (result && result.success === false) {
-        // ── Show full error in scrollable modal instead of truncating alert ──
-        setDeleteErrorMessage(result.error || 'Failed to delete inventory');
-        return;
-      }
-
+      if (result && result.success === false) { setDeleteErrorMessage(result.error || 'Failed to delete inventory'); return; }
       alert('✅ Inventory deleted successfully');
       await loadData();
-
-      if (filteredInventories.length % 10 === 1 && currentPage > 1) {
-        setCurrentPage(currentPage - 1);
-      }
+      if (filteredInventories.length % 10 === 1 && currentPage > 1) setCurrentPage(currentPage - 1);
     } catch (error) {
       console.error('❌ Delete error:', error);
       const errorMsg = error.message || 'Failed to delete inventory';
-
-      // ── Use modal for errors that contain DR receipt lists (long messages) ──
-      if (
-        errorMsg.includes('USED IN DELIVERIES') ||
-        errorMsg.includes('USED IN SALES') ||
-        errorMsg.includes('Cannot delete') ||
-        errorMsg.length > 200
-      ) {
+      if (errorMsg.includes('USED IN DELIVERIES') || errorMsg.includes('USED IN SALES') || errorMsg.includes('Cannot delete') || errorMsg.length > 200) {
         setDeleteErrorMessage(errorMsg);
       } else {
         alert('❌ ' + errorMsg);
@@ -1272,8 +814,7 @@ const InventoryRecordsManagement = () => {
 
   const handleInventoryTypeChange = (type) => {
     setFormData(prev => ({
-      ...prev,
-      inventoryType: type,
+      ...prev, inventoryType: type,
       fromWarehouseId: (type === 'STOCK_IN' || type === 'DAMAGE') ? '' : prev.fromWarehouseId,
       fromBranchId: (type === 'STOCK_IN' || type === 'DAMAGE') ? '' : prev.fromBranchId,
       items: []
@@ -1286,87 +827,39 @@ const InventoryRecordsManagement = () => {
     const [locationType, locationId] = val ? val.split('|') : [null, null];
     const warehouseId = locationType === 'warehouse' ? (locationId ? parseInt(locationId, 10) : null) : null;
     const branchId = locationType === 'branch' ? (locationId ? parseInt(locationId, 10) : null) : null;
-
-    const newFormData = {
-      ...formData,
-      [`${type}WarehouseId`]: warehouseId,
-      [`${type}BranchId`]: branchId
-    };
-
+    const newFormData = { ...formData, [`${type}WarehouseId`]: warehouseId, [`${type}BranchId`]: branchId };
     setFormData(newFormData);
     setWarehouseStocks({});
     setBranchStocks({});
-
     if (newFormData.items.length > 0 && (warehouseId || branchId)) {
       for (let i = 0; i < newFormData.items.length; i++) {
         const item = newFormData.items[i];
         if (item.productId) {
-          setTimeout(() => {
-            loadLocationStock(
-              item.productId,
-              item.variationId,
-              i,
-              warehouseId || branchId,
-              warehouseId ? 'warehouse' : 'branch'
-            );
-          }, 100);
+          setTimeout(() => { loadLocationStock(item.productId, item.variationId, i, warehouseId || branchId, warehouseId ? 'warehouse' : 'branch'); }, 100);
         }
       }
     }
   };
 
   const getItemStockInfo = (itemIndex, productId, variationId) => {
-    let locationId = null;
-    const actualProductId = productId;
-
-    const createStockKey = (locId) => {
-      return variationId
-        ? `${itemIndex}_${actualProductId}_${variationId}_${locId}`
-        : `${itemIndex}_${actualProductId}_${locId}`;
-    };
-
-    if (formData.fromWarehouseId) {
-      locationId = formData.fromWarehouseId;
-      const warehouseKey = createStockKey(locationId);
-      return warehouseStocks[warehouseKey];
-    } else if (formData.fromBranchId) {
-      locationId = formData.fromBranchId;
-      const branchKey = createStockKey(locationId);
-      return branchStocks[branchKey];
-    } else if (formData.toWarehouseId) {
-      locationId = formData.toWarehouseId;
-      const warehouseKey = createStockKey(locationId);
-      return warehouseStocks[warehouseKey];
-    } else if (formData.toBranchId) {
-      locationId = formData.toBranchId;
-      const branchKey = createStockKey(locationId);
-      return branchStocks[branchKey];
-    }
-
+    const createStockKey = (locId) => variationId ? `${itemIndex}_${productId}_${variationId}_${locId}` : `${itemIndex}_${productId}_${locId}`;
+    if (formData.fromWarehouseId) return warehouseStocks[createStockKey(formData.fromWarehouseId)];
+    if (formData.fromBranchId) return branchStocks[createStockKey(formData.fromBranchId)];
+    if (formData.toWarehouseId) return warehouseStocks[createStockKey(formData.toWarehouseId)];
+    if (formData.toBranchId) return branchStocks[createStockKey(formData.toBranchId)];
     return null;
   };
 
   const clearAllFilters = () => {
-    setTypeFilter('ALL');
-    setFromWarehouseFilter('');
-    setToWarehouseFilter('');
-    setFromBranchFilter('');
-    setToBranchFilter('');
-    setStartDateFilter('');
-    setEndDateFilter('');
-    setSearchTerm('');
-    setStatusFilter('ALL');
+    setTypeFilter('ALL'); setFromWarehouseFilter(''); setToWarehouseFilter('');
+    setFromBranchFilter(''); setToBranchFilter(''); setStartDateFilter('');
+    setEndDateFilter(''); setSearchTerm(''); setStatusFilter('ALL');
   };
 
   return (
     <>
       <LoadingOverlay show={loading || actionLoading} message={loadingMessage || ''} />
-
-      {/* ── Scrollable Delete Error Modal ── */}
-      <DeleteErrorModal
-        message={deleteErrorMessage}
-        onClose={() => setDeleteErrorMessage(null)}
-      />
+      <DeleteErrorModal message={deleteErrorMessage} onClose={() => setDeleteErrorMessage(null)} />
 
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="p-6 max-w-full mx-auto px-8">
@@ -1375,43 +868,26 @@ const InventoryRecordsManagement = () => {
             <p className="text-gray-600">Track and manage inventory movements</p>
           </div>
 
-          {/* Action Bar */}
           <div className="flex justify-between items-center mb-6">
-            <button
-              onClick={() => handleOpenModal('create')}
-              className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium"
-            >
+            <button onClick={() => handleOpenModal('create')} className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium">
               <Plus size={20} />
               <span>New Inventory Record</span>
             </button>
           </div>
 
-          {/* Filters */}
           <InventoryFilters
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            typeFilter={typeFilter}
-            setTypeFilter={setTypeFilter}
-            fromWarehouseFilter={fromWarehouseFilter}
-            setFromWarehouseFilter={setFromWarehouseFilter}
-            toWarehouseFilter={toWarehouseFilter}
-            setToWarehouseFilter={setToWarehouseFilter}
-            fromBranchFilter={fromBranchFilter}
-            setFromBranchFilter={setFromBranchFilter}
-            toBranchFilter={toBranchFilter}
-            setToBranchFilter={setToBranchFilter}
-            startDateFilter={startDateFilter}
-            setStartDateFilter={setStartDateFilter}
-            endDateFilter={endDateFilter}
-            setEndDateFilter={setEndDateFilter}
-            warehouses={warehouses}
-            branches={branches}
-            onClearFilters={clearAllFilters}
+            searchTerm={searchTerm} setSearchTerm={setSearchTerm}
+            statusFilter={statusFilter} setStatusFilter={setStatusFilter}
+            typeFilter={typeFilter} setTypeFilter={setTypeFilter}
+            fromWarehouseFilter={fromWarehouseFilter} setFromWarehouseFilter={setFromWarehouseFilter}
+            toWarehouseFilter={toWarehouseFilter} setToWarehouseFilter={setToWarehouseFilter}
+            fromBranchFilter={fromBranchFilter} setFromBranchFilter={setFromBranchFilter}
+            toBranchFilter={toBranchFilter} setToBranchFilter={setToBranchFilter}
+            startDateFilter={startDateFilter} setStartDateFilter={setStartDateFilter}
+            endDateFilter={endDateFilter} setEndDateFilter={setEndDateFilter}
+            warehouses={warehouses} branches={branches} onClearFilters={clearAllFilters}
           />
 
-          {/* Table */}
           <InventoryTable
             inventories={currentInventories}
             onView={(inventory) => handleOpenModal('view', inventory)}
@@ -1424,55 +900,32 @@ const InventoryRecordsManagement = () => {
             indexOfLastItem={indexOfLastItem}
           />
 
-          {/* Pagination */}
           {sortedInventories.length > 0 && (
             <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-              onNextPage={nextPage}
-              onPrevPage={prevPage}
-              showingStart={indexOfFirstItem + 1}
-              showingEnd={Math.min(indexOfLastItem, sortedInventories.length)}
+              currentPage={currentPage} totalPages={totalPages}
+              onPageChange={setCurrentPage} onNextPage={nextPage} onPrevPage={prevPage}
+              showingStart={indexOfFirstItem + 1} showingEnd={Math.min(indexOfLastItem, sortedInventories.length)}
               totalItems={sortedInventories.length}
             />
           )}
 
-          {/* Modals */}
           {showModal && (modalMode === 'create' || modalMode === 'edit') && (
             <InventoryFormModal
-              showModal={showModal}
-              modalMode={modalMode}
-              selectedInventory={selectedInventory}
-              formData={formData}
-              setFormData={setFormData}
-              products={products}
-              warehouses={warehouses}
-              branches={branches}
-              loadingStocks={loadingStocks}
-              warehouseStocks={warehouseStocks}
-              branchStocks={branchStocks}
-              onClose={handleCloseModal}
-              onSubmit={handleSubmit}
-              onAddProduct={handleAddProductToTable}
-              onRemoveItem={handleRemoveItem}
-              onItemChange={handleItemChange}
-              onInventoryTypeChange={handleInventoryTypeChange}
-              onLocationChange={handleLocationChange}
-              selectedProductForAdd={selectedProductForAdd}
-              setSelectedProductForAdd={setSelectedProductForAdd}
-              tempQuantity={tempQuantity}
-              setTempQuantity={setTempQuantity}
-              onConfirmInventory={handleConfirmInventory}
+              showModal={showModal} modalMode={modalMode} selectedInventory={selectedInventory}
+              formData={formData} setFormData={setFormData} products={products}
+              warehouses={warehouses} branches={branches} loadingStocks={loadingStocks}
+              warehouseStocks={warehouseStocks} branchStocks={branchStocks}
+              onClose={handleCloseModal} onSubmit={handleSubmit}
+              onAddProduct={handleAddProductToTable} onRemoveItem={handleRemoveItem}
+              onItemChange={handleItemChange} onInventoryTypeChange={handleInventoryTypeChange}
+              onLocationChange={handleLocationChange} selectedProductForAdd={selectedProductForAdd}
+              setSelectedProductForAdd={setSelectedProductForAdd} tempQuantity={tempQuantity}
+              setTempQuantity={setTempQuantity} onConfirmInventory={handleConfirmInventory}
             />
           )}
 
           {showModal && modalMode === 'view' && selectedInventory && (
-            <InventoryViewModal
-              selectedInventory={selectedInventory}
-              onClose={handleCloseModal}
-              onConfirm={handleConfirmInventory}
-            />
+            <InventoryViewModal selectedInventory={selectedInventory} onClose={handleCloseModal} onConfirm={handleConfirmInventory} />
           )}
         </div>
       </div>
