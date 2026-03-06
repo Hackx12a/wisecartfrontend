@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Search, X, Warehouse, MapPin, Building, Star, ChevronLeft, ChevronRight, User, Phone } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, X, Warehouse, MapPin, Building, Star, User, Phone } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { LoadingOverlay } from '../components/common/LoadingOverlay';
 import { api } from '../services/api';
+import Pagination from '../components/common/Pagination';
+
 
 const WarehouseManagement = () => {
   const [warehouses, setWarehouses] = useState([]);
@@ -203,32 +205,6 @@ const WarehouseManagement = () => {
   const currentWarehouses = filteredWarehouses.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredWarehouses.length / itemsPerPage);
 
-  // Pagination controls
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
-  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
-  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
-
-  // Generate page numbers to display
-  const getPageNumbers = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
-
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) {
-        pageNumbers.push(i);
-      }
-    } else {
-      const startPage = Math.max(1, currentPage - 2);
-      const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-      for (let i = startPage; i <= endPage; i++) {
-        pageNumbers.push(i);
-      }
-    }
-
-    return pageNumbers;
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -346,51 +322,18 @@ const WarehouseManagement = () => {
         )}
       </div>
 
-      {/* Pagination */}
       {filteredWarehouses.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-sm text-gray-700">
-            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredWarehouses.length)} of {filteredWarehouses.length} results
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={prevPage}
-              disabled={currentPage === 1}
-              className={`p-2 rounded-lg border ${currentPage === 1
-                ? 'text-gray-400 cursor-not-allowed border-gray-200'
-                : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-                }`}
-            >
-              <ChevronLeft size={16} />
-            </button>
-
-            <div className="flex items-center gap-1">
-              {getPageNumbers().map((number) => (
-                <button
-                  key={number}
-                  onClick={() => paginate(number)}
-                  className={`min-w-[40px] px-3 py-2 text-sm rounded-lg border ${currentPage === number
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-                    }`}
-                >
-                  {number}
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={nextPage}
-              disabled={currentPage === totalPages}
-              className={`p-2 rounded-lg border ${currentPage === totalPages
-                ? 'text-gray-400 cursor-not-allowed border-gray-200'
-                : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-                }`}
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            onNextPage={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            onPrevPage={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            showingStart={indexOfFirstItem + 1}
+            showingEnd={Math.min(indexOfLastItem, filteredWarehouses.length)}
+            totalItems={filteredWarehouses.length}
+          />
         </div>
       )}
 

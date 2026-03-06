@@ -1,5 +1,6 @@
 import React from 'react';
-import { Building, CheckCircle, Truck, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Building, CheckCircle, Truck, Eye } from 'lucide-react';
+import Pagination from '../../common/Pagination';
 import { parseDate } from '../../../utils/dateUtils';
 
 const WarehouseStockTable = ({
@@ -150,60 +151,16 @@ const WarehouseStockTable = ({
         </table>
       </div>
       {filteredWarehouseStocks.length > 0 && (
-        <div className="px-6 py-4 border-t border-gray-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-sm text-gray-700">
-            Showing {stockIndexOfFirstItem + 1} to {Math.min(stockIndexOfLastItem, filteredWarehouseStocks.length)} of {filteredWarehouseStocks.length} records
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setStockCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={stockCurrentPage === 1}
-              className={`p-2 rounded-lg border ${stockCurrentPage === 1
-                  ? 'text-gray-400 cursor-not-allowed border-gray-200'
-                  : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-                }`}
-            >
-              <ChevronLeft size={16} />
-            </button>
-
-            <div className="flex items-center gap-1">
-              {Array.from({ length: warehouseStockTotalPages }, (_, i) => i + 1)
-                .filter(num =>
-                  num === 1 ||
-                  num === warehouseStockTotalPages ||
-                  (num >= stockCurrentPage - 1 && num <= stockCurrentPage + 1)
-                )
-                .map((number, index, array) => {
-                  const showEllipsis = index < array.length - 1 && array[index + 1] !== number + 1;
-                  return (
-                    <React.Fragment key={number}>
-                      <button
-                        onClick={() => setStockCurrentPage(number)}
-                        className={`min-w-[36px] px-2 py-1 text-sm rounded-lg border ${stockCurrentPage === number
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-                          }`}
-                      >
-                        {number}
-                      </button>
-                      {showEllipsis && <span className="px-1 text-gray-500">...</span>}
-                    </React.Fragment>
-                  );
-                })}
-            </div>
-
-            <button
-              onClick={() => setStockCurrentPage(prev => Math.min(prev + 1, warehouseStockTotalPages))}
-              disabled={stockCurrentPage === warehouseStockTotalPages}
-              className={`p-2 rounded-lg border ${stockCurrentPage === warehouseStockTotalPages
-                  ? 'text-gray-400 cursor-not-allowed border-gray-200'
-                  : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-                }`}
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
+        <Pagination
+          currentPage={stockCurrentPage}
+          totalPages={warehouseStockTotalPages}
+          onPageChange={setStockCurrentPage}
+          onNextPage={() => setStockCurrentPage(prev => Math.min(prev + 1, warehouseStockTotalPages))}
+          onPrevPage={() => setStockCurrentPage(prev => Math.max(prev - 1, 1))}
+          showingStart={stockIndexOfFirstItem + 1}
+          showingEnd={Math.min(stockIndexOfLastItem, filteredWarehouseStocks.length)}
+          totalItems={filteredWarehouseStocks.length}
+        />
       )}
     </div>
   );

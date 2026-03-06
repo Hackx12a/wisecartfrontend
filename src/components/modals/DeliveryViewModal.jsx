@@ -34,10 +34,10 @@ const DeliveryViewModal = ({
   }
 
   // ── Compute totals ───────────────────────────────────────────────────────
-  const totalPrepared  = (delivery.items || []).reduce((s, it) => s + (it.preparedQty  ?? 0), 0);
+  const totalPrepared = (delivery.items || []).reduce((s, it) => s + (it.preparedQty ?? 0), 0);
   const totalDelivered = (delivery.items || []).reduce((s, it) => s + (it.deliveredQty ?? 0), 0);
-  const isDelivered    = delivery.status === 'DELIVERED';
-  const hasVariance    = isDelivered && totalPrepared !== totalDelivered;
+  const isDelivered = delivery.status === 'DELIVERED';
+  const hasVariance = isDelivered && totalPrepared !== totalDelivered;
 
   return (
     <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-6">
@@ -205,6 +205,7 @@ const DeliveryViewModal = ({
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase w-10">Number</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU & UPC</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Warehouse</th>
@@ -218,6 +219,7 @@ const DeliveryViewModal = ({
                     {delivery.items && delivery.items.length > 0 ? (
                       delivery.items.map((item, index) => (
                         <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-center text-sm text-gray-400 font-medium">{index + 1}</td>
                           <td className="px-4 py-3 text-sm font-medium text-gray-900">
                             {item.product?.productName || 'Unknown Product'}
                           </td>
@@ -259,7 +261,7 @@ const DeliveryViewModal = ({
                   {delivery.items && delivery.items.length > 0 && (
                     <tfoot>
                       <tr className="bg-gray-50 border-t-2 border-gray-300">
-                        <td colSpan={3} className="px-4 py-3 text-right">
+                        <td colSpan={4} className="px-4 py-3 text-right">
                           <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
                             Total ({delivery.items.length} item{delivery.items.length !== 1 ? 's' : ''})
                           </span>

@@ -6,6 +6,8 @@ import LoadingOverlay from '../../components/common/LoadingOverlay';
 import IRRTableRow from './components/IRRTableRow';
 import IRRModal from './components/IRRModal';
 import IRRViewModal from './components/IRRViewModal';
+import Pagination from '../../../components/common/Pagination';
+
 
 const InventoryRequestManagement = ({ irrRequests: initialRequests, onRefresh, onProceedToRpq }) => {
     const [irrRequests, setIrrRequests] = useState(initialRequests || []);
@@ -16,6 +18,8 @@ const InventoryRequestManagement = ({ irrRequests: initialRequests, onRefresh, o
     const [editingIrr, setEditingIrr] = useState(null);
     const [buttonLoading, setButtonLoading] = useState({});
     const [suppliers, setSuppliers] = useState([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(10);
 
     useEffect(() => {
         setIrrRequests(initialRequests || []);
@@ -72,6 +76,11 @@ const InventoryRequestManagement = ({ irrRequests: initialRequests, onRefresh, o
         req.productName?.toLowerCase().includes(searchIrr.toLowerCase())
     );
 
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentIrrRequests = filteredIrrRequests.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredIrrRequests.length / itemsPerPage);
+
     return (
         <div>
             <Toaster position="top-right" />
@@ -123,7 +132,7 @@ const InventoryRequestManagement = ({ irrRequests: initialRequests, onRefresh, o
                                     </td>
                                 </tr>
                             ) : (
-                                filteredIrrRequests.map((req) => (
+                                currentIrrRequests.map((req) => (
                                     <IRRTableRow
                                         key={req.id}
                                         req={req}
@@ -142,6 +151,19 @@ const InventoryRequestManagement = ({ irrRequests: initialRequests, onRefresh, o
                     </table>
                 </div>
             </div>
+
+            {filteredIrrRequests.length > 0 && (
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    onNextPage={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    onPrevPage={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    showingStart={indexOfFirstItem + 1}
+                    showingEnd={Math.min(indexOfLastItem, filteredIrrRequests.length)}
+                    totalItems={filteredIrrRequests.length}
+                />
+            )}
 
             {/* Modals */}
             {showIrrModal && (

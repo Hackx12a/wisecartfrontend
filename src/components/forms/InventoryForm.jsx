@@ -363,6 +363,7 @@ const InventoryForm = ({
                             <table className="w-full">
                                 <thead className="bg-gray-50 border-b border-gray-200">
                                     <tr>
+                                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase w-10">Number</th>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Product Name</th>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">SKU / UPC</th>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Variation</th>
@@ -383,6 +384,7 @@ const InventoryForm = ({
 
                                         return (
                                             <tr key={`item-${i}-${item.productId || 'new'}-${item.variationId || 'none'}`} className="hover:bg-gray-50">
+                                                <td className="px-4 py-3 text-center text-sm text-gray-400 font-medium align-top">{i + 1}</td>
                                                 {/* Product Name */}
                                                 <td className="px-4 py-3">
                                                     {selectedOption ? (

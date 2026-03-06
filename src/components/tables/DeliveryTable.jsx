@@ -1,6 +1,7 @@
 // src/components/tables/DeliveryTable.jsx
 import React from 'react';
-import { Eye, Edit2, Trash2, Printer, Package, Truck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Eye, Edit2, Trash2, Printer, Package, Truck } from 'lucide-react';
+import Pagination from '../common/Pagination';
 
 const DeliveryTable = ({
   deliveries = [],
@@ -28,26 +29,10 @@ const DeliveryTable = ({
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
-  const getPageNumbers = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
 
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) pageNumbers.push(i);
-    } else {
-      const startPage = Math.max(1, currentPage - 2);
-      const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-      for (let i = startPage; i <= endPage; i++) pageNumbers.push(i);
-    }
-    return pageNumbers;
-  };
-
-  // ── Compute grand totals across all deliveries on this page ──────────────
-  const grandTotalPrepared  = deliveries.reduce((sum, d) =>
-    sum + (d.items || []).reduce((s, it) => s + (it.preparedQty  || 0), 0), 0);
-  const grandTotalDelivered = deliveries.reduce((sum, d) =>
-    sum + (d.items || []).reduce((s, it) => s + (it.deliveredQty || 0), 0), 0);
-  const grandTotalItems     = deliveries.reduce((sum, d) => sum + (d.itemCount || 0), 0);
+  const grandTotalPrepared = deliveries.reduce((sum, d) => sum + (d.totalPreparedQty || 0), 0);
+  const grandTotalDelivered = deliveries.reduce((sum, d) => sum + (d.totalDeliveredQty || 0), 0);
+  const grandTotalItems = deliveries.reduce((sum, d) => sum + (d.itemCount || 0), 0);
 
   if (isLoading) {
     return (
@@ -91,9 +76,10 @@ const DeliveryTable = ({
 
           <tbody className="bg-white divide-y divide-gray-200">
             {deliveries.map((delivery) => {
-              // ── Per-DR totals ────────────────────────────────────────
-              const drTotalPrepared  = (delivery.items || []).reduce((s, it) => s + (it.preparedQty  || 0), 0);
-              const drTotalDelivered = (delivery.items || []).reduce((s, it) => s + (it.deliveredQty || 0), 0);
+              // ── Per-DR totals: read pre-summed fields from the list response ──
+              // delivery.items is empty in list view; quantities come from the backend directly.
+              const drTotalPrepared = delivery.totalPreparedQty || 0;
+              const drTotalDelivered = delivery.totalDeliveredQty || 0;
 
               return (
                 <tr key={delivery.id} className="hover:bg-gray-50 transition">
@@ -270,44 +256,17 @@ const DeliveryTable = ({
           </tfoot>
         </table>
       </div>
-
-      {/* ── Pagination ────────────────────────────────────────────────────── */}
       {totalItems > 0 && (
-        <div className="px-6 py-4 border-t border-gray-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-sm text-gray-700">
-            Showing {indexOfFirstItem} to {indexOfLastItem} of {totalItems} results
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onPageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className={`p-2 rounded-lg border ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed border-gray-200' : 'text-gray-700 hover:bg-gray-50 border-gray-300'}`}
-            >
-              <ChevronLeft size={16} />
-            </button>
-
-            <div className="flex items-center gap-1">
-              {getPageNumbers().map((number) => (
-                <button
-                  key={number}
-                  onClick={() => onPageChange(number)}
-                  className={`min-w-[40px] px-3 py-2 text-sm rounded-lg border ${currentPage === number ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-700 hover:bg-gray-50 border-gray-300'}`}
-                >
-                  {number}
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={() => onPageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className={`p-2 rounded-lg border ${currentPage === totalPages ? 'text-gray-400 cursor-not-allowed border-gray-200' : 'text-gray-700 hover:bg-gray-50 border-gray-300'}`}
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+          onNextPage={() => onPageChange(currentPage + 1)}
+          onPrevPage={() => onPageChange(currentPage - 1)}
+          showingStart={indexOfFirstItem}
+          showingEnd={indexOfLastItem}
+          totalItems={totalItems}
+        />
       )}
     </div>
   );

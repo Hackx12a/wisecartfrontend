@@ -6,6 +6,7 @@ import { Search, Plus, Edit2, Trash2, Eye, FileText, Check, X, Printer, ChevronD
 import '../styles/sales-memo-print.css';
 import { LoadingOverlay } from '../components/common/LoadingOverlay';
 import VariationSearchableDropdown from '../components/common/VariationSearchableDropdown';
+import Pagination from '../components/common/Pagination';
 
 
 const formatCurrency = (amount) => {
@@ -1038,29 +1039,7 @@ const SalesManagement = () => {
   const currentSales = filteredSales.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredSales.length / itemsPerPage);
 
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
-  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
-  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
 
-  const getPageNumbers = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
-
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) {
-        pageNumbers.push(i);
-      }
-    } else {
-      const startPage = Math.max(1, currentPage - 2);
-      const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-      for (let i = startPage; i <= endPage; i++) {
-        pageNumbers.push(i);
-      }
-    }
-
-    return pageNumbers;
-  };
 
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const monthsFull = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -1409,58 +1388,17 @@ const SalesManagement = () => {
               </tbody>
             </table>
           </div>
-
-          {/* Pagination */}
           {filteredSales.length > 0 && (
-            <div className="px-6 py-4 border-t border-gray-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-4">
-              {/* Results count */}
-              <div className="text-sm text-gray-700">
-                Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredSales.length)} of {filteredSales.length} results
-              </div>
-
-              {/* Pagination controls */}
-              <div className="flex items-center gap-2">
-                {/* Previous button */}
-                <button
-                  onClick={prevPage}
-                  disabled={currentPage === 1}
-                  className={`p-2 rounded-lg border ${currentPage === 1
-                    ? 'text-gray-400 cursor-not-allowed border-gray-200'
-                    : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-                    }`}
-                >
-                  <ChevronLeft size={16} />
-                </button>
-
-                {/* Page numbers */}
-                <div className="flex items-center gap-1">
-                  {getPageNumbers().map((number) => (
-                    <button
-                      key={number}
-                      onClick={() => paginate(number)}
-                      className={`min-w-[40px] px-3 py-2 text-sm rounded-lg border ${currentPage === number
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-                        }`}
-                    >
-                      {number}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Next button */}
-                <button
-                  onClick={nextPage}
-                  disabled={currentPage === totalPages}
-                  className={`p-2 rounded-lg border ${currentPage === totalPages
-                    ? 'text-gray-400 cursor-not-allowed border-gray-200'
-                    : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-                    }`}
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              onNextPage={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              onPrevPage={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              showingStart={indexOfFirstItem + 1}
+              showingEnd={Math.min(indexOfLastItem, filteredSales.length)}
+              totalItems={filteredSales.length}
+            />
           )}
         </div>
 
@@ -1575,6 +1513,7 @@ const SalesManagement = () => {
                         <table className="w-full">
                           <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
+                              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase w-10">#</th>
                               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Product Name</th>
                               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Variation</th>
                               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">SKU</th>
@@ -1610,6 +1549,7 @@ const SalesManagement = () => {
 
                               return (
                                 <tr key={i} className="hover:bg-gray-50">
+                                  <td className="px-4 py-3 text-center text-sm text-gray-400 font-medium">{i + 1}</td>
                                   {/* Product Name */}
                                   <td className="px-4 py-3">
                                     {selectedOption ? (
@@ -1826,6 +1766,7 @@ const SalesManagement = () => {
                     <table className="w-full">
                       <thead className="bg-gray-50">
                         <tr>
+                          <th className="px-6 py-4 text-center text-sm font-medium text-gray-700 w-10">Number</th>
                           <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">Product</th>
                           <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">SKU</th>
                           <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">UPC</th>
@@ -1838,6 +1779,7 @@ const SalesManagement = () => {
                         {selectedSale?.items && selectedSale.items.length > 0 ? (
                           selectedSale.items.map((item, i) => (
                             <tr key={item.id || i} className="hover:bg-gray-50 transition">
+                              <td className="px-6 py-4 text-center text-sm text-gray-400 font-medium">{i + 1}</td>
                               <td className="px-6 py-4 text-sm font-medium text-gray-900">
                                 {item.product.productName}
                                 {item.variation && (
@@ -1868,7 +1810,7 @@ const SalesManagement = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="6" className="px-6 py-12 text-center text-gray-500 italic">
+                            <td colSpan="7" className="px-6 py-12 text-center text-gray-500 italic">
                               No items in this sale
                             </td>
                           </tr>

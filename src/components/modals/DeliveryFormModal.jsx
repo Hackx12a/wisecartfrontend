@@ -461,6 +461,7 @@ const DeliveryFormModal = ({
                                         <table className="w-full">
                                             <thead className="bg-gray-50 border-b border-gray-200">
                                                 <tr>
+                                                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase w-10">Number</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase w-1/4">Product Name</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Variation</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">SKU</th>
@@ -557,7 +558,7 @@ const DeliveryFormModal = ({
                                             <tfoot>
                                                 <tr className="bg-gray-50 border-t-2 border-gray-300">
                                                     {/* Label */}
-                                                    <td colSpan={6} className="px-4 py-3 text-right">
+                                                    <td colSpan={7} className="px-4 py-3 text-right">   
                                                         <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
                                                             Total ({formData.items.length} item{formData.items.length !== 1 ? 's' : ''})
                                                         </span>

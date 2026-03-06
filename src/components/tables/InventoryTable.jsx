@@ -20,7 +20,7 @@ const InventoryTable = ({
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Number</th>
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">From → To</th>
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Date</th>

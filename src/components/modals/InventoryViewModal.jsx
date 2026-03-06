@@ -30,10 +30,10 @@ const InventoryViewModal = ({ selectedInventory, onClose, onConfirm }) => {
                 </span>
               </p>
               <p className="text-sm text-gray-600 mb-1">
-                <strong>Date:</strong> {new Date(selectedInventory.dateProcessed).toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
+                <strong>Date:</strong> {new Date(selectedInventory.dateProcessed).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
                 })}
               </p>
               <p className="text-sm text-gray-600 mb-1">
@@ -136,6 +136,7 @@ const InventoryViewModal = ({ selectedInventory, onClose, onConfirm }) => {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-6 py-4 text-center text-sm font-medium text-gray-700 w-10">#</th>
                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">Product</th>
                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 w-48">Quantity</th>
                   </tr>
@@ -147,6 +148,7 @@ const InventoryViewModal = ({ selectedInventory, onClose, onConfirm }) => {
 
                       return (
                         <tr key={`view-item-${item.id || i}-${item.product?.id || 'unknown'}`} className="hover:bg-gray-50 transition">
+                          <td className="px-6 py-4 text-center text-sm text-gray-400 font-medium align-top">{i + 1}</td>
                           <td className="px-6 py-4 text-sm">
                             <div className="font-medium text-gray-900 mb-1">
                               {item.product.productName}
@@ -177,7 +179,7 @@ const InventoryViewModal = ({ selectedInventory, onClose, onConfirm }) => {
                     })
                   ) : (
                     <tr>
-                      <td colSpan="2" className="px-6 py-12 text-center text-gray-500 italic">
+                      <td colSpan="3" className="px-6 py-12 text-center text-gray-500 italic">
                         No items in this record
                       </td>
                     </tr>

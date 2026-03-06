@@ -4,6 +4,8 @@ import { Plus, Edit2, Trash2, Search, X, User, Shield, UserCheck, UserX, Eye, Ey
 import toast, { Toaster } from 'react-hot-toast';
 import { api } from '../services/api';
 import { LoadingOverlay } from '../components/common/LoadingOverlay';
+import Pagination from '../components/common/Pagination';
+
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -40,31 +42,31 @@ const UserManagement = () => {
   }, []);
 
   const loadUsers = async () => {
-  setLoading(true);
-  setLoadingMessage('Loading users...');
-  try {
-    const response = await api.get('/users');
-    if (response.success) {
-      setUsers(response.data || []);
-    } else {
-      toast.error(response.error || 'Failed to load users');
+    setLoading(true);
+    setLoadingMessage('Loading users...');
+    try {
+      const response = await api.get('/users');
+      if (response.success) {
+        setUsers(response.data || []);
+      } else {
+        toast.error(response.error || 'Failed to load users');
+        setUsers([]);
+      }
+    } catch (error) {
+      toast.error('Failed to load users');
+      console.error(error);
       setUsers([]);
+    } finally {
+      setLoading(false);
+      setLoadingMessage('');
     }
-  } catch (error) {
-    toast.error('Failed to load users');
-    console.error(error);
-    setUsers([]);
-  } finally {
-    setLoading(false);
-    setLoadingMessage('');
-  }
-};
+  };
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: type === 'checkbox' ? checked : value 
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
@@ -74,96 +76,96 @@ const UserManagement = () => {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  if (!formData.username || !formData.email || !formData.fullName || !formData.role) {
-    toast.error('Please fill in all required fields');
-    return;
-  }
+    e.preventDefault();
 
-  if (!editingUser && !formData.password) {
-    toast.error('Password is required for new users');
-    return;
-  }
-
-  if (!editingUser && formData.password.length < 6) {
-    toast.error('Password must be at least 6 characters');
-    return;
-  }
-
-  setActionLoading(true);
-  setLoadingMessage(editingUser ? 'Updating user...' : 'Creating user...');
-
-  try {
-    const payload = {
-      username: formData.username,
-      email: formData.email,
-      fullName: formData.fullName,
-      role: formData.role,
-      enabled: formData.enabled
-    };
-
-    if (!editingUser) {
-      payload.password = formData.password;
+    if (!formData.username || !formData.email || !formData.fullName || !formData.role) {
+      toast.error('Please fill in all required fields');
+      return;
     }
 
-    if (editingUser) {
-      await api.put(`/users/${editingUser.id}`, payload);
-      toast.success('User updated successfully');
-    } else {
-      await api.post('/auth/register', payload);
-      toast.success('User created successfully');
+    if (!editingUser && !formData.password) {
+      toast.error('Password is required for new users');
+      return;
     }
 
-    setShowModal(false);
-    resetForm();
-    loadUsers();
-    setCurrentPage(1);
-  } catch (error) {
-    toast.error(error.message || 'Failed to save user');
-    console.error(error);
-  } finally {
-    setActionLoading(false);
-    setLoadingMessage('');
-  }
-};
+    if (!editingUser && formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    setActionLoading(true);
+    setLoadingMessage(editingUser ? 'Updating user...' : 'Creating user...');
+
+    try {
+      const payload = {
+        username: formData.username,
+        email: formData.email,
+        fullName: formData.fullName,
+        role: formData.role,
+        enabled: formData.enabled
+      };
+
+      if (!editingUser) {
+        payload.password = formData.password;
+      }
+
+      if (editingUser) {
+        await api.put(`/users/${editingUser.id}`, payload);
+        toast.success('User updated successfully');
+      } else {
+        await api.post('/auth/register', payload);
+        toast.success('User created successfully');
+      }
+
+      setShowModal(false);
+      resetForm();
+      loadUsers();
+      setCurrentPage(1);
+    } catch (error) {
+      toast.error(error.message || 'Failed to save user');
+      console.error(error);
+    } finally {
+      setActionLoading(false);
+      setLoadingMessage('');
+    }
+  };
 
   const handleResetPassword = async (e) => {
-  e.preventDefault();
-  
-  if (!passwordData.newPassword) {
-    toast.error('Please enter a new password');
-    return;
-  }
+    e.preventDefault();
 
-  if (passwordData.newPassword.length < 6) {
-    toast.error('Password must be at least 6 characters');
-    return;
-  }
+    if (!passwordData.newPassword) {
+      toast.error('Please enter a new password');
+      return;
+    }
 
-  if (passwordData.newPassword !== passwordData.confirmPassword) {
-    toast.error('Passwords do not match');
-    return;
-  }
+    if (passwordData.newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
 
-  setActionLoading(true);
-  setLoadingMessage('Resetting password...');
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
 
-  try {
-    await api.put(`/users/${resettingUser.id}/reset-password`, {
-      newPassword: passwordData.newPassword
-    });
-    toast.success('Password reset successfully');
-    setShowPasswordModal(false);
-    resetPasswordForm();
-  } catch (error) {
-    toast.error(error.message || 'Failed to reset password');
-    console.error(error);
-  } finally {
-    setActionLoading(false);
-    setLoadingMessage('');
-  }
-};
+    setActionLoading(true);
+    setLoadingMessage('Resetting password...');
+
+    try {
+      await api.put(`/users/${resettingUser.id}/reset-password`, {
+        newPassword: passwordData.newPassword
+      });
+      toast.success('Password reset successfully');
+      setShowPasswordModal(false);
+      resetPasswordForm();
+    } catch (error) {
+      toast.error(error.message || 'Failed to reset password');
+      console.error(error);
+    } finally {
+      setActionLoading(false);
+      setLoadingMessage('');
+    }
+  };
 
   const handleEdit = (user) => {
     setEditingUser(user);
@@ -184,45 +186,45 @@ const UserManagement = () => {
   };
 
   const handleToggleStatus = async (user) => {
-  if (!window.confirm(`Are you sure you want to ${user.enabled ? 'disable' : 'enable'} this user?`)) return;
-  
-  setActionLoading(true);
-  setLoadingMessage(`${user.enabled ? 'Disabling' : 'Enabling'} user...`);
+    if (!window.confirm(`Are you sure you want to ${user.enabled ? 'disable' : 'enable'} this user?`)) return;
 
-  try {
-    await api.put(`/users/${user.id}/toggle-status`);
-    toast.success(`User ${user.enabled ? 'disabled' : 'enabled'} successfully`);
-    loadUsers();
-  } catch (error) {
-    toast.error('Failed to update user status');
-    console.error(error);
-  } finally {
-    setActionLoading(false);
-    setLoadingMessage('');
-  }
-};
+    setActionLoading(true);
+    setLoadingMessage(`${user.enabled ? 'Disabling' : 'Enabling'} user...`);
+
+    try {
+      await api.put(`/users/${user.id}/toggle-status`);
+      toast.success(`User ${user.enabled ? 'disabled' : 'enabled'} successfully`);
+      loadUsers();
+    } catch (error) {
+      toast.error('Failed to update user status');
+      console.error(error);
+    } finally {
+      setActionLoading(false);
+      setLoadingMessage('');
+    }
+  };
 
   const handleDelete = async (user) => {
-  if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
-  
-  setActionLoading(true);
-  setLoadingMessage('Deleting user...');
+    if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
 
-  try {
-    await api.delete(`/users/${user.id}`);
-    toast.success('User deleted successfully');
-    loadUsers();
-    if (currentUsers.length % itemsPerPage === 1 && currentPage > 1) {
-      setCurrentPage(currentPage - 1);
+    setActionLoading(true);
+    setLoadingMessage('Deleting user...');
+
+    try {
+      await api.delete(`/users/${user.id}`);
+      toast.success('User deleted successfully');
+      loadUsers();
+      if (currentUsers.length % itemsPerPage === 1 && currentPage > 1) {
+        setCurrentPage(currentPage - 1);
+      }
+    } catch (error) {
+      toast.error(error.message || 'Failed to delete user');
+      console.error(error);
+    } finally {
+      setActionLoading(false);
+      setLoadingMessage('');
     }
-  } catch (error) {
-    toast.error(error.message || 'Failed to delete user');
-    console.error(error);
-  } finally {
-    setActionLoading(false);
-    setLoadingMessage('');
-  }
-};
+  };
 
   const resetForm = () => {
     setFormData({
@@ -258,38 +260,12 @@ const UserManagement = () => {
   const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
 
-  // Pagination controls
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
-  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
-  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
-
-  // Generate page numbers to display
-  const getPageNumbers = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
-    
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) {
-        pageNumbers.push(i);
-      }
-    } else {
-      const startPage = Math.max(1, currentPage - 2);
-      const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-      
-      for (let i = startPage; i <= endPage; i++) {
-        pageNumbers.push(i);
-      }
-    }
-    
-    return pageNumbers;
-  };
-
   const getRoleBadge = (role) => {
     const roleStyles = {
       ADMIN: 'bg-purple-100 text-purple-800',
       USER: 'bg-blue-100 text-blue-800',
     };
-    
+
     return (
       <span className={`px-2 py-1 text-xs font-medium rounded-full ${roleStyles[role] || 'bg-gray-100 text-gray-800'}`}>
         {role}
@@ -311,7 +287,7 @@ const UserManagement = () => {
     );
   };
 
-    if (loading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <LoadingOverlay show={true} message="Loading users..." />
@@ -409,11 +385,10 @@ const UserManagement = () => {
                         </button>
                         <button
                           onClick={() => handleToggleStatus(user)}
-                          className={`p-2 rounded-lg transition ${
-                            user.enabled 
-                              ? 'text-orange-600 hover:bg-orange-50' 
+                          className={`p-2 rounded-lg transition ${user.enabled
+                              ? 'text-orange-600 hover:bg-orange-50'
                               : 'text-green-600 hover:bg-green-50'
-                          }`}
+                            }`}
                           title={user.enabled ? 'Disable User' : 'Enable User'}
                         >
                           {user.enabled ? <UserX size={18} /> : <UserCheck size={18} />}
@@ -433,56 +408,17 @@ const UserManagement = () => {
             </tbody>
           </table>
         </div>
-
-        {/* Pagination */}
         {filteredUsers.length > 0 && (
-          <div className="px-6 py-4 border-t border-gray-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-sm text-gray-700">
-              Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredUsers.length)} of {filteredUsers.length} results
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={prevPage}
-                disabled={currentPage === 1}
-                className={`p-2 rounded-lg border ${
-                  currentPage === 1 
-                    ? 'text-gray-400 cursor-not-allowed border-gray-200' 
-                    : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-                }`}
-              >
-                <ChevronLeft size={16} />
-              </button>
-
-              <div className="flex items-center gap-1">
-                {getPageNumbers().map((number) => (
-                  <button
-                    key={number}
-                    onClick={() => paginate(number)}
-                    className={`min-w-[40px] px-3 py-2 text-sm rounded-lg border ${
-                      currentPage === number
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-                    }`}
-                  >
-                    {number}
-                  </button>
-                ))}
-              </div>
-
-              <button
-                onClick={nextPage}
-                disabled={currentPage === totalPages}
-                className={`p-2 rounded-lg border ${
-                  currentPage === totalPages
-                    ? 'text-gray-400 cursor-not-allowed border-gray-200'
-                    : 'text-gray-700 hover:bg-gray-50 border-gray-300'
-                }`}
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            onNextPage={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            onPrevPage={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            showingStart={indexOfFirstItem + 1}
+            showingEnd={Math.min(indexOfLastItem, filteredUsers.length)}
+            totalItems={filteredUsers.length}
+          />
         )}
       </div>
 
@@ -658,7 +594,7 @@ const UserManagement = () => {
                 <p className="text-sm text-gray-600 mb-4">
                   Reset password for <strong>{resettingUser.fullName}</strong> ({resettingUser.username})
                 </p>
-                
+
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   New Password <span className="text-red-500">*</span>
                 </label>

@@ -5,12 +5,15 @@ import {
 import toast, { Toaster } from 'react-hot-toast';
 import { api } from '../services/api';
 import LoadingOverlay from '../components/common/LoadingOverlay';
+import Pagination from '../components/common/Pagination';
 
 const SupplierManagement = () => {
     const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(10);
     const [showModal, setShowModal] = useState(false);
     const [editingSupplier, setEditingSupplier] = useState(null);
     const [formData, setFormData] = useState({
@@ -204,6 +207,11 @@ const SupplierManagement = () => {
         supplier.productServices?.toLowerCase().includes(searchTerm.toLowerCase())
     ) : [];
 
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentSuppliers = filteredSuppliers.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredSuppliers.length / itemsPerPage);
+
     return (
         <div className="p-6 max-w-full mx-auto px-8">
             <Toaster position="top-right" />
@@ -266,7 +274,7 @@ const SupplierManagement = () => {
                                     <td colSpan="7" className="px-6 py-8 text-center text-gray-500">No suppliers found</td>
                                 </tr>
                             ) : (
-                                filteredSuppliers.map((supplier) => (
+                                currentSuppliers.map((supplier) => (
                                     <tr key={supplier.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 font-medium text-gray-900">{supplier.name}</td>
                                         <td className="px-6 py-4">
@@ -314,6 +322,19 @@ const SupplierManagement = () => {
                     </table>
                 </div>
             </div>
+
+            {filteredSuppliers.length > 0 && (
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    onNextPage={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    onPrevPage={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    showingStart={indexOfFirstItem + 1}
+                    showingEnd={Math.min(indexOfLastItem, filteredSuppliers.length)}
+                    totalItems={filteredSuppliers.length}
+                />
+            )}
 
             {/* Modal */}
             {showModal && (

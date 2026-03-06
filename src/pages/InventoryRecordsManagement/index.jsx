@@ -27,7 +27,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
 
   lines.forEach(line => {
     if (line.includes('USED IN DELIVERIES')) { inDeliveries = true; inSales = false; return; }
-    if (line.includes('USED IN SALES'))      { inSales = true; inDeliveries = false; return; }
+    if (line.includes('USED IN SALES')) { inSales = true; inDeliveries = false; return; }
 
     if (inDeliveries || inSales) {
       if (line.trim().startsWith('•')) {
@@ -36,7 +36,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
       } else if (line.trim().startsWith('-') && currentKey) {
         const val = line.trim().replace(/^-\s*/, '').trim();
         if (inDeliveries) productMap[currentKey].deliveryReceipts.push(val);
-        if (inSales)      productMap[currentKey].saleRefs.push(val);
+        if (inSales) productMap[currentKey].saleRefs.push(val);
       }
     }
   });
@@ -79,7 +79,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
     const parenMatch = raw.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
     if (!parenMatch) return { label: raw, qty: null, status: null, from: null, to: null, branch: null, company: null };
 
-    const label  = parenMatch[1].trim();
+    const label = parenMatch[1].trim();
     const inside = parenMatch[2];
 
     const fields = {};
@@ -92,11 +92,11 @@ const DeleteErrorModal = ({ message, onClose }) => {
 
     return {
       label,
-      qty:     fields.qty     ? parseInt(fields.qty, 10) : null,
-      status:  fields.status  || null,
-      from:    fields.from    || null,
-      to:      fields.to      || null,
-      branch:  fields.branch  || null,
+      qty: fields.qty ? parseInt(fields.qty, 10) : null,
+      status: fields.status || null,
+      from: fields.from || null,
+      to: fields.to || null,
+      branch: fields.branch || null,
       company: fields.company || null,
     };
   };
@@ -153,41 +153,41 @@ const DeleteErrorModal = ({ message, onClose }) => {
   const getConflictMeta = (hasDelivery, hasSale) => {
     if (hasDelivery && hasSale) return {
       borderColor: 'border-red-400/70',
-      headerBg:    'bg-red-50/80',
-      headerBorder:'border-b border-red-200/70',
-      leftBar:     'bg-red-500/80',
-      titleColor:  'text-red-900',
-      icon:        '⚠️',
-      label:       'Delivery + Sale Conflict',
-      labelBg:     'bg-red-100/80 text-red-700',
+      headerBg: 'bg-red-50/80',
+      headerBorder: 'border-b border-red-200/70',
+      leftBar: 'bg-red-500/80',
+      titleColor: 'text-red-900',
+      icon: '⚠️',
+      label: 'Delivery + Sale Conflict',
+      labelBg: 'bg-red-100/80 text-red-700',
     };
     if (hasDelivery) return {
       borderColor: 'border-blue-400/70',
-      headerBg:    'bg-blue-50/80',
-      headerBorder:'border-b border-blue-200/70',
-      leftBar:     'bg-blue-500/80',
-      titleColor:  'text-blue-900',
-      icon:        '📦',
-      label:       'Delivery Conflict',
-      labelBg:     'bg-blue-100/80 text-blue-700',
+      headerBg: 'bg-blue-50/80',
+      headerBorder: 'border-b border-blue-200/70',
+      leftBar: 'bg-blue-500/80',
+      titleColor: 'text-blue-900',
+      icon: '📦',
+      label: 'Delivery Conflict',
+      labelBg: 'bg-blue-100/80 text-blue-700',
     };
     return {
       borderColor: 'border-orange-400/70',
-      headerBg:    'bg-orange-50/80',
-      headerBorder:'border-b border-orange-200/70',
-      leftBar:     'bg-orange-500/80',
-      titleColor:  'text-orange-900',
-      icon:        '🛒',
-      label:       'Sale Conflict',
-      labelBg:     'bg-orange-100/80 text-orange-700',
+      headerBg: 'bg-orange-50/80',
+      headerBorder: 'border-b border-orange-200/70',
+      leftBar: 'bg-orange-500/80',
+      titleColor: 'text-orange-900',
+      icon: '🛒',
+      label: 'Sale Conflict',
+      labelBg: 'bg-orange-100/80 text-orange-700',
     };
   };
 
-  const totalDeliveries    = products.reduce((s, [, v]) => s + v.deliveryReceipts.length, 0);
-  const totalSales         = products.reduce((s, [, v]) => s + v.saleRefs.length, 0);
-  const totalDeliveryQty   = products.reduce((s, [, v]) => s + v.deliveryReceipts.reduce((a, dr) => a + (parseRef(dr).qty ?? 0), 0), 0);
-  const totalSaleQty       = products.reduce((s, [, v]) => s + v.saleRefs.reduce((a, r)  => a + (parseRef(r).qty  ?? 0), 0), 0);
-  const grandTotalQty      = totalDeliveryQty + totalSaleQty;
+  const totalDeliveries = products.reduce((s, [, v]) => s + v.deliveryReceipts.length, 0);
+  const totalSales = products.reduce((s, [, v]) => s + v.saleRefs.length, 0);
+  const totalDeliveryQty = products.reduce((s, [, v]) => s + v.deliveryReceipts.reduce((a, dr) => a + (parseRef(dr).qty ?? 0), 0), 0);
+  const totalSaleQty = products.reduce((s, [, v]) => s + v.saleRefs.reduce((a, r) => a + (parseRef(r).qty ?? 0), 0), 0);
+  const grandTotalQty = totalDeliveryQty + totalSaleQty;
 
   // Check if any products are expanded
   const hasExpanded = Object.values(expandedProducts).some(v => v === true);
@@ -195,21 +195,21 @@ const DeleteErrorModal = ({ message, onClose }) => {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop with gradient transparency */}
-      <div 
+      <div
         className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/60 backdrop-blur-md"
         onClick={onClose}
       />
 
       {/* Modal with glass morphism effect */}
       <div className="relative w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden rounded-2xl shadow-2xl shadow-black/25">
-        
+
         {/* Glass background layers */}
         <div className="absolute inset-0 bg-white/90 backdrop-blur-xl" />
         <div className="absolute inset-0 bg-gradient-to-br from-white/80 via-white/90 to-white/80" />
-        
+
         {/* Subtle border with transparency */}
         <div className="absolute inset-0 border border-white/30 rounded-2xl pointer-events-none" />
-        
+
         {/* Top accent with gradient */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500/70 via-amber-500/70 to-orange-500/70" />
 
@@ -261,7 +261,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
                 </span>
               )}
             </div>
-            
+
             {/* Expand/Collapse Controls */}
             {products.length > 0 && (
               <div className="flex items-center gap-2 ml-4">
@@ -289,33 +289,33 @@ const DeleteErrorModal = ({ message, onClose }) => {
               <>
                 {products.map(([productName, { deliveryReceipts, saleRefs }], i) => {
                   const meta = getConflictMeta(deliveryReceipts.length > 0, saleRefs.length > 0);
-                  const productDrQty   = deliveryReceipts.reduce((a, dr) => a + (parseRef(dr).qty ?? 0), 0);
+                  const productDrQty = deliveryReceipts.reduce((a, dr) => a + (parseRef(dr).qty ?? 0), 0);
                   const productSaleQty = saleRefs.reduce((a, r) => a + (parseRef(r).qty ?? 0), 0);
                   const productTotalQty = productDrQty + productSaleQty;
                   const isExpanded = expandedProducts[i] || false;
-                  
+
                   return (
                     <div
                       key={i}
                       className={`rounded-xl border-2 ${meta.borderColor} overflow-hidden shadow-sm backdrop-blur-sm bg-white/80 transition-all duration-200`}
                     >
                       {/* Product header row - Clickable */}
-                      <div 
+                      <div
                         className={`flex items-center gap-3 px-4 py-3 ${meta.headerBg} ${meta.headerBorder} backdrop-blur-sm cursor-pointer hover:brightness-95 transition-all duration-200`}
                         onClick={() => toggleProduct(i)}
                       >
                         <div className={`w-1 h-8 rounded-full ${meta.leftBar} flex-shrink-0`} />
-                        
+
                         {/* Expand/collapse icon */}
                         <span className="text-xs font-mono text-gray-500 w-5">
                           {isExpanded ? '▼' : '▶'}
                         </span>
-                        
+
                         <span className="text-base">{meta.icon}</span>
                         <span className={`font-semibold text-sm flex-1 min-w-0 truncate ${meta.titleColor}`}>
                           {productName}
                         </span>
-                        
+
                         {/* Quick stats - always visible */}
                         <div className="flex items-center gap-2">
                           {deliveryReceipts.length > 0 && (
@@ -331,7 +331,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
                             </span>
                           )}
                         </div>
-                        
+
                         {productTotalQty > 0 && (
                           <span className="flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full bg-white/80 border border-gray-300/60 text-gray-700 mr-1 backdrop-blur-sm">
                             {productTotalQty} pcs
@@ -343,10 +343,9 @@ const DeleteErrorModal = ({ message, onClose }) => {
                       </div>
 
                       {/* Collapsible content */}
-                      <div 
-                        className={`transition-all duration-300 ease-in-out ${
-                          isExpanded ? 'opacity-100 max-h-[2000px]' : 'opacity-0 max-h-0 overflow-hidden'
-                        }`}
+                      <div
+                        className={`transition-all duration-300 ease-in-out ${isExpanded ? 'opacity-100 max-h-[2000px]' : 'opacity-0 max-h-0 overflow-hidden'
+                          }`}
                       >
                         <div className="px-4 py-3 bg-white/60 backdrop-blur-sm space-y-4">
                           {/* ── Delivery receipts with status badges and route info ── */}
@@ -366,7 +365,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                   </span>
                                 </span>
                               </div>
-                              
+
                               {/* Delivery Cards Grid */}
                               <div className="grid grid-cols-2 gap-3">
                                 {deliveryReceipts.map((dr, j) => {
@@ -382,7 +381,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                             {label}
                                           </span>
                                         </div>
-                                        
+
                                         {/* Quantity */}
                                         {qty !== null ? (
                                           <div className="w-16 flex-shrink-0 px-2 py-1.5 bg-blue-500/80 border-r border-blue-300/60">
@@ -391,7 +390,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                             </span>
                                           </div>
                                         ) : null}
-                                        
+
                                         {/* Status */}
                                         {sm ? (
                                           <div className={`flex-1 min-w-0 px-2 py-1.5 ${sm.bg} flex items-center justify-center gap-1 backdrop-blur-sm`}>
@@ -404,7 +403,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                           <div className="flex-1 px-2 py-1.5 bg-gray-100/50" />
                                         )}
                                       </div>
-                                      
+
                                       {/* From → To route row */}
                                       {(from || to) ? (
                                         <div className="flex items-center justify-between px-2 py-1.5 bg-gray-500/5 border-t border-blue-100/60 text-[10px] backdrop-blur-sm">
@@ -435,10 +434,10 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                 <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 pt-2 border-t border-gray-200/50">
                                   <span className="text-xs text-gray-400 mr-1">Status:</span>
                                   {[
-                                    { status: 'DELIVERED',  ...getStatusMeta('DELIVERED') },
+                                    { status: 'DELIVERED', ...getStatusMeta('DELIVERED') },
                                     { status: 'IN_TRANSIT', ...getStatusMeta('IN_TRANSIT') },
-                                    { status: 'PREPARING',  ...getStatusMeta('PREPARING') },
-                                    { status: 'PENDING',    ...getStatusMeta('PENDING') },
+                                    { status: 'PREPARING', ...getStatusMeta('PREPARING') },
+                                    { status: 'PENDING', ...getStatusMeta('PENDING') },
                                   ]
                                     .filter(s => deliveryReceipts.some(dr => parseRef(dr).status === s.status))
                                     .map(s => (
@@ -470,7 +469,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                   </span>
                                 </span>
                               </div>
-                              
+
                               {/* Sale Cards Grid */}
                               <div className="grid grid-cols-2 gap-3">
                                 {saleRefs.map((ref, j) => {
@@ -485,7 +484,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                             {label}
                                           </span>
                                         </div>
-                                        
+
                                         {/* Quantity */}
                                         {qty !== null ? (
                                           <div className="w-16 flex-shrink-0 px-2 py-1.5 bg-orange-500/80 border-r border-orange-300/60">
@@ -494,14 +493,13 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                             </span>
                                           </div>
                                         ) : null}
-                                        
+
                                         {/* Status */}
                                         {status ? (
-                                          <div className={`flex-1 min-w-0 px-2 py-1.5 ${
-                                            status === 'INVOICED' 
-                                              ? 'bg-purple-500/80' 
+                                          <div className={`flex-1 min-w-0 px-2 py-1.5 ${status === 'INVOICED'
+                                              ? 'bg-purple-500/80'
                                               : 'bg-yellow-400/80'
-                                          } flex items-center justify-center gap-1 backdrop-blur-sm`}>
+                                            } flex items-center justify-center gap-1 backdrop-blur-sm`}>
                                             <span className="text-xs font-bold text-white truncate">
                                               {status === 'INVOICED' ? '🧾 Invoiced' : '✅ Confirmed'}
                                             </span>
@@ -510,7 +508,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                           <div className="flex-1 px-2 py-1.5 bg-gray-100/50" />
                                         )}
                                       </div>
-                                      
+
                                       {/* Branch + Company info row */}
                                       {(branch || company) ? (
                                         <div className="flex items-center justify-between px-2 py-1.5 bg-gray-500/5 border-t border-orange-100/60 text-[10px] backdrop-blur-sm">
@@ -943,7 +941,7 @@ const InventoryRecordsManagement = () => {
     const newItem = {
       productId: selectedOption.parentProductId,
       variationId: selectedOption.variationId,
-      quantity: 1
+      quantity: ''
     };
 
     const newItems = [...formData.items, newItem];
@@ -1021,9 +1019,9 @@ const InventoryRecordsManagement = () => {
         return;
       }
     } else if (field === 'quantity') {
-      const newQuantity = parseInt(value) || 1;
+      const newQuantity = value === '' ? '' : parseInt(value) || 1;
 
-      if (formData.inventoryType !== 'STOCK_IN') {
+      if (newQuantity !== '' && formData.inventoryType !== 'STOCK_IN') {
         const item = newItems[index];
         const stockInfo = getItemStockInfo(index, item.productId, item.variationId);
         if (stockInfo) {

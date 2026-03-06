@@ -6,6 +6,8 @@ import LoadingOverlay from '../../components/common/LoadingOverlay';
 import RPQTableRow from './components/RPQTableRow';
 import RPQModal from './components/RPQModal';
 import RPQViewModal from './components/RPQViewModal';
+import Pagination from '../../../components/common/Pagination';
+
 
 const ProductQuotationManagement = ({ rpqRequests: initialRequests, onRefresh }) => {
     const [rpqRequests, setRpqRequests] = useState(initialRequests || []);
@@ -16,6 +18,8 @@ const ProductQuotationManagement = ({ rpqRequests: initialRequests, onRefresh })
     const [editingRpq, setEditingRpq] = useState(null);
     const [buttonLoading, setButtonLoading] = useState({});
     const [expandedRpqRows, setExpandedRpqRows] = useState({});
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(10);
 
     useEffect(() => {
         setRpqRequests(initialRequests || []);
@@ -70,6 +74,11 @@ const ProductQuotationManagement = ({ rpqRequests: initialRequests, onRefresh })
         req.productName?.toLowerCase().includes(searchRpq.toLowerCase())
     );
 
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentRpqRequests = filteredRpqRequests.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredRpqRequests.length / itemsPerPage);
+
     return (
         <div>
             <Toaster position="top-right" />
@@ -110,7 +119,7 @@ const ProductQuotationManagement = ({ rpqRequests: initialRequests, onRefresh })
                                     </td>
                                 </tr>
                             ) : (
-                                filteredRpqRequests.map((req) => (
+                                currentRpqRequests.map((req) => (
                                     <RPQTableRow
                                         key={req.id}
                                         req={req}
@@ -129,6 +138,19 @@ const ProductQuotationManagement = ({ rpqRequests: initialRequests, onRefresh })
                     </table>
                 </div>
             </div>
+
+            {filteredRpqRequests.length > 0 && (
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    onNextPage={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    onPrevPage={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    showingStart={indexOfFirstItem + 1}
+                    showingEnd={Math.min(indexOfLastItem, filteredRpqRequests.length)}
+                    totalItems={filteredRpqRequests.length}
+                />
+            )}
 
             {/* Modals */}
             {showRpqModal && (
