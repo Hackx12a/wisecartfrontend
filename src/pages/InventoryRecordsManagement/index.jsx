@@ -12,7 +12,7 @@ import usePagination from '../../hooks/ui/usePagination';
 import { getCurrentUser, isAdmin } from '../../utils/authUtils';
 import { api } from '../../services/api';
 
-// ─── Enterprise-Grade Delete Error Modal ────────────────────────────────
+// ─── Enterprise-Grade Delete Error Modal with Perfectly Aligned DR Cards ───
 const DeleteErrorModal = ({ message, onClose }) => {
   if (!message) return null;
 
@@ -26,7 +26,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
 
   lines.forEach(line => {
     if (line.includes('USED IN DELIVERIES')) { inDeliveries = true; inSales = false; return; }
-    if (line.includes('USED IN SALES')) { inSales = true; inDeliveries = false; return; }
+    if (line.includes('USED IN SALES'))      { inSales = true; inDeliveries = false; return; }
 
     if (inDeliveries || inSales) {
       if (line.trim().startsWith('•')) {
@@ -35,7 +35,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
       } else if (line.trim().startsWith('-') && currentKey) {
         const val = line.trim().replace(/^-\s*/, '').trim();
         if (inDeliveries) productMap[currentKey].deliveryReceipts.push(val);
-        if (inSales) productMap[currentKey].saleRefs.push(val);
+        if (inSales)      productMap[currentKey].saleRefs.push(val);
       }
     }
   });
@@ -173,18 +173,18 @@ const DeleteErrorModal = ({ message, onClose }) => {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
       {/* Premium backdrop with multi-layer blur */}
-      <div
+      <div 
         className="absolute inset-0 bg-gradient-to-br from-slate-900/70 via-slate-900/60 to-slate-900/70 backdrop-blur-md"
         onClick={onClose}
       />
-
+      
       {/* Modal with elevated design */}
       <div className="relative w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden rounded-2xl shadow-2xl shadow-slate-900/20">
-
+        
         {/* Glass background with subtle gradient */}
         <div className="absolute inset-0 bg-white/95 backdrop-blur-xl" />
         <div className="absolute inset-0 bg-gradient-to-br from-white via-white/95 to-slate-50/90" />
-
+        
         {/* Decorative top accent */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 via-amber-500 to-orange-500" />
 
@@ -230,7 +230,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
                   <span className="text-sm text-slate-600">affected</span>
                 </div>
               </div>
-
+              
               {totals.deliveryCount > 0 && (
                 <div className="bg-blue-50 rounded-xl p-3 border border-blue-200/50">
                   <div className="text-xs font-medium text-blue-600 uppercase tracking-wider mb-1">Deliveries</div>
@@ -241,7 +241,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
                   <div className="text-xs text-blue-600/80 mt-1">{totals.deliveryQty} units</div>
                 </div>
               )}
-
+              
               {totals.saleCount > 0 && (
                 <div className="bg-orange-50 rounded-xl p-3 border border-orange-200/50">
                   <div className="text-xs font-medium text-orange-600 uppercase tracking-wider mb-1">Sales</div>
@@ -252,7 +252,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
                   <div className="text-xs text-orange-600/80 mt-1">{totals.saleQty} units</div>
                 </div>
               )}
-
+              
               {totalBlockedQty > 0 && (
                 <div className="bg-rose-50 rounded-xl p-3 border border-rose-200/50">
                   <div className="text-xs font-medium text-rose-600 uppercase tracking-wider mb-1">Total Blocked</div>
@@ -273,7 +273,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
                   const theme = getConflictTheme(deliveryReceipts.length > 0, saleRefs.length > 0);
                   const productDrQty = deliveryReceipts.reduce((a, dr) => a + (parseRef(dr).qty ?? 0), 0);
                   const productSaleQty = saleRefs.reduce((a, r) => a + (parseRef(r).qty ?? 0), 0);
-
+                  
                   return (
                     <div
                       key={index}
@@ -319,7 +319,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
 
                       {/* Transactions Details */}
                       <div className="p-5 space-y-4">
-                        {/* Delivery Receipts */}
+                        {/* Delivery Receipts - PERFECTLY ALIGNED GRID */}
                         {deliveryReceipts.length > 0 && (
                           <div>
                             <div className="flex items-center justify-between mb-3">
@@ -335,37 +335,46 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                 {deliveryReceipts.length} item{deliveryReceipts.length !== 1 ? 's' : ''} · {productDrQty} units
                               </span>
                             </div>
-
-                            <div className="flex flex-wrap gap-2">
+                            
+                            {/* PERFECTLY ALIGNED DR CARDS - Fixed width grid */}
+                            <div className="grid grid-cols-2 gap-2">
                               {deliveryReceipts.map((dr, idx) => {
                                 const { label, qty, status } = parseRef(dr);
                                 const statusMeta = status ? getStatusMeta(status) : null;
-
+                                
                                 return (
                                   <div
                                     key={idx}
-                                    className="group/receipt relative"
+                                    className="group/receipt w-full"
                                   >
-                                    <div className="flex items-stretch bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow transition-all duration-200 overflow-hidden">
-                                      <span className="px-3 py-1.5 text-xs font-mono font-medium text-slate-700 bg-slate-50">
-                                        {label}
-                                      </span>
+                                    {/* Fixed width card with consistent layout */}
+                                    <div className="flex w-full bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow transition-all duration-200 overflow-hidden">
+                                      {/* DR Number - Fixed width */}
+                                      <div className="flex-none w-24 px-2 py-1.5 bg-slate-50 border-r border-slate-200">
+                                        <span className="block text-xs font-mono font-medium text-slate-700 truncate" title={label}>
+                                          {label}
+                                        </span>
+                                      </div>
+                                      
+                                      {/* Quantity - Fixed width */}
                                       {qty && (
                                         <>
-                                          <div className="w-px bg-slate-200" />
-                                          <span className="px-3 py-1.5 text-xs font-semibold text-slate-900 bg-white">
-                                            {qty} pcs
-                                          </span>
+                                          <div className="flex-none w-16 px-2 py-1.5 bg-white border-r border-slate-200">
+                                            <span className="block text-xs font-semibold text-slate-900 text-center">
+                                              {qty} pcs
+                                            </span>
+                                          </div>
                                         </>
                                       )}
+                                      
+                                      {/* Status - Takes remaining space */}
                                       {statusMeta && (
-                                        <>
-                                          <div className="w-px bg-slate-200" />
-                                          <span className={`px-3 py-1.5 text-xs font-medium ${statusMeta.bg} ${statusMeta.text} flex items-center gap-1.5`}>
-                                            <span className={`w-1.5 h-1.5 rounded-full ${statusMeta.dot}`} />
-                                            {statusMeta.label}
-                                          </span>
-                                        </>
+                                        <div className="flex-1 min-w-0 px-2 py-1.5 bg-white">
+                                          <div className={`flex items-center justify-center gap-1 text-xs font-medium ${statusMeta.text}`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${statusMeta.dot} flex-shrink-0`} />
+                                            <span className="truncate">{statusMeta.label}</span>
+                                          </div>
+                                        </div>
                                       )}
                                     </div>
                                   </div>
@@ -378,7 +387,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
                               <div className="flex items-center gap-3 mt-3 pt-2 border-t border-slate-100">
                                 <span className="text-xs text-slate-400">Status:</span>
                                 {Object.entries(statusConfig)
-                                  .filter(([status]) =>
+                                  .filter(([status]) => 
                                     deliveryReceipts.some(dr => parseRef(dr).status === status)
                                   )
                                   .map(([status, config]) => (
@@ -393,7 +402,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
                           </div>
                         )}
 
-                        {/* Sales */}
+                        {/* Sales - PERFECTLY ALIGNED GRID */}
                         {saleRefs.length > 0 && (
                           <div>
                             <div className="flex items-center justify-between mb-3">
@@ -409,26 +418,34 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                 {saleRefs.length} item{saleRefs.length !== 1 ? 's' : ''} · {productSaleQty} units
                               </span>
                             </div>
-
-                            <div className="flex flex-wrap gap-2">
+                            
+                            {/* PERFECTLY ALIGNED SALE CARDS - Fixed width grid */}
+                            <div className="grid grid-cols-2 gap-2">
                               {saleRefs.map((ref, idx) => {
                                 const { label, qty } = parseRef(ref);
                                 return (
                                   <div
                                     key={idx}
-                                    className="flex items-stretch bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden"
+                                    className="group/receipt w-full"
                                   >
-                                    <span className="px-3 py-1.5 text-xs font-mono font-medium text-slate-700 bg-slate-50">
-                                      {label}
-                                    </span>
-                                    {qty && (
-                                      <>
-                                        <div className="w-px bg-slate-200" />
-                                        <span className="px-3 py-1.5 text-xs font-semibold text-slate-900">
-                                          {qty} pcs
+                                    {/* Fixed width card with consistent layout */}
+                                    <div className="flex w-full bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+                                      {/* Reference Number - Fixed width */}
+                                      <div className="flex-none w-24 px-2 py-1.5 bg-slate-50 border-r border-slate-200">
+                                        <span className="block text-xs font-mono font-medium text-slate-700 truncate" title={label}>
+                                          {label}
                                         </span>
-                                      </>
-                                    )}
+                                      </div>
+                                      
+                                      {/* Quantity - Takes remaining space */}
+                                      {qty && (
+                                        <div className="flex-1 px-2 py-1.5 bg-white">
+                                          <span className="block text-xs font-semibold text-slate-900 text-center">
+                                            {qty} pcs
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 );
                               })}
@@ -449,8 +466,8 @@ const DeleteErrorModal = ({ message, onClose }) => {
                     <div>
                       <h4 className="font-semibold text-amber-900 mb-1">Required Actions</h4>
                       <p className="text-sm text-amber-800/90 leading-relaxed">
-                        Before deleting this inventory record, you must void or cancel all associated
-                        delivery receipts and sales orders. Once all transactions are voided, the stock
+                        Before deleting this inventory record, you must void or cancel all associated 
+                        delivery receipts and sales orders. Once all transactions are voided, the stock 
                         will be released and you can safely delete this record.
                       </p>
                       <div className="flex items-center gap-4 mt-3 text-xs text-amber-700">
