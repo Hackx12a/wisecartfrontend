@@ -12,11 +12,12 @@ import usePagination from '../../hooks/ui/usePagination';
 import { getCurrentUser, isAdmin } from '../../utils/authUtils';
 import { api } from '../../services/api';
 
-// ─── Fixed Delete Error Modal with Perfect Transparency ─────────────────────
+// ─── Fixed Delete Error Modal with Collapsible Product Cards ─────────────────────
 const DeleteErrorModal = ({ message, onClose }) => {
   if (!message) return null;
 
   const lines = message.split('\n');
+  const [expandedProducts, setExpandedProducts] = useState({});
 
   // Parse into product → { deliveryReceipts[], saleRefs[] }
   const productMap = {};
@@ -42,6 +43,28 @@ const DeleteErrorModal = ({ message, onClose }) => {
 
   const products = Object.entries(productMap);
   const hasStructuredData = products.length > 0;
+
+  // Toggle product expansion
+  const toggleProduct = (productIndex) => {
+    setExpandedProducts(prev => ({
+      ...prev,
+      [productIndex]: !prev[productIndex]
+    }));
+  };
+
+  // Expand all products
+  const expandAll = () => {
+    const allExpanded = {};
+    products.forEach((_, index) => {
+      allExpanded[index] = true;
+    });
+    setExpandedProducts(allExpanded);
+  };
+
+  // Collapse all products
+  const collapseAll = () => {
+    setExpandedProducts({});
+  };
 
   /**
    * Parses the encoded ref string into a structured object.
@@ -166,6 +189,9 @@ const DeleteErrorModal = ({ message, onClose }) => {
   const totalSaleQty       = products.reduce((s, [, v]) => s + v.saleRefs.reduce((a, r)  => a + (parseRef(r).qty  ?? 0), 0), 0);
   const grandTotalQty      = totalDeliveryQty + totalSaleQty;
 
+  // Check if any products are expanded
+  const hasExpanded = Object.values(expandedProducts).some(v => v === true);
+
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop with gradient transparency */}
@@ -209,29 +235,51 @@ const DeleteErrorModal = ({ message, onClose }) => {
             </button>
           </div>
 
-          {/* ── Summary pills with transparency ── */}
-          <div className="flex items-center gap-3 px-6 py-3 bg-gray-500/5 border-b border-gray-200/50 flex-shrink-0 flex-wrap backdrop-blur-sm">
-            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide mr-1">Conflicts:</span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/70 border border-gray-200/60 rounded-full text-xs font-semibold text-gray-700 shadow-sm backdrop-blur-sm">
-              <span className="w-2 h-2 rounded-full bg-gray-400 inline-block" />
-              {products.length} product{products.length !== 1 ? 's' : ''}
-            </span>
-            {totalDeliveries > 0 && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-500/10 border border-blue-200/60 rounded-full text-xs font-semibold text-blue-700 shadow-sm backdrop-blur-sm">
-                <Package size={11} />
-                {totalDeliveries} DR{totalDeliveries !== 1 ? 's' : ''} · {totalDeliveryQty} pcs
+          {/* ── Summary pills with expand/collapse controls ── */}
+          <div className="flex items-center justify-between px-6 py-3 bg-gray-500/5 border-b border-gray-200/50 flex-shrink-0 backdrop-blur-sm">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide mr-1">Conflicts:</span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/70 border border-gray-200/60 rounded-full text-xs font-semibold text-gray-700 shadow-sm backdrop-blur-sm">
+                <span className="w-2 h-2 rounded-full bg-gray-400 inline-block" />
+                {products.length} product{products.length !== 1 ? 's' : ''}
               </span>
-            )}
-            {totalSales > 0 && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-500/10 border border-orange-200/60 rounded-full text-xs font-semibold text-orange-700 shadow-sm backdrop-blur-sm">
-                <ShoppingCart size={11} />
-                {totalSales} sale{totalSales !== 1 ? 's' : ''} · {totalSaleQty} pcs
-              </span>
-            )}
-            {grandTotalQty > 0 && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-500/10 border border-red-300/60 rounded-full text-xs font-bold text-red-700 shadow-sm ml-auto backdrop-blur-sm">
-                Total blocked: {grandTotalQty} pcs
-              </span>
+              {totalDeliveries > 0 && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-500/10 border border-blue-200/60 rounded-full text-xs font-semibold text-blue-700 shadow-sm backdrop-blur-sm">
+                  <Package size={11} />
+                  {totalDeliveries} DR{totalDeliveries !== 1 ? 's' : ''} · {totalDeliveryQty} pcs
+                </span>
+              )}
+              {totalSales > 0 && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-500/10 border border-orange-200/60 rounded-full text-xs font-semibold text-orange-700 shadow-sm backdrop-blur-sm">
+                  <ShoppingCart size={11} />
+                  {totalSales} sale{totalSales !== 1 ? 's' : ''} · {totalSaleQty} pcs
+                </span>
+              )}
+              {grandTotalQty > 0 && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-500/10 border border-red-300/60 rounded-full text-xs font-bold text-red-700 shadow-sm backdrop-blur-sm">
+                  Total blocked: {grandTotalQty} pcs
+                </span>
+              )}
+            </div>
+            
+            {/* Expand/Collapse Controls */}
+            {products.length > 0 && (
+              <div className="flex items-center gap-2 ml-4">
+                <button
+                  onClick={expandAll}
+                  className="px-3 py-1 text-xs font-medium text-gray-600 bg-white/70 border border-gray-200/60 rounded-full hover:bg-white/90 transition-colors backdrop-blur-sm flex items-center gap-1"
+                  title="Expand all products"
+                >
+                  <span>▼</span> Expand All
+                </button>
+                <button
+                  onClick={collapseAll}
+                  className="px-3 py-1 text-xs font-medium text-gray-600 bg-white/70 border border-gray-200/60 rounded-full hover:bg-white/90 transition-colors backdrop-blur-sm flex items-center gap-1"
+                  title="Collapse all products"
+                >
+                  <span>▶</span> Collapse All
+                </button>
+              </div>
             )}
           </div>
 
@@ -244,22 +292,49 @@ const DeleteErrorModal = ({ message, onClose }) => {
                   const productDrQty   = deliveryReceipts.reduce((a, dr) => a + (parseRef(dr).qty ?? 0), 0);
                   const productSaleQty = saleRefs.reduce((a, r) => a + (parseRef(r).qty ?? 0), 0);
                   const productTotalQty = productDrQty + productSaleQty;
+                  const isExpanded = expandedProducts[i] || false;
                   
                   return (
                     <div
                       key={i}
-                      className={`rounded-xl border-2 ${meta.borderColor} overflow-hidden shadow-sm backdrop-blur-sm bg-white/80`}
+                      className={`rounded-xl border-2 ${meta.borderColor} overflow-hidden shadow-sm backdrop-blur-sm bg-white/80 transition-all duration-200`}
                     >
-                      {/* Product header row with transparency */}
-                      <div className={`flex items-center gap-3 px-4 py-3 ${meta.headerBg} ${meta.headerBorder} backdrop-blur-sm`}>
+                      {/* Product header row - Clickable */}
+                      <div 
+                        className={`flex items-center gap-3 px-4 py-3 ${meta.headerBg} ${meta.headerBorder} backdrop-blur-sm cursor-pointer hover:brightness-95 transition-all duration-200`}
+                        onClick={() => toggleProduct(i)}
+                      >
                         <div className={`w-1 h-8 rounded-full ${meta.leftBar} flex-shrink-0`} />
+                        
+                        {/* Expand/collapse icon */}
+                        <span className="text-xs font-mono text-gray-500 w-5">
+                          {isExpanded ? '▼' : '▶'}
+                        </span>
+                        
                         <span className="text-base">{meta.icon}</span>
                         <span className={`font-semibold text-sm flex-1 min-w-0 truncate ${meta.titleColor}`}>
                           {productName}
                         </span>
+                        
+                        {/* Quick stats - always visible */}
+                        <div className="flex items-center gap-2">
+                          {deliveryReceipts.length > 0 && (
+                            <span className="flex items-center gap-1 text-xs bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-200/60">
+                              <Package size={10} className="text-blue-600" />
+                              <span className="text-blue-700">{deliveryReceipts.length}</span>
+                            </span>
+                          )}
+                          {saleRefs.length > 0 && (
+                            <span className="flex items-center gap-1 text-xs bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-200/60">
+                              <ShoppingCart size={10} className="text-orange-600" />
+                              <span className="text-orange-700">{saleRefs.length}</span>
+                            </span>
+                          )}
+                        </div>
+                        
                         {productTotalQty > 0 && (
                           <span className="flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full bg-white/80 border border-gray-300/60 text-gray-700 mr-1 backdrop-blur-sm">
-                            {productTotalQty} pcs total
+                            {productTotalQty} pcs
                           </span>
                         )}
                         <span className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full ${meta.labelBg} backdrop-blur-sm`}>
@@ -267,204 +342,209 @@ const DeleteErrorModal = ({ message, onClose }) => {
                         </span>
                       </div>
 
-                      {/* Conflict detail rows */}
-                      <div className="px-4 py-3 bg-white/60 backdrop-blur-sm space-y-4">
-
-                        {/* ── Delivery receipts with status badges and route info ── */}
-                        {deliveryReceipts.length > 0 && (
-                          <div>
-                            <div className="flex items-center gap-1.5 mb-3">
-                              <Package size={12} className="text-blue-500/90 flex-shrink-0" />
-                              <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
-                                Delivery Receipt{deliveryReceipts.length !== 1 ? 's' : ''}
-                              </span>
-                              <span className="ml-auto flex items-center gap-1.5">
-                                <span className="bg-blue-500/10 border border-blue-200/60 text-blue-600 text-xs font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm">
-                                  {productDrQty} pcs
+                      {/* Collapsible content */}
+                      <div 
+                        className={`transition-all duration-300 ease-in-out ${
+                          isExpanded ? 'opacity-100 max-h-[2000px]' : 'opacity-0 max-h-0 overflow-hidden'
+                        }`}
+                      >
+                        <div className="px-4 py-3 bg-white/60 backdrop-blur-sm space-y-4">
+                          {/* ── Delivery receipts with status badges and route info ── */}
+                          {deliveryReceipts.length > 0 && (
+                            <div>
+                              <div className="flex items-center gap-1.5 mb-3">
+                                <Package size={12} className="text-blue-500/90 flex-shrink-0" />
+                                <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
+                                  Delivery Receipt{deliveryReceipts.length !== 1 ? 's' : ''}
                                 </span>
-                                <span className="bg-blue-500/20 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
-                                  {deliveryReceipts.length} DR{deliveryReceipts.length !== 1 ? 's' : ''}
+                                <span className="ml-auto flex items-center gap-1.5">
+                                  <span className="bg-blue-500/10 border border-blue-200/60 text-blue-600 text-xs font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm">
+                                    {productDrQty} pcs
+                                  </span>
+                                  <span className="bg-blue-500/20 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
+                                    {deliveryReceipts.length} DR{deliveryReceipts.length !== 1 ? 's' : ''}
+                                  </span>
                                 </span>
-                              </span>
-                            </div>
-                            
-                            {/* Delivery Cards Grid */}
-                            <div className="grid grid-cols-2 gap-3">
-                              {deliveryReceipts.map((dr, j) => {
-                                const { label, qty, status, from, to } = parseRef(dr);
-                                const sm = status ? getStatusMeta(status) : null;
-                                return (
-                                  <div key={j} className="flex flex-col bg-white/70 backdrop-blur-sm rounded-lg border border-blue-200/60 shadow-sm overflow-hidden h-full">
-                                    {/* Main pill row */}
-                                    <div className="flex w-full">
-                                      {/* DR number */}
-                                      <div className="w-24 flex-shrink-0 px-2 py-1.5 bg-blue-500/10 border-r border-blue-200/60">
-                                        <span className="block text-xs font-mono font-medium text-blue-800 truncate" title={label}>
-                                          {label}
-                                        </span>
-                                      </div>
-                                      
-                                      {/* Quantity */}
-                                      {qty !== null ? (
-                                        <div className="w-16 flex-shrink-0 px-2 py-1.5 bg-blue-500/80 border-r border-blue-300/60">
-                                          <span className="block text-xs font-bold text-white text-center">
-                                            {qty} pcs
-                                          </span>
-                                        </div>
-                                      ) : null}
-                                      
-                                      {/* Status */}
-                                      {sm ? (
-                                        <div className={`flex-1 min-w-0 px-2 py-1.5 ${sm.bg} flex items-center justify-center gap-1 backdrop-blur-sm`}>
-                                          <span>{sm.icon}</span>
-                                          <span className={`text-xs font-bold truncate ${sm.text}`}>
-                                            {sm.label}
-                                          </span>
-                                        </div>
-                                      ) : (
-                                        <div className="flex-1 px-2 py-1.5 bg-gray-100/50" />
-                                      )}
-                                    </div>
-                                    
-                                    {/* From → To route row */}
-                                    {(from || to) ? (
-                                      <div className="flex items-center justify-between px-2 py-1.5 bg-gray-500/5 border-t border-blue-100/60 text-[10px] backdrop-blur-sm">
-                                        <div className="flex items-center gap-1 min-w-0 flex-1">
-                                          <span className="text-blue-400/90 flex-shrink-0">🏭</span>
-                                          <span className="font-medium text-blue-700/90 truncate" title={from || ''}>
-                                            {from || 'Unknown'}
-                                          </span>
-                                        </div>
-                                        <span className="text-gray-400/70 flex-shrink-0 mx-1">→</span>
-                                        <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
-                                          <span className="font-medium text-green-700/90 truncate" title={to || ''}>
-                                            {to || 'Unknown'}
-                                          </span>
-                                          <span className="text-green-400/90 flex-shrink-0">🏪</span>
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <div className="h-[34px] bg-white/30 border-t border-blue-100/60" />
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-
-                            {/* Status legend */}
-                            {[...new Set(deliveryReceipts.map(dr => parseRef(dr).status).filter(Boolean))].length > 1 && (
-                              <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 pt-2 border-t border-gray-200/50">
-                                <span className="text-xs text-gray-400 mr-1">Status:</span>
-                                {[
-                                  { status: 'DELIVERED',  ...getStatusMeta('DELIVERED') },
-                                  { status: 'IN_TRANSIT', ...getStatusMeta('IN_TRANSIT') },
-                                  { status: 'PREPARING',  ...getStatusMeta('PREPARING') },
-                                  { status: 'PENDING',    ...getStatusMeta('PENDING') },
-                                ]
-                                  .filter(s => deliveryReceipts.some(dr => parseRef(dr).status === s.status))
-                                  .map(s => (
-                                    <span key={s.status} className="inline-flex items-center gap-1 text-xs text-gray-500">
-                                      <span className={`w-2 h-2 rounded-full inline-block ${s.bg.replace('/90', '')}`} />
-                                      {s.icon} {s.label}
-                                    </span>
-                                  ))
-                                }
                               </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* ── Sales with branch and company info ── */}
-                        {saleRefs.length > 0 && (
-                          <div>
-                            <div className="flex items-center gap-1.5 mb-3">
-                              <ShoppingCart size={12} className="text-orange-500/90 flex-shrink-0" />
-                              <span className="text-xs font-semibold text-orange-600 uppercase tracking-wide">
-                                Sale Reference{saleRefs.length !== 1 ? 's' : ''}
-                              </span>
-                              <span className="ml-auto flex items-center gap-1.5">
-                                <span className="bg-orange-500/10 border border-orange-200/60 text-orange-600 text-xs font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm">
-                                  {productSaleQty} pcs
-                                </span>
-                                <span className="bg-orange-500/20 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
-                                  {saleRefs.length} sale{saleRefs.length !== 1 ? 's' : ''}
-                                </span>
-                              </span>
-                            </div>
-                            
-                            {/* Sale Cards Grid */}
-                            <div className="grid grid-cols-2 gap-3">
-                              {saleRefs.map((ref, j) => {
-                                const { label, qty, status, branch, company } = parseRef(ref);
-                                return (
-                                  <div key={j} className="flex flex-col bg-white/70 backdrop-blur-sm rounded-lg border border-orange-200/60 shadow-sm overflow-hidden h-full">
-                                    {/* Main pill row */}
-                                    <div className="flex w-full">
-                                      {/* Reference number */}
-                                      <div className="w-24 flex-shrink-0 px-2 py-1.5 bg-orange-500/10 border-r border-orange-200/60">
-                                        <span className="block text-xs font-mono font-medium text-orange-800 truncate" title={label}>
-                                          {label}
-                                        </span>
-                                      </div>
-                                      
-                                      {/* Quantity */}
-                                      {qty !== null ? (
-                                        <div className="w-16 flex-shrink-0 px-2 py-1.5 bg-orange-500/80 border-r border-orange-300/60">
-                                          <span className="block text-xs font-bold text-white text-center">
-                                            {qty} pcs
+                              
+                              {/* Delivery Cards Grid */}
+                              <div className="grid grid-cols-2 gap-3">
+                                {deliveryReceipts.map((dr, j) => {
+                                  const { label, qty, status, from, to } = parseRef(dr);
+                                  const sm = status ? getStatusMeta(status) : null;
+                                  return (
+                                    <div key={j} className="flex flex-col bg-white/70 backdrop-blur-sm rounded-lg border border-blue-200/60 shadow-sm overflow-hidden h-full">
+                                      {/* Main pill row */}
+                                      <div className="flex w-full">
+                                        {/* DR number */}
+                                        <div className="w-24 flex-shrink-0 px-2 py-1.5 bg-blue-500/10 border-r border-blue-200/60">
+                                          <span className="block text-xs font-mono font-medium text-blue-800 truncate" title={label}>
+                                            {label}
                                           </span>
                                         </div>
-                                      ) : null}
+                                        
+                                        {/* Quantity */}
+                                        {qty !== null ? (
+                                          <div className="w-16 flex-shrink-0 px-2 py-1.5 bg-blue-500/80 border-r border-blue-300/60">
+                                            <span className="block text-xs font-bold text-white text-center">
+                                              {qty} pcs
+                                            </span>
+                                          </div>
+                                        ) : null}
+                                        
+                                        {/* Status */}
+                                        {sm ? (
+                                          <div className={`flex-1 min-w-0 px-2 py-1.5 ${sm.bg} flex items-center justify-center gap-1 backdrop-blur-sm`}>
+                                            <span>{sm.icon}</span>
+                                            <span className={`text-xs font-bold truncate ${sm.text}`}>
+                                              {sm.label}
+                                            </span>
+                                          </div>
+                                        ) : (
+                                          <div className="flex-1 px-2 py-1.5 bg-gray-100/50" />
+                                        )}
+                                      </div>
                                       
-                                      {/* Status */}
-                                      {status ? (
-                                        <div className={`flex-1 min-w-0 px-2 py-1.5 ${
-                                          status === 'INVOICED' 
-                                            ? 'bg-purple-500/80' 
-                                            : 'bg-yellow-400/80'
-                                        } flex items-center justify-center gap-1 backdrop-blur-sm`}>
-                                          <span className="text-xs font-bold text-white truncate">
-                                            {status === 'INVOICED' ? '🧾 Invoiced' : '✅ Confirmed'}
-                                          </span>
+                                      {/* From → To route row */}
+                                      {(from || to) ? (
+                                        <div className="flex items-center justify-between px-2 py-1.5 bg-gray-500/5 border-t border-blue-100/60 text-[10px] backdrop-blur-sm">
+                                          <div className="flex items-center gap-1 min-w-0 flex-1">
+                                            <span className="text-blue-400/90 flex-shrink-0">🏭</span>
+                                            <span className="font-medium text-blue-700/90 truncate" title={from || ''}>
+                                              {from || 'Unknown'}
+                                            </span>
+                                          </div>
+                                          <span className="text-gray-400/70 flex-shrink-0 mx-1">→</span>
+                                          <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
+                                            <span className="font-medium text-green-700/90 truncate" title={to || ''}>
+                                              {to || 'Unknown'}
+                                            </span>
+                                            <span className="text-green-400/90 flex-shrink-0">🏪</span>
+                                          </div>
                                         </div>
                                       ) : (
-                                        <div className="flex-1 px-2 py-1.5 bg-gray-100/50" />
+                                        <div className="h-[34px] bg-white/30 border-t border-blue-100/60" />
                                       )}
                                     </div>
-                                    
-                                    {/* Branch + Company info row */}
-                                    {(branch || company) ? (
-                                      <div className="flex items-center justify-between px-2 py-1.5 bg-gray-500/5 border-t border-orange-100/60 text-[10px] backdrop-blur-sm">
-                                        {branch && (
-                                          <div className="flex items-center gap-1 min-w-0 flex-1">
-                                            <span className="text-orange-400/90 flex-shrink-0">🏪</span>
-                                            <span className="font-medium text-orange-700/90 truncate" title={branch}>
-                                              {branch}
-                                            </span>
-                                          </div>
-                                        )}
-                                        {branch && company && (
-                                          <span className="text-gray-300/70 flex-shrink-0 mx-1">·</span>
-                                        )}
-                                        {company && (
-                                          <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
-                                            <span className="font-medium text-gray-600/90 truncate" title={company}>
-                                              {company}
-                                            </span>
-                                            <span className="text-gray-400/90 flex-shrink-0">🏢</span>
-                                          </div>
-                                        )}
-                                        {(!branch || !company) && <div className="flex-1" />}
-                                      </div>
-                                    ) : (
-                                      <div className="h-[34px] bg-white/30 border-t border-orange-100/60" />
-                                    )}
-                                  </div>
-                                );
-                              })}
+                                  );
+                                })}
+                              </div>
+
+                              {/* Status legend */}
+                              {[...new Set(deliveryReceipts.map(dr => parseRef(dr).status).filter(Boolean))].length > 1 && (
+                                <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 pt-2 border-t border-gray-200/50">
+                                  <span className="text-xs text-gray-400 mr-1">Status:</span>
+                                  {[
+                                    { status: 'DELIVERED',  ...getStatusMeta('DELIVERED') },
+                                    { status: 'IN_TRANSIT', ...getStatusMeta('IN_TRANSIT') },
+                                    { status: 'PREPARING',  ...getStatusMeta('PREPARING') },
+                                    { status: 'PENDING',    ...getStatusMeta('PENDING') },
+                                  ]
+                                    .filter(s => deliveryReceipts.some(dr => parseRef(dr).status === s.status))
+                                    .map(s => (
+                                      <span key={s.status} className="inline-flex items-center gap-1 text-xs text-gray-500">
+                                        <span className={`w-2 h-2 rounded-full inline-block ${s.bg.replace('/90', '')}`} />
+                                        {s.icon} {s.label}
+                                      </span>
+                                    ))
+                                  }
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        )}
+                          )}
+
+                          {/* ── Sales with branch and company info ── */}
+                          {saleRefs.length > 0 && (
+                            <div>
+                              <div className="flex items-center gap-1.5 mb-3">
+                                <ShoppingCart size={12} className="text-orange-500/90 flex-shrink-0" />
+                                <span className="text-xs font-semibold text-orange-600 uppercase tracking-wide">
+                                  Sale Reference{saleRefs.length !== 1 ? 's' : ''}
+                                </span>
+                                <span className="ml-auto flex items-center gap-1.5">
+                                  <span className="bg-orange-500/10 border border-orange-200/60 text-orange-600 text-xs font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm">
+                                    {productSaleQty} pcs
+                                  </span>
+                                  <span className="bg-orange-500/20 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
+                                    {saleRefs.length} sale{saleRefs.length !== 1 ? 's' : ''}
+                                  </span>
+                                </span>
+                              </div>
+                              
+                              {/* Sale Cards Grid */}
+                              <div className="grid grid-cols-2 gap-3">
+                                {saleRefs.map((ref, j) => {
+                                  const { label, qty, status, branch, company } = parseRef(ref);
+                                  return (
+                                    <div key={j} className="flex flex-col bg-white/70 backdrop-blur-sm rounded-lg border border-orange-200/60 shadow-sm overflow-hidden h-full">
+                                      {/* Main pill row */}
+                                      <div className="flex w-full">
+                                        {/* Reference number */}
+                                        <div className="w-24 flex-shrink-0 px-2 py-1.5 bg-orange-500/10 border-r border-orange-200/60">
+                                          <span className="block text-xs font-mono font-medium text-orange-800 truncate" title={label}>
+                                            {label}
+                                          </span>
+                                        </div>
+                                        
+                                        {/* Quantity */}
+                                        {qty !== null ? (
+                                          <div className="w-16 flex-shrink-0 px-2 py-1.5 bg-orange-500/80 border-r border-orange-300/60">
+                                            <span className="block text-xs font-bold text-white text-center">
+                                              {qty} pcs
+                                            </span>
+                                          </div>
+                                        ) : null}
+                                        
+                                        {/* Status */}
+                                        {status ? (
+                                          <div className={`flex-1 min-w-0 px-2 py-1.5 ${
+                                            status === 'INVOICED' 
+                                              ? 'bg-purple-500/80' 
+                                              : 'bg-yellow-400/80'
+                                          } flex items-center justify-center gap-1 backdrop-blur-sm`}>
+                                            <span className="text-xs font-bold text-white truncate">
+                                              {status === 'INVOICED' ? '🧾 Invoiced' : '✅ Confirmed'}
+                                            </span>
+                                          </div>
+                                        ) : (
+                                          <div className="flex-1 px-2 py-1.5 bg-gray-100/50" />
+                                        )}
+                                      </div>
+                                      
+                                      {/* Branch + Company info row */}
+                                      {(branch || company) ? (
+                                        <div className="flex items-center justify-between px-2 py-1.5 bg-gray-500/5 border-t border-orange-100/60 text-[10px] backdrop-blur-sm">
+                                          {branch && (
+                                            <div className="flex items-center gap-1 min-w-0 flex-1">
+                                              <span className="text-orange-400/90 flex-shrink-0">🏪</span>
+                                              <span className="font-medium text-orange-700/90 truncate" title={branch}>
+                                                {branch}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {branch && company && (
+                                            <span className="text-gray-300/70 flex-shrink-0 mx-1">·</span>
+                                          )}
+                                          {company && (
+                                            <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
+                                              <span className="font-medium text-gray-600/90 truncate" title={company}>
+                                                {company}
+                                              </span>
+                                              <span className="text-gray-400/90 flex-shrink-0">🏢</span>
+                                            </div>
+                                          )}
+                                          {(!branch || !company) && <div className="flex-1" />}
+                                        </div>
+                                      ) : (
+                                        <div className="h-[34px] bg-white/30 border-t border-orange-100/60" />
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
