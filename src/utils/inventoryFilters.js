@@ -2,6 +2,11 @@ import { parseDate } from './dateUtils';
 
 export const filterProductSummaries = (productSummaries, productSearchTerm, showVariationFilter) => {
   return productSummaries.filter(product => {
+    // Hide parent product row if it has no SKU and no UPC (meaning it only exists as variations)
+    const hasNoSku = !product.sku || product.sku === 'N/A';
+    const hasNoUpc = !product.upc || product.upc === 'N/A';
+    const isVariation = product.isVariation === true || !!product.variationId;
+    if (hasNoSku && hasNoUpc && !isVariation) return false;
     const searchLower = productSearchTerm.toLowerCase();
     const matchesSearch =
       product.productName?.toLowerCase().includes(searchLower) ||
@@ -11,7 +16,6 @@ export const filterProductSummaries = (productSummaries, productSearchTerm, show
       (product.variationName && product.variationName.toLowerCase().includes(searchLower)) ||
       (product.combinationDisplay && product.combinationDisplay.toLowerCase().includes(searchLower));
 
-    const isVariation = product.isVariation === true || product.variationId;
     const matchesVariationFilter =
       showVariationFilter === 'ALL' ||
       (showVariationFilter === 'BASE_ONLY' && !isVariation) ||
