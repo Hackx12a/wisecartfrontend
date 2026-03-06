@@ -12,7 +12,7 @@ import usePagination from '../../hooks/ui/usePagination';
 import { getCurrentUser, isAdmin } from '../../utils/authUtils';
 import { api } from '../../services/api';
 
-// ─── Fixed Delete Error Modal with Perfect Alignment ─────────────────────
+// ─── Fixed Delete Error Modal with Perfect Transparency ─────────────────────
 const DeleteErrorModal = ({ message, onClose }) => {
   if (!message) return null;
 
@@ -85,7 +85,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
     switch (status) {
       case 'DELIVERED':
         return {
-          bg: 'bg-green-500',
+          bg: 'bg-green-500/90',
           text: 'text-white',
           border: 'border-green-400',
           icon: '✅',
@@ -93,7 +93,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
         };
       case 'IN_TRANSIT':
         return {
-          bg: 'bg-yellow-400',
+          bg: 'bg-yellow-400/90',
           text: 'text-yellow-900',
           border: 'border-yellow-300',
           icon: '🚚',
@@ -101,7 +101,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
         };
       case 'PREPARING':
         return {
-          bg: 'bg-blue-400',
+          bg: 'bg-blue-400/90',
           text: 'text-white',
           border: 'border-blue-300',
           icon: '📋',
@@ -109,7 +109,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
         };
       case 'PENDING':
         return {
-          bg: 'bg-gray-400',
+          bg: 'bg-gray-400/90',
           text: 'text-white',
           border: 'border-gray-300',
           icon: '⏳',
@@ -117,7 +117,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
         };
       default:
         return {
-          bg: 'bg-gray-300',
+          bg: 'bg-gray-300/90',
           text: 'text-gray-800',
           border: 'border-gray-200',
           icon: '📦',
@@ -126,37 +126,37 @@ const DeleteErrorModal = ({ message, onClose }) => {
     }
   };
 
-  // Color scheme per conflict type
+  // Color scheme per conflict type with transparency
   const getConflictMeta = (hasDelivery, hasSale) => {
     if (hasDelivery && hasSale) return {
-      borderColor: 'border-red-400',
-      headerBg:    'bg-red-50',
-      headerBorder:'border-b border-red-200',
-      leftBar:     'bg-red-500',
+      borderColor: 'border-red-400/70',
+      headerBg:    'bg-red-50/80',
+      headerBorder:'border-b border-red-200/70',
+      leftBar:     'bg-red-500/80',
       titleColor:  'text-red-900',
       icon:        '⚠️',
       label:       'Delivery + Sale Conflict',
-      labelBg:     'bg-red-100 text-red-700',
+      labelBg:     'bg-red-100/80 text-red-700',
     };
     if (hasDelivery) return {
-      borderColor: 'border-blue-400',
-      headerBg:    'bg-blue-50',
-      headerBorder:'border-b border-blue-200',
-      leftBar:     'bg-blue-500',
+      borderColor: 'border-blue-400/70',
+      headerBg:    'bg-blue-50/80',
+      headerBorder:'border-b border-blue-200/70',
+      leftBar:     'bg-blue-500/80',
       titleColor:  'text-blue-900',
       icon:        '📦',
       label:       'Delivery Conflict',
-      labelBg:     'bg-blue-100 text-blue-700',
+      labelBg:     'bg-blue-100/80 text-blue-700',
     };
     return {
-      borderColor: 'border-orange-400',
-      headerBg:    'bg-orange-50',
-      headerBorder:'border-b border-orange-200',
-      leftBar:     'bg-orange-500',
+      borderColor: 'border-orange-400/70',
+      headerBg:    'bg-orange-50/80',
+      headerBorder:'border-b border-orange-200/70',
+      leftBar:     'bg-orange-500/80',
       titleColor:  'text-orange-900',
       icon:        '🛒',
       label:       'Sale Conflict',
-      labelBg:     'bg-orange-100 text-orange-700',
+      labelBg:     'bg-orange-100/80 text-orange-700',
     };
   };
 
@@ -168,319 +168,331 @@ const DeleteErrorModal = ({ message, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black bg-opacity-60 backdrop-blur-sm" onClick={onClose} />
+      {/* Backdrop with gradient transparency */}
+      <div 
+        className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/60 backdrop-blur-md"
+        onClick={onClose}
+      />
 
-      {/* Modal - Increased width for better spacing */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden border border-red-200">
+      {/* Modal with glass morphism effect */}
+      <div className="relative w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden rounded-2xl shadow-2xl shadow-black/25">
+        
+        {/* Glass background layers */}
+        <div className="absolute inset-0 bg-white/90 backdrop-blur-xl" />
+        <div className="absolute inset-0 bg-gradient-to-br from-white/80 via-white/90 to-white/80" />
+        
+        {/* Subtle border with transparency */}
+        <div className="absolute inset-0 border border-white/30 rounded-2xl pointer-events-none" />
+        
+        {/* Top accent with gradient */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500/70 via-amber-500/70 to-orange-500/70" />
 
-        {/* ── Header ── */}
-        <div className="flex items-center gap-3 px-6 py-5 bg-red-50 border-b border-red-100 flex-shrink-0">
-          <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-            <AlertTriangle size={20} className="text-red-600" />
+        {/* Content container */}
+        <div className="relative flex flex-col max-h-[90vh]">
+
+          {/* ── Header with transparency ── */}
+          <div className="flex items-center gap-3 px-6 py-5 bg-red-500/10 border-b border-red-200/50 flex-shrink-0 backdrop-blur-sm">
+            <div className="flex-shrink-0 w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+              <AlertTriangle size={20} className="text-red-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg font-bold text-red-800">Cannot Delete Inventory Record</h2>
+              <p className="text-sm text-red-600/80 mt-0.5">
+                Stock has already been consumed by the transactions below
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 text-red-400 hover:text-red-600 transition-colors backdrop-blur-sm"
+            >
+              <X size={18} />
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-bold text-red-800">Cannot Delete Inventory Record</h2>
-            <p className="text-sm text-red-500 mt-0.5">
-              Stock has already been consumed by the transactions below
-            </p>
+
+          {/* ── Summary pills with transparency ── */}
+          <div className="flex items-center gap-3 px-6 py-3 bg-gray-500/5 border-b border-gray-200/50 flex-shrink-0 flex-wrap backdrop-blur-sm">
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide mr-1">Conflicts:</span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/70 border border-gray-200/60 rounded-full text-xs font-semibold text-gray-700 shadow-sm backdrop-blur-sm">
+              <span className="w-2 h-2 rounded-full bg-gray-400 inline-block" />
+              {products.length} product{products.length !== 1 ? 's' : ''}
+            </span>
+            {totalDeliveries > 0 && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-500/10 border border-blue-200/60 rounded-full text-xs font-semibold text-blue-700 shadow-sm backdrop-blur-sm">
+                <Package size={11} />
+                {totalDeliveries} DR{totalDeliveries !== 1 ? 's' : ''} · {totalDeliveryQty} pcs
+              </span>
+            )}
+            {totalSales > 0 && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-500/10 border border-orange-200/60 rounded-full text-xs font-semibold text-orange-700 shadow-sm backdrop-blur-sm">
+                <ShoppingCart size={11} />
+                {totalSales} sale{totalSales !== 1 ? 's' : ''} · {totalSaleQty} pcs
+              </span>
+            )}
+            {grandTotalQty > 0 && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-500/10 border border-red-300/60 rounded-full text-xs font-bold text-red-700 shadow-sm ml-auto backdrop-blur-sm">
+                Total blocked: {grandTotalQty} pcs
+              </span>
+            )}
           </div>
-          <button
-            onClick={onClose}
-            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-100 text-red-400 hover:text-red-600 transition-colors"
-          >
-            <X size={18} />
-          </button>
-        </div>
 
-        {/* ── Summary pills ── */}
-        <div className="flex items-center gap-3 px-6 py-3 bg-gray-50 border-b border-gray-100 flex-shrink-0 flex-wrap">
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide mr-1">Conflicts:</span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-700 shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-gray-400 inline-block" />
-            {products.length} product{products.length !== 1 ? 's' : ''}
-          </span>
-          {totalDeliveries > 0 && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-200 rounded-full text-xs font-semibold text-blue-700 shadow-sm">
-              <Package size={11} />
-              {totalDeliveries} DR{totalDeliveries !== 1 ? 's' : ''} · {totalDeliveryQty} pcs
-            </span>
-          )}
-          {totalSales > 0 && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-50 border border-orange-200 rounded-full text-xs font-semibold text-orange-700 shadow-sm">
-              <ShoppingCart size={11} />
-              {totalSales} sale{totalSales !== 1 ? 's' : ''} · {totalSaleQty} pcs
-            </span>
-          )}
-          {grandTotalQty > 0 && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 border border-red-300 rounded-full text-xs font-bold text-red-700 shadow-sm ml-auto">
-              Total blocked: {grandTotalQty} pcs
-            </span>
-          )}
-        </div>
-
-        {/* ── Scrollable product cards ── */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          {hasStructuredData ? (
-            <>
-              {products.map(([productName, { deliveryReceipts, saleRefs }], i) => {
-                const meta = getConflictMeta(deliveryReceipts.length > 0, saleRefs.length > 0);
-                const productDrQty   = deliveryReceipts.reduce((a, dr) => a + (parseRef(dr).qty ?? 0), 0);
-                const productSaleQty = saleRefs.reduce((a, r) => a + (parseRef(r).qty ?? 0), 0);
-                const productTotalQty = productDrQty + productSaleQty;
-                
-                return (
-                  <div
-                    key={i}
-                    className={`rounded-xl border-2 ${meta.borderColor} overflow-hidden shadow-sm`}
-                  >
-                    {/* Product header row */}
-                    <div className={`flex items-center gap-3 px-4 py-3 ${meta.headerBg} ${meta.headerBorder}`}>
-                      <div className={`w-1 h-8 rounded-full ${meta.leftBar} flex-shrink-0`} />
-                      <span className="text-base">{meta.icon}</span>
-                      <span className={`font-semibold text-sm flex-1 min-w-0 truncate ${meta.titleColor}`}>
-                        {productName}
-                      </span>
-                      {productTotalQty > 0 && (
-                        <span className="flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full bg-white border border-gray-300 text-gray-700 mr-1">
-                          {productTotalQty} pcs total
+          {/* ── Scrollable product cards with transparency ── */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-300/50 scrollbar-track-transparent hover:scrollbar-thumb-gray-400/70">
+            {hasStructuredData ? (
+              <>
+                {products.map(([productName, { deliveryReceipts, saleRefs }], i) => {
+                  const meta = getConflictMeta(deliveryReceipts.length > 0, saleRefs.length > 0);
+                  const productDrQty   = deliveryReceipts.reduce((a, dr) => a + (parseRef(dr).qty ?? 0), 0);
+                  const productSaleQty = saleRefs.reduce((a, r) => a + (parseRef(r).qty ?? 0), 0);
+                  const productTotalQty = productDrQty + productSaleQty;
+                  
+                  return (
+                    <div
+                      key={i}
+                      className={`rounded-xl border-2 ${meta.borderColor} overflow-hidden shadow-sm backdrop-blur-sm bg-white/80`}
+                    >
+                      {/* Product header row with transparency */}
+                      <div className={`flex items-center gap-3 px-4 py-3 ${meta.headerBg} ${meta.headerBorder} backdrop-blur-sm`}>
+                        <div className={`w-1 h-8 rounded-full ${meta.leftBar} flex-shrink-0`} />
+                        <span className="text-base">{meta.icon}</span>
+                        <span className={`font-semibold text-sm flex-1 min-w-0 truncate ${meta.titleColor}`}>
+                          {productName}
                         </span>
-                      )}
-                      <span className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full ${meta.labelBg}`}>
-                        {meta.label}
-                      </span>
-                    </div>
+                        {productTotalQty > 0 && (
+                          <span className="flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full bg-white/80 border border-gray-300/60 text-gray-700 mr-1 backdrop-blur-sm">
+                            {productTotalQty} pcs total
+                          </span>
+                        )}
+                        <span className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full ${meta.labelBg} backdrop-blur-sm`}>
+                          {meta.label}
+                        </span>
+                      </div>
 
-                    {/* Conflict detail rows */}
-                    <div className="px-4 py-3 bg-white space-y-4">
+                      {/* Conflict detail rows */}
+                      <div className="px-4 py-3 bg-white/60 backdrop-blur-sm space-y-4">
 
-                      {/* ── Delivery receipts with status badges and route info ── */}
-                      {deliveryReceipts.length > 0 && (
-                        <div>
-                          <div className="flex items-center gap-1.5 mb-3">
-                            <Package size={12} className="text-blue-500 flex-shrink-0" />
-                            <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
-                              Delivery Receipt{deliveryReceipts.length !== 1 ? 's' : ''}
-                            </span>
-                            <span className="ml-auto flex items-center gap-1.5">
-                              <span className="bg-blue-50 border border-blue-200 text-blue-600 text-xs font-semibold px-2 py-0.5 rounded-full">
-                                {productDrQty} pcs
+                        {/* ── Delivery receipts with status badges and route info ── */}
+                        {deliveryReceipts.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-3">
+                              <Package size={12} className="text-blue-500/90 flex-shrink-0" />
+                              <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
+                                Delivery Receipt{deliveryReceipts.length !== 1 ? 's' : ''}
                               </span>
-                              <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">
-                                {deliveryReceipts.length} DR{deliveryReceipts.length !== 1 ? 's' : ''}
+                              <span className="ml-auto flex items-center gap-1.5">
+                                <span className="bg-blue-500/10 border border-blue-200/60 text-blue-600 text-xs font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm">
+                                  {productDrQty} pcs
+                                </span>
+                                <span className="bg-blue-500/20 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
+                                  {deliveryReceipts.length} DR{deliveryReceipts.length !== 1 ? 's' : ''}
+                                </span>
                               </span>
-                            </span>
-                          </div>
-                          
-                          {/* Delivery Cards Grid - Fixed 2 columns with consistent heights */}
-                          <div className="grid grid-cols-2 gap-3">
-                            {deliveryReceipts.map((dr, j) => {
-                              const { label, qty, status, from, to } = parseRef(dr);
-                              const sm = status ? getStatusMeta(status) : null;
-                              return (
-                                <div key={j} className="flex flex-col bg-white rounded-lg border border-blue-200 shadow-sm overflow-hidden h-full">
-                                  {/* Main pill row - flex row with fixed widths */}
-                                  <div className="flex w-full">
-                                    {/* DR number - fixed width */}
-                                    <div className="w-24 flex-shrink-0 px-2 py-1.5 bg-blue-50 border-r border-blue-200">
-                                      <span className="block text-xs font-mono font-medium text-blue-800 truncate" title={label}>
-                                        {label}
-                                      </span>
-                                    </div>
-                                    
-                                    {/* Quantity - fixed width if exists */}
-                                    {qty !== null ? (
-                                      <div className="w-16 flex-shrink-0 px-2 py-1.5 bg-blue-500 border-r border-blue-300">
-                                        <span className="block text-xs font-bold text-white text-center">
-                                          {qty} pcs
-                                        </span>
-                                      </div>
-                                    ) : null}
-                                    
-                                    {/* Status - takes remaining space */}
-                                    {sm ? (
-                                      <div className={`flex-1 min-w-0 px-2 py-1.5 ${sm.bg} flex items-center justify-center gap-1`}>
-                                        <span>{sm.icon}</span>
-                                        <span className={`text-xs font-bold truncate ${sm.text}`}>
-                                          {sm.label}
-                                        </span>
-                                      </div>
-                                    ) : (
-                                      /* If no status but we need to fill space */
-                                      <div className="flex-1 px-2 py-1.5 bg-gray-100" />
-                                    )}
-                                  </div>
-                                  
-                                  {/* From → To route row - only if either exists */}
-                                  {(from || to) ? (
-                                    <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50 border-t border-blue-100 text-[10px]">
-                                      <div className="flex items-center gap-1 min-w-0 flex-1">
-                                        <span className="text-blue-400 flex-shrink-0">🏭</span>
-                                        <span className="font-medium text-blue-700 truncate" title={from || ''}>
-                                          {from || 'Unknown'}
-                                        </span>
-                                      </div>
-                                      <span className="text-gray-400 flex-shrink-0 mx-1">→</span>
-                                      <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
-                                        <span className="font-medium text-green-700 truncate" title={to || ''}>
-                                          {to || 'Unknown'}
-                                        </span>
-                                        <span className="text-green-400 flex-shrink-0">🏪</span>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    /* Empty row to maintain height consistency when no route info */
-                                    <div className="h-[34px] bg-white border-t border-blue-100" />
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-
-                          {/* Status legend - only show if multiple statuses */}
-                          {[...new Set(deliveryReceipts.map(dr => parseRef(dr).status).filter(Boolean))].length > 1 && (
-                            <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 pt-2 border-t border-gray-100">
-                              <span className="text-xs text-gray-400 mr-1">Status:</span>
-                              {[
-                                { status: 'DELIVERED',  ...getStatusMeta('DELIVERED') },
-                                { status: 'IN_TRANSIT', ...getStatusMeta('IN_TRANSIT') },
-                                { status: 'PREPARING',  ...getStatusMeta('PREPARING') },
-                                { status: 'PENDING',    ...getStatusMeta('PENDING') },
-                              ]
-                                .filter(s => deliveryReceipts.some(dr => parseRef(dr).status === s.status))
-                                .map(s => (
-                                  <span key={s.status} className="inline-flex items-center gap-1 text-xs text-gray-500">
-                                    <span className={`w-2 h-2 rounded-full inline-block ${s.bg}`} />
-                                    {s.icon} {s.label}
-                                  </span>
-                                ))
-                              }
                             </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* ── Sales with branch and company info ── */}
-                      {saleRefs.length > 0 && (
-                        <div>
-                          <div className="flex items-center gap-1.5 mb-3">
-                            <ShoppingCart size={12} className="text-orange-500 flex-shrink-0" />
-                            <span className="text-xs font-semibold text-orange-600 uppercase tracking-wide">
-                              Sale Reference{saleRefs.length !== 1 ? 's' : ''}
-                            </span>
-                            <span className="ml-auto flex items-center gap-1.5">
-                              <span className="bg-orange-50 border border-orange-200 text-orange-600 text-xs font-semibold px-2 py-0.5 rounded-full">
-                                {productSaleQty} pcs
-                              </span>
-                              <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full">
-                                {saleRefs.length} sale{saleRefs.length !== 1 ? 's' : ''}
-                              </span>
-                            </span>
-                          </div>
-                          
-                          {/* Sale Cards Grid - Fixed 2 columns with consistent heights */}
-                          <div className="grid grid-cols-2 gap-3">
-                            {saleRefs.map((ref, j) => {
-                              const { label, qty, status, branch, company } = parseRef(ref);
-                              return (
-                                <div key={j} className="flex flex-col bg-white rounded-lg border border-orange-200 shadow-sm overflow-hidden h-full">
-                                  {/* Main pill row */}
-                                  <div className="flex w-full">
-                                    {/* Reference number - fixed width */}
-                                    <div className="w-24 flex-shrink-0 px-2 py-1.5 bg-orange-50 border-r border-orange-200">
-                                      <span className="block text-xs font-mono font-medium text-orange-800 truncate" title={label}>
-                                        {label}
-                                      </span>
-                                    </div>
-                                    
-                                    {/* Quantity - fixed width */}
-                                    {qty !== null ? (
-                                      <div className="w-16 flex-shrink-0 px-2 py-1.5 bg-orange-500 border-r border-orange-300">
-                                        <span className="block text-xs font-bold text-white text-center">
-                                          {qty} pcs
+                            
+                            {/* Delivery Cards Grid */}
+                            <div className="grid grid-cols-2 gap-3">
+                              {deliveryReceipts.map((dr, j) => {
+                                const { label, qty, status, from, to } = parseRef(dr);
+                                const sm = status ? getStatusMeta(status) : null;
+                                return (
+                                  <div key={j} className="flex flex-col bg-white/70 backdrop-blur-sm rounded-lg border border-blue-200/60 shadow-sm overflow-hidden h-full">
+                                    {/* Main pill row */}
+                                    <div className="flex w-full">
+                                      {/* DR number */}
+                                      <div className="w-24 flex-shrink-0 px-2 py-1.5 bg-blue-500/10 border-r border-blue-200/60">
+                                        <span className="block text-xs font-mono font-medium text-blue-800 truncate" title={label}>
+                                          {label}
                                         </span>
                                       </div>
-                                    ) : null}
+                                      
+                                      {/* Quantity */}
+                                      {qty !== null ? (
+                                        <div className="w-16 flex-shrink-0 px-2 py-1.5 bg-blue-500/80 border-r border-blue-300/60">
+                                          <span className="block text-xs font-bold text-white text-center">
+                                            {qty} pcs
+                                          </span>
+                                        </div>
+                                      ) : null}
+                                      
+                                      {/* Status */}
+                                      {sm ? (
+                                        <div className={`flex-1 min-w-0 px-2 py-1.5 ${sm.bg} flex items-center justify-center gap-1 backdrop-blur-sm`}>
+                                          <span>{sm.icon}</span>
+                                          <span className={`text-xs font-bold truncate ${sm.text}`}>
+                                            {sm.label}
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        <div className="flex-1 px-2 py-1.5 bg-gray-100/50" />
+                                      )}
+                                    </div>
                                     
-                                    {/* Status - takes remaining space */}
-                                    {status ? (
-                                      <div className={`flex-1 min-w-0 px-2 py-1.5 ${
-                                        status === 'INVOICED' 
-                                          ? 'bg-purple-500' 
-                                          : 'bg-yellow-400'
-                                      } flex items-center justify-center gap-1`}>
-                                        <span className="text-xs font-bold text-white truncate">
-                                          {status === 'INVOICED' ? '🧾 Invoiced' : '✅ Confirmed'}
-                                        </span>
+                                    {/* From → To route row */}
+                                    {(from || to) ? (
+                                      <div className="flex items-center justify-between px-2 py-1.5 bg-gray-500/5 border-t border-blue-100/60 text-[10px] backdrop-blur-sm">
+                                        <div className="flex items-center gap-1 min-w-0 flex-1">
+                                          <span className="text-blue-400/90 flex-shrink-0">🏭</span>
+                                          <span className="font-medium text-blue-700/90 truncate" title={from || ''}>
+                                            {from || 'Unknown'}
+                                          </span>
+                                        </div>
+                                        <span className="text-gray-400/70 flex-shrink-0 mx-1">→</span>
+                                        <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
+                                          <span className="font-medium text-green-700/90 truncate" title={to || ''}>
+                                            {to || 'Unknown'}
+                                          </span>
+                                          <span className="text-green-400/90 flex-shrink-0">🏪</span>
+                                        </div>
                                       </div>
                                     ) : (
-                                      /* Fill space if no status */
-                                      <div className="flex-1 px-2 py-1.5 bg-gray-100" />
+                                      <div className="h-[34px] bg-white/30 border-t border-blue-100/60" />
                                     )}
                                   </div>
-                                  
-                                  {/* Branch + Company info row */}
-                                  {(branch || company) ? (
-                                    <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50 border-t border-orange-100 text-[10px]">
-                                      {branch && (
-                                        <div className="flex items-center gap-1 min-w-0 flex-1">
-                                          <span className="text-orange-400 flex-shrink-0">🏪</span>
-                                          <span className="font-medium text-orange-700 truncate" title={branch}>
-                                            {branch}
-                                          </span>
-                                        </div>
-                                      )}
-                                      {branch && company && (
-                                        <span className="text-gray-300 flex-shrink-0 mx-1">·</span>
-                                      )}
-                                      {company && (
-                                        <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
-                                          <span className="font-medium text-gray-600 truncate" title={company}>
-                                            {company}
-                                          </span>
-                                          <span className="text-gray-400 flex-shrink-0">🏢</span>
-                                        </div>
-                                      )}
-                                      {/* If only one side has content, add empty div to maintain balance */}
-                                      {(!branch || !company) && <div className="flex-1" />}
-                                    </div>
-                                  ) : (
-                                    /* Empty row to maintain height consistency */
-                                    <div className="h-[34px] bg-white border-t border-orange-100" />
-                                  )}
-                                </div>
-                              );
-                            })}
+                                );
+                              })}
+                            </div>
+
+                            {/* Status legend */}
+                            {[...new Set(deliveryReceipts.map(dr => parseRef(dr).status).filter(Boolean))].length > 1 && (
+                              <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 pt-2 border-t border-gray-200/50">
+                                <span className="text-xs text-gray-400 mr-1">Status:</span>
+                                {[
+                                  { status: 'DELIVERED',  ...getStatusMeta('DELIVERED') },
+                                  { status: 'IN_TRANSIT', ...getStatusMeta('IN_TRANSIT') },
+                                  { status: 'PREPARING',  ...getStatusMeta('PREPARING') },
+                                  { status: 'PENDING',    ...getStatusMeta('PENDING') },
+                                ]
+                                  .filter(s => deliveryReceipts.some(dr => parseRef(dr).status === s.status))
+                                  .map(s => (
+                                    <span key={s.status} className="inline-flex items-center gap-1 text-xs text-gray-500">
+                                      <span className={`w-2 h-2 rounded-full inline-block ${s.bg.replace('/90', '')}`} />
+                                      {s.icon} {s.label}
+                                    </span>
+                                  ))
+                                }
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      )}
+                        )}
+
+                        {/* ── Sales with branch and company info ── */}
+                        {saleRefs.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-3">
+                              <ShoppingCart size={12} className="text-orange-500/90 flex-shrink-0" />
+                              <span className="text-xs font-semibold text-orange-600 uppercase tracking-wide">
+                                Sale Reference{saleRefs.length !== 1 ? 's' : ''}
+                              </span>
+                              <span className="ml-auto flex items-center gap-1.5">
+                                <span className="bg-orange-500/10 border border-orange-200/60 text-orange-600 text-xs font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm">
+                                  {productSaleQty} pcs
+                                </span>
+                                <span className="bg-orange-500/20 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
+                                  {saleRefs.length} sale{saleRefs.length !== 1 ? 's' : ''}
+                                </span>
+                              </span>
+                            </div>
+                            
+                            {/* Sale Cards Grid */}
+                            <div className="grid grid-cols-2 gap-3">
+                              {saleRefs.map((ref, j) => {
+                                const { label, qty, status, branch, company } = parseRef(ref);
+                                return (
+                                  <div key={j} className="flex flex-col bg-white/70 backdrop-blur-sm rounded-lg border border-orange-200/60 shadow-sm overflow-hidden h-full">
+                                    {/* Main pill row */}
+                                    <div className="flex w-full">
+                                      {/* Reference number */}
+                                      <div className="w-24 flex-shrink-0 px-2 py-1.5 bg-orange-500/10 border-r border-orange-200/60">
+                                        <span className="block text-xs font-mono font-medium text-orange-800 truncate" title={label}>
+                                          {label}
+                                        </span>
+                                      </div>
+                                      
+                                      {/* Quantity */}
+                                      {qty !== null ? (
+                                        <div className="w-16 flex-shrink-0 px-2 py-1.5 bg-orange-500/80 border-r border-orange-300/60">
+                                          <span className="block text-xs font-bold text-white text-center">
+                                            {qty} pcs
+                                          </span>
+                                        </div>
+                                      ) : null}
+                                      
+                                      {/* Status */}
+                                      {status ? (
+                                        <div className={`flex-1 min-w-0 px-2 py-1.5 ${
+                                          status === 'INVOICED' 
+                                            ? 'bg-purple-500/80' 
+                                            : 'bg-yellow-400/80'
+                                        } flex items-center justify-center gap-1 backdrop-blur-sm`}>
+                                          <span className="text-xs font-bold text-white truncate">
+                                            {status === 'INVOICED' ? '🧾 Invoiced' : '✅ Confirmed'}
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        <div className="flex-1 px-2 py-1.5 bg-gray-100/50" />
+                                      )}
+                                    </div>
+                                    
+                                    {/* Branch + Company info row */}
+                                    {(branch || company) ? (
+                                      <div className="flex items-center justify-between px-2 py-1.5 bg-gray-500/5 border-t border-orange-100/60 text-[10px] backdrop-blur-sm">
+                                        {branch && (
+                                          <div className="flex items-center gap-1 min-w-0 flex-1">
+                                            <span className="text-orange-400/90 flex-shrink-0">🏪</span>
+                                            <span className="font-medium text-orange-700/90 truncate" title={branch}>
+                                              {branch}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {branch && company && (
+                                          <span className="text-gray-300/70 flex-shrink-0 mx-1">·</span>
+                                        )}
+                                        {company && (
+                                          <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
+                                            <span className="font-medium text-gray-600/90 truncate" title={company}>
+                                              {company}
+                                            </span>
+                                            <span className="text-gray-400/90 flex-shrink-0">🏢</span>
+                                          </div>
+                                        )}
+                                        {(!branch || !company) && <div className="flex-1" />}
+                                      </div>
+                                    ) : (
+                                      <div className="h-[34px] bg-white/30 border-t border-orange-100/60" />
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
 
-              {/* Footer note */}
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mt-2">
-                <p className="text-sm text-amber-800 leading-relaxed">
-                  <strong>ℹ️ To delete this record,</strong> you must first void or cancel all the delivery receipts and sales listed above, then try again.
-                </p>
-              </div>
-            </>
-          ) : (
-            <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono bg-gray-50 rounded-xl p-4 border border-gray-200 leading-relaxed">
-              {message}
-            </pre>
-          )}
-        </div>
+                {/* Footer note with transparency */}
+                <div className="bg-amber-500/10 border border-amber-200/60 rounded-xl p-4 mt-2 backdrop-blur-sm">
+                  <p className="text-sm text-amber-800/90 leading-relaxed">
+                    <strong>ℹ️ To delete this record,</strong> you must first void or cancel all the delivery receipts and sales listed above, then try again.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono bg-white/50 backdrop-blur-sm rounded-xl p-4 border border-gray-200/60 leading-relaxed">
+                {message}
+              </pre>
+            )}
+          </div>
 
-        {/* ── Footer ── */}
-        <div className="flex-shrink-0 px-6 py-4 bg-gray-50 border-t border-gray-100">
-          <button
-            onClick={onClose}
-            className="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-900 text-white font-medium rounded-xl transition-colors text-sm"
-          >
-            Close
-          </button>
+          {/* ── Footer with transparency ── */}
+          <div className="flex-shrink-0 px-6 py-4 bg-gray-500/5 border-t border-gray-200/50 backdrop-blur-sm">
+            <button
+              onClick={onClose}
+              className="w-full py-2.5 px-4 bg-gray-800/90 hover:bg-gray-900 text-white font-medium rounded-xl transition-colors text-sm backdrop-blur-sm"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>
