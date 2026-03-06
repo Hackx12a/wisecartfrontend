@@ -1,6 +1,6 @@
 // src/components/modals/DeliveryViewModal.jsx
 import React from 'react';
-import { X, Printer, Edit2, Package, Truck, Check } from 'lucide-react';
+import { X, Printer, Edit2, Package, Check } from 'lucide-react';
 
 const DeliveryViewModal = ({
   delivery,
@@ -33,6 +33,12 @@ const DeliveryViewModal = ({
     );
   }
 
+  // ── Compute totals ───────────────────────────────────────────────────────
+  const totalPrepared  = (delivery.items || []).reduce((s, it) => s + (it.preparedQty  ?? 0), 0);
+  const totalDelivered = (delivery.items || []).reduce((s, it) => s + (it.deliveredQty ?? 0), 0);
+  const isDelivered    = delivery.status === 'DELIVERED';
+  const hasVariance    = isDelivered && totalPrepared !== totalDelivered;
+
   return (
     <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-6">
       <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
@@ -49,6 +55,7 @@ const DeliveryViewModal = ({
 
         <div className="p-8">
           <div className="space-y-6">
+
             {/* Header Info */}
             <div className="grid grid-cols-2 gap-6">
               <div>
@@ -59,9 +66,7 @@ const DeliveryViewModal = ({
                 <label className="block text-sm font-medium text-gray-500 mb-1">Date</label>
                 <p className="text-lg font-semibold text-gray-900">
                   {new Date(delivery.date).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
+                    year: 'numeric', month: 'long', day: 'numeric'
                   })}
                 </p>
               </div>
@@ -75,11 +80,7 @@ const DeliveryViewModal = ({
                     <label className="block text-sm font-medium text-gray-500 mb-1">Date Prepared</label>
                     <p className="text-base font-semibold text-gray-900">
                       {new Date(delivery.datePrepared).toLocaleString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
+                        year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
                       })}
                     </p>
                   </div>
@@ -89,11 +90,7 @@ const DeliveryViewModal = ({
                     <label className="block text-sm font-medium text-gray-500 mb-1">Date Delivered</label>
                     <p className="text-base font-semibold text-green-700">
                       {new Date(delivery.dateDelivered).toLocaleString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
+                        year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
                       })}
                     </p>
                   </div>
@@ -118,9 +115,9 @@ const DeliveryViewModal = ({
               <div className="mt-3">
                 <label className="block text-sm font-medium text-blue-700 mb-1">Delivery Address</label>
                 <p className="text-sm text-blue-800">
-                  {delivery.branch?.address &&
-                    `${delivery.branch.address}, ${delivery.branch.city || ''}, ${delivery.branch.province || ''}`.trim()}
-                  {!delivery.branch?.address && 'No address specified'}
+                  {delivery.branch?.address
+                    ? `${delivery.branch.address}, ${delivery.branch.city || ''}, ${delivery.branch.province || ''}`.trim()
+                    : 'No address specified'}
                 </p>
               </div>
               {delivery.branch?.contactNumber && (
@@ -167,11 +164,43 @@ const DeliveryViewModal = ({
               </div>
             </div>
 
-            {/* Items Table */}
+            {/* ── Items Table ──────────────────────────────────────────────── */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Delivery Items ({delivery.items?.length || 0} items)
-              </label>
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-medium text-gray-700">
+                  Delivery Items ({delivery.items?.length || 0} items)
+                </label>
+                {/* Quick totals summary */}
+                {(delivery.items?.length ?? 0) > 0 && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="flex items-center gap-1">
+                      <span className="text-gray-500">Prepared:</span>
+                      <span className="font-bold text-blue-700">{totalPrepared} pcs</span>
+                    </div>
+                    {isDelivered && (
+                      <>
+                        <span className="text-gray-300">|</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-500">Delivered:</span>
+                          <span className="font-bold text-green-700">{totalDelivered} pcs</span>
+                        </div>
+                      </>
+                    )}
+                    {hasVariance && (
+                      <>
+                        <span className="text-gray-300">|</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-500">Variance:</span>
+                          <span className={`font-bold ${totalDelivered < totalPrepared ? 'text-red-600' : 'text-orange-600'}`}>
+                            {totalDelivered - totalPrepared > 0 ? '+' : ''}{totalDelivered - totalPrepared} pcs
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <table className="w-full">
                   <thead className="bg-gray-50">
@@ -179,11 +208,12 @@ const DeliveryViewModal = ({
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU & UPC</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Warehouse</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Prepared</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Delivered</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Prepared Qty</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Delivered Qty</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">UOM</th>
                     </tr>
                   </thead>
+
                   <tbody className="bg-white divide-y divide-gray-200">
                     {delivery.items && delivery.items.length > 0 ? (
                       delivery.items.map((item, index) => (
@@ -193,12 +223,8 @@ const DeliveryViewModal = ({
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-600">
                             <div className="space-y-1">
-                              <div className="text-xs">
-                                <span className="font-medium">SKU:</span> {item.product?.sku || 'N/A'}
-                              </div>
-                              <div className="text-xs">
-                                <span className="font-medium">UPC:</span> {item.product?.upc || 'N/A'}
-                              </div>
+                              <div className="text-xs"><span className="font-medium">SKU:</span> {item.product?.sku || 'N/A'}</div>
+                              <div className="text-xs"><span className="font-medium">UPC:</span> {item.product?.upc || 'N/A'}</div>
                             </div>
                           </td>
                           <td className="px-4 py-3 text-sm">
@@ -212,31 +238,78 @@ const DeliveryViewModal = ({
                               </div>
                             </div>
                           </td>
+                          {/* ── FIX: was `|| '-'` which shows '-' for 0; use `?? '—'` on null/undefined only ── */}
                           <td className="px-4 py-3 text-sm text-right font-semibold text-blue-700">
-                            {item.preparedQty || '-'}
+                            {item.preparedQty != null ? item.preparedQty : '—'}
                           </td>
                           <td className="px-4 py-3 text-sm text-right font-semibold text-green-700">
-                            {item.deliveredQty || '-'}
+                            {item.deliveredQty != null ? item.deliveredQty : '—'}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-600">
-                            {item.uom || 'pcs'}
-                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{item.uom || 'pcs'}</td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="6" className="px-4 py-8 text-center text-gray-500 italic">
-                          No items found
-                        </td>
+                        <td colSpan="6" className="px-4 py-8 text-center text-gray-500 italic">No items found</td>
                       </tr>
                     )}
                   </tbody>
+
+                  {/* ── Totals footer ─────────────────────────────────────── */}
+                  {delivery.items && delivery.items.length > 0 && (
+                    <tfoot>
+                      <tr className="bg-gray-50 border-t-2 border-gray-300">
+                        <td colSpan={3} className="px-4 py-3 text-right">
+                          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                            Total ({delivery.items.length} item{delivery.items.length !== 1 ? 's' : ''})
+                          </span>
+                        </td>
+                        {/* Prepared total */}
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          <div className="inline-flex items-center justify-end gap-1">
+                            <span className="text-sm font-bold text-blue-800">{totalPrepared}</span>
+                            <span className="text-xs text-blue-500">pcs</span>
+                          </div>
+                        </td>
+                        {/* Delivered total */}
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          {isDelivered ? (
+                            <div className="inline-flex items-center justify-end gap-1">
+                              <span className="text-sm font-bold text-green-800">{totalDelivered}</span>
+                              <span className="text-xs text-green-500">pcs</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">Pending</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3" />
+                      </tr>
+
+                      {/* Variance row — only when delivered qty ≠ prepared qty */}
+                      {hasVariance && (
+                        <tr className="bg-amber-50 border-t border-amber-200">
+                          <td colSpan={3} className="px-4 py-2 text-right">
+                            <span className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Variance</span>
+                          </td>
+                          <td colSpan={2} className="px-4 py-2 text-right whitespace-nowrap">
+                            <span className={`text-sm font-bold ${totalDelivered < totalPrepared ? 'text-red-600' : 'text-orange-600'}`}>
+                              {totalDelivered - totalPrepared > 0 ? '+' : ''}{totalDelivered - totalPrepared} pcs
+                            </span>
+                            <span className="text-xs text-amber-500 ml-1">
+                              ({totalDelivered < totalPrepared ? 'short' : 'over'})
+                            </span>
+                          </td>
+                          <td className="px-4 py-2" />
+                        </tr>
+                      )}
+                    </tfoot>
+                  )}
                 </table>
               </div>
             </div>
 
             {/* Delivery Completion Info */}
-            {delivery.status === 'DELIVERED' && (
+            {isDelivered && (
               <div className="p-4 bg-green-50 rounded-lg border border-green-200 mt-6">
                 <div className="flex items-center gap-2 mb-2">
                   <Check className="text-green-600" size={20} />
@@ -258,7 +331,7 @@ const DeliveryViewModal = ({
               <Printer size={20} />
               <span>Print Receipt</span>
             </button>
-            {delivery.status !== 'DELIVERED' && (
+            {!isDelivered && (
               <button
                 onClick={() => onEdit(delivery)}
                 className="flex items-center gap-3 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium shadow-md"
