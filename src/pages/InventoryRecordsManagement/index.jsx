@@ -172,7 +172,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
       <div className="absolute inset-0 bg-black bg-opacity-60 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal - Increased width for better spacing */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden border border-red-200">
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden border border-red-200">
 
         {/* ── Header ── */}
         <div className="flex items-center gap-3 px-6 py-5 bg-red-50 border-b border-red-100 flex-shrink-0">
@@ -272,68 +272,72 @@ const DeleteErrorModal = ({ message, onClose }) => {
                             </span>
                           </div>
                           
-                          {/* Delivery Cards Grid - Fixed 2 columns for better alignment */}
+                          {/* Delivery Cards Grid - Fixed 2 columns with consistent heights */}
                           <div className="grid grid-cols-2 gap-3">
                             {deliveryReceipts.map((dr, j) => {
                               const { label, qty, status, from, to } = parseRef(dr);
                               const sm = status ? getStatusMeta(status) : null;
                               return (
-                                <div key={j} className="flex flex-col bg-white rounded-lg border border-blue-200 shadow-sm overflow-hidden">
-                                  {/* Main pill row */}
-                                  <div className="flex items-stretch w-full">
-                                    {/* DR number */}
-                                    <div className="flex-none w-24 px-2 py-1.5 bg-blue-50 border-r border-blue-200">
+                                <div key={j} className="flex flex-col bg-white rounded-lg border border-blue-200 shadow-sm overflow-hidden h-full">
+                                  {/* Main pill row - flex row with fixed widths */}
+                                  <div className="flex w-full">
+                                    {/* DR number - fixed width */}
+                                    <div className="w-24 flex-shrink-0 px-2 py-1.5 bg-blue-50 border-r border-blue-200">
                                       <span className="block text-xs font-mono font-medium text-blue-800 truncate" title={label}>
                                         {label}
                                       </span>
                                     </div>
                                     
-                                    {/* Quantity */}
-                                    {qty !== null && (
-                                      <>
-                                        <div className="flex-none w-16 px-2 py-1.5 bg-blue-500 border-r border-blue-300">
-                                          <span className="block text-xs font-bold text-white text-center">
-                                            {qty} pcs
-                                          </span>
-                                        </div>
-                                      </>
-                                    )}
+                                    {/* Quantity - fixed width if exists */}
+                                    {qty !== null ? (
+                                      <div className="w-16 flex-shrink-0 px-2 py-1.5 bg-blue-500 border-r border-blue-300">
+                                        <span className="block text-xs font-bold text-white text-center">
+                                          {qty} pcs
+                                        </span>
+                                      </div>
+                                    ) : null}
                                     
-                                    {/* Status */}
-                                    {sm && (
+                                    {/* Status - takes remaining space */}
+                                    {sm ? (
                                       <div className={`flex-1 min-w-0 px-2 py-1.5 ${sm.bg} flex items-center justify-center gap-1`}>
                                         <span>{sm.icon}</span>
                                         <span className={`text-xs font-bold truncate ${sm.text}`}>
                                           {sm.label}
                                         </span>
                                       </div>
+                                    ) : (
+                                      /* If no status but we need to fill space */
+                                      <div className="flex-1 px-2 py-1.5 bg-gray-100" />
                                     )}
                                   </div>
                                   
-                                  {/* From → To route row */}
-                                  {(from || to) && (
+                                  {/* From → To route row - only if either exists */}
+                                  {(from || to) ? (
                                     <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50 border-t border-blue-100 text-[10px]">
                                       <div className="flex items-center gap-1 min-w-0 flex-1">
                                         <span className="text-blue-400 flex-shrink-0">🏭</span>
-                                        <span className="font-medium text-blue-700 truncate" title={from}>
-                                          {from || '?'}
+                                        <span className="font-medium text-blue-700 truncate" title={from || ''}>
+                                          {from || 'Unknown'}
                                         </span>
                                       </div>
                                       <span className="text-gray-400 flex-shrink-0 mx-1">→</span>
                                       <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
-                                        <span className="font-medium text-green-700 truncate" title={to}>
-                                          {to || '?'}
+                                        <span className="font-medium text-green-700 truncate" title={to || ''}>
+                                          {to || 'Unknown'}
                                         </span>
                                         <span className="text-green-400 flex-shrink-0">🏪</span>
                                       </div>
                                     </div>
+                                  ) : (
+                                    /* Empty row to maintain height consistency when no route info */
+                                    <div className="h-[34px] bg-white border-t border-blue-100" />
                                   )}
                                 </div>
                               );
                             })}
                           </div>
 
-                          {/* Status legend */}
+                          {/* Status legend - only show if multiple statuses */}
                           {[...new Set(deliveryReceipts.map(dr => parseRef(dr).status).filter(Boolean))].length > 1 && (
                             <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 pt-2 border-t border-gray-100">
                               <span className="text-xs text-gray-400 mr-1">Status:</span>
@@ -374,34 +378,32 @@ const DeleteErrorModal = ({ message, onClose }) => {
                             </span>
                           </div>
                           
-                          {/* Sale Cards Grid - Fixed 2 columns for consistency */}
+                          {/* Sale Cards Grid - Fixed 2 columns with consistent heights */}
                           <div className="grid grid-cols-2 gap-3">
                             {saleRefs.map((ref, j) => {
                               const { label, qty, status, branch, company } = parseRef(ref);
                               return (
-                                <div key={j} className="flex flex-col bg-white rounded-lg border border-orange-200 shadow-sm overflow-hidden">
+                                <div key={j} className="flex flex-col bg-white rounded-lg border border-orange-200 shadow-sm overflow-hidden h-full">
                                   {/* Main pill row */}
-                                  <div className="flex items-stretch w-full">
-                                    {/* Reference number */}
-                                    <div className="flex-none w-24 px-2 py-1.5 bg-orange-50 border-r border-orange-200">
+                                  <div className="flex w-full">
+                                    {/* Reference number - fixed width */}
+                                    <div className="w-24 flex-shrink-0 px-2 py-1.5 bg-orange-50 border-r border-orange-200">
                                       <span className="block text-xs font-mono font-medium text-orange-800 truncate" title={label}>
                                         {label}
                                       </span>
                                     </div>
                                     
-                                    {/* Quantity */}
-                                    {qty !== null && (
-                                      <>
-                                        <div className="flex-none w-16 px-2 py-1.5 bg-orange-500 border-r border-orange-300">
-                                          <span className="block text-xs font-bold text-white text-center">
-                                            {qty} pcs
-                                          </span>
-                                        </div>
-                                      </>
-                                    )}
+                                    {/* Quantity - fixed width */}
+                                    {qty !== null ? (
+                                      <div className="w-16 flex-shrink-0 px-2 py-1.5 bg-orange-500 border-r border-orange-300">
+                                        <span className="block text-xs font-bold text-white text-center">
+                                          {qty} pcs
+                                        </span>
+                                      </div>
+                                    ) : null}
                                     
-                                    {/* Status (if present) */}
-                                    {status && (
+                                    {/* Status - takes remaining space */}
+                                    {status ? (
                                       <div className={`flex-1 min-w-0 px-2 py-1.5 ${
                                         status === 'INVOICED' 
                                           ? 'bg-purple-500' 
@@ -411,11 +413,14 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                           {status === 'INVOICED' ? '🧾 Invoiced' : '✅ Confirmed'}
                                         </span>
                                       </div>
+                                    ) : (
+                                      /* Fill space if no status */
+                                      <div className="flex-1 px-2 py-1.5 bg-gray-100" />
                                     )}
                                   </div>
                                   
                                   {/* Branch + Company info row */}
-                                  {(branch || company) && (
+                                  {(branch || company) ? (
                                     <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50 border-t border-orange-100 text-[10px]">
                                       {branch && (
                                         <div className="flex items-center gap-1 min-w-0 flex-1">
@@ -436,7 +441,12 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                           <span className="text-gray-400 flex-shrink-0">🏢</span>
                                         </div>
                                       )}
+                                      {/* If only one side has content, add empty div to maintain balance */}
+                                      {(!branch || !company) && <div className="flex-1" />}
                                     </div>
+                                  ) : (
+                                    /* Empty row to maintain height consistency */
+                                    <div className="h-[34px] bg-white border-t border-orange-100" />
                                   )}
                                 </div>
                               );
