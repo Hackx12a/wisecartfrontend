@@ -252,8 +252,8 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                       {/* Main pill row */}
                                       <div className="flex w-full min-h-[2rem]">
                                         {/* DR number — FIXED: removed w-24/truncate, now wraps fully */}
-                                        <div className="flex-shrink-0 px-2 py-1.5 bg-blue-500/10 border-r border-blue-200/60" style={{ minWidth: '5rem', maxWidth: '10rem' }}>
-                                          <span className="block text-xs font-mono font-medium text-blue-800 break-all leading-tight">
+                                        <div className="flex-shrink-0 px-2 py-1.5 bg-blue-500/10 border-r border-blue-200/60 overflow-x-auto" style={{ minWidth: '5rem', maxWidth: '10rem' }}>
+                                          <span className="block text-xs font-mono font-medium text-blue-800 whitespace-nowrap">
                                             {label}
                                           </span>
                                         </div>
@@ -341,8 +341,8 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                       {/* Main pill row */}
                                       <div className="flex w-full min-h-[2rem]">
                                         {/* Reference number — FIXED: same treatment as DR */}
-                                        <div className="flex-shrink-0 px-2 py-1.5 bg-orange-500/10 border-r border-orange-200/60" style={{ minWidth: '5rem', maxWidth: '10rem' }}>
-                                          <span className="block text-xs font-mono font-medium text-orange-800 break-all leading-tight">
+                                        <div className="flex-shrink-0 px-2 py-1.5 bg-orange-500/10 border-r border-orange-200/60 overflow-x-auto" style={{ minWidth: '5rem', maxWidth: '10rem' }}>
+                                          <span className="block text-xs font-mono font-medium text-orange-800 whitespace-nowrap">
                                             {label}
                                           </span>
                                         </div>
