@@ -106,20 +106,14 @@ const InventoryRecordsManagement = () => {
   // Memoized product options
   const productOptions = useMemo(() => {
     return products.flatMap(p => {
-      const truncateProductName = (name) => {
-        if (!name) return '';
-        const words = name.trim().split(/\s+/);
-        if (words.length <= 10) return name;
-        return words.slice(0, 10).join(' ') + '...';
-      };
+
 
       if (p.variations && p.variations.length > 0) {
         return p.variations.map(v => {
           const uniqueId = `${p.id}_${v.id}`;
-          const truncatedName = truncateProductName(p.productName);
+          const displayName = p.productName;
           const upc = v.upc || p.upc || 'No UPC';
           const sku = v.sku || p.sku || 'No SKU';
-          const displayName = truncatedName;
 
           return {
             id: uniqueId,
@@ -138,10 +132,9 @@ const InventoryRecordsManagement = () => {
         });
       } else {
         const uniqueId = `prod_${p.id}`;
-        const truncatedName = truncateProductName(p.productName);
         const upc = p.upc || 'No UPC';
         const sku = p.sku || 'No SKU';
-        const displayName = truncatedName;
+        const displayName = p.productName;
 
         return [{
           id: uniqueId,
@@ -647,7 +640,7 @@ const InventoryRecordsManagement = () => {
     }
   };
 
-  
+
   const handleDelete = async (id) => {
     const inventory = inventories.find(inv => inv.id === id);
     const userRole = localStorage.getItem('userRole') || 'USER';
