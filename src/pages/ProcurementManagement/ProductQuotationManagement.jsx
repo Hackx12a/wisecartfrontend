@@ -6,7 +6,7 @@ import LoadingOverlay from '../../components/common/LoadingOverlay';
 import RPQTableRow from './components/RPQTableRow';
 import RPQModal from './components/RPQModal';
 import RPQViewModal from './components/RPQViewModal';
-import Pagination from '../../../components/common/Pagination';
+import Pagination from '../../components/common/Pagination';
 
 
 const ProductQuotationManagement = ({ rpqRequests: initialRequests, onRefresh }) => {
