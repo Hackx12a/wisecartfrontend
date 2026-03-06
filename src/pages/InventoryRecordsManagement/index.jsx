@@ -225,7 +225,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
                       </div>
 
                       {/* Collapsible content */}
-                      <div className={`transition-all duration-300 ease-in-out ${isExpanded ? 'opacity-100 max-h-[2000px]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
+                      <div className={isExpanded ? 'block' : 'hidden'}>
                         <div className="px-4 py-3 bg-white/60 backdrop-blur-sm space-y-4">
 
                           {/* Delivery receipts */}
