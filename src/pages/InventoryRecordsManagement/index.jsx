@@ -178,8 +178,8 @@ const DeleteErrorModal = ({ message, onClose }) => {
         onClick={onClose}
       />
       
-      {/* Modal with elevated design */}
-      <div className="relative w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden rounded-2xl shadow-2xl shadow-slate-900/20">
+      {/* Modal with elevated design - ENLARGED WIDTH */}
+      <div className="relative w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden rounded-2xl shadow-2xl shadow-slate-900/20">
         
         {/* Glass background with subtle gradient */}
         <div className="absolute inset-0 bg-white/95 backdrop-blur-xl" />
@@ -189,53 +189,53 @@ const DeleteErrorModal = ({ message, onClose }) => {
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 via-amber-500 to-orange-500" />
 
         {/* Content container */}
-        <div className="relative flex flex-col max-h-[85vh]">
+        <div className="relative flex flex-col max-h-[90vh]">
 
           {/* ── Premium Header with Impact Summary ── */}
-          <div className="px-6 pt-6 pb-4 border-b border-slate-200/50">
-            <div className="flex items-start gap-4">
-              {/* Warning icon with glow */}
+          <div className="px-8 pt-8 pb-6 border-b border-slate-200/50">
+            <div className="flex items-start gap-5">
+              {/* Warning icon with glow - ENLARGED */}
               <div className="relative flex-shrink-0">
                 <div className="absolute inset-0 bg-rose-500/20 rounded-xl blur-lg" />
-                <div className="relative w-14 h-14 bg-gradient-to-br from-rose-500 to-rose-600 rounded-xl flex items-center justify-center shadow-lg shadow-rose-500/20">
-                  <AlertTriangle size={28} className="text-white" />
+                <div className="relative w-16 h-16 bg-gradient-to-br from-rose-500 to-rose-600 rounded-xl flex items-center justify-center shadow-lg shadow-rose-500/20">
+                  <AlertTriangle size={32} className="text-white" />
                 </div>
               </div>
 
               {/* Title section */}
               <div className="flex-1 min-w-0">
-                <h2 className="text-2xl font-bold text-slate-900 mb-1">
+                <h2 className="text-3xl font-bold text-slate-900 mb-2">
                   Delete Blocked
                 </h2>
-                <p className="text-sm text-slate-600">
+                <p className="text-base text-slate-600">
                   This inventory record cannot be deleted because stock has been allocated to active transactions
                 </p>
               </div>
 
-              {/* Close button */}
+              {/* Close button - ENLARGED */}
               <button
                 onClick={onClose}
-                className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all duration-200"
+                className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all duration-200"
               >
-                <X size={20} />
+                <X size={24} />
               </button>
             </div>
 
-            {/* Impact metrics dashboard */}
-            <div className="grid grid-cols-4 gap-3 mt-6">
-              <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/50">
+            {/* Impact metrics dashboard - ENLARGED GRID */}
+            <div className="grid grid-cols-4 gap-4 mt-8">
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200/50">
                 <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Products</div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-bold text-slate-900">{products.length}</span>
+                  <span className="text-3xl font-bold text-slate-900">{products.length}</span>
                   <span className="text-sm text-slate-600">affected</span>
                 </div>
               </div>
               
               {totals.deliveryCount > 0 && (
-                <div className="bg-blue-50 rounded-xl p-3 border border-blue-200/50">
+                <div className="bg-blue-50 rounded-xl p-4 border border-blue-200/50">
                   <div className="text-xs font-medium text-blue-600 uppercase tracking-wider mb-1">Deliveries</div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-bold text-blue-700">{totals.deliveryCount}</span>
+                    <span className="text-3xl font-bold text-blue-700">{totals.deliveryCount}</span>
                     <span className="text-sm text-blue-600">DRs</span>
                   </div>
                   <div className="text-xs text-blue-600/80 mt-1">{totals.deliveryQty} units</div>
@@ -243,10 +243,10 @@ const DeleteErrorModal = ({ message, onClose }) => {
               )}
               
               {totals.saleCount > 0 && (
-                <div className="bg-orange-50 rounded-xl p-3 border border-orange-200/50">
+                <div className="bg-orange-50 rounded-xl p-4 border border-orange-200/50">
                   <div className="text-xs font-medium text-orange-600 uppercase tracking-wider mb-1">Sales</div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-bold text-orange-700">{totals.saleCount}</span>
+                    <span className="text-3xl font-bold text-orange-700">{totals.saleCount}</span>
                     <span className="text-sm text-orange-600">orders</span>
                   </div>
                   <div className="text-xs text-orange-600/80 mt-1">{totals.saleQty} units</div>
@@ -254,10 +254,10 @@ const DeleteErrorModal = ({ message, onClose }) => {
               )}
               
               {totalBlockedQty > 0 && (
-                <div className="bg-rose-50 rounded-xl p-3 border border-rose-200/50">
+                <div className="bg-rose-50 rounded-xl p-4 border border-rose-200/50">
                   <div className="text-xs font-medium text-rose-600 uppercase tracking-wider mb-1">Total Blocked</div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-bold text-rose-700">{totalBlockedQty}</span>
+                    <span className="text-3xl font-bold text-rose-700">{totalBlockedQty}</span>
                     <span className="text-sm text-rose-600">units</span>
                   </div>
                 </div>
@@ -266,7 +266,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
           </div>
 
           {/* ─── Scrollable Product Cards with Custom Scrollbar ─── */}
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent hover:scrollbar-thumb-slate-300">
+          <div className="flex-1 overflow-y-auto px-8 py-6 space-y-5 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent hover:scrollbar-thumb-slate-300">
             {hasStructuredData ? (
               <>
                 {products.map(([productName, { deliveryReceipts, saleRefs }], index) => {
@@ -279,21 +279,21 @@ const DeleteErrorModal = ({ message, onClose }) => {
                       key={index}
                       className={`group relative rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-sm overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 ${theme.border}`}
                     >
-                      {/* Product Header */}
-                      <div className={`px-5 py-4 ${theme.headerBg} border-b border-slate-200/50`}>
+                      {/* Product Header - ENLARGED */}
+                      <div className={`px-6 py-5 ${theme.headerBg} border-b border-slate-200/50`}>
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <span className="text-xl filter drop-shadow-sm">{theme.icon}</span>
+                          <div className="flex items-center gap-4 min-w-0">
+                            <span className="text-2xl filter drop-shadow-sm">{theme.icon}</span>
                             <div className="min-w-0">
-                              <h3 className="font-semibold text-slate-900 truncate">
+                              <h3 className="text-lg font-semibold text-slate-900 truncate">
                                 {productName}
                               </h3>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${theme.badge}`}>
+                              <div className="flex items-center gap-3 mt-1.5">
+                                <span className={`text-xs font-medium px-3 py-1 rounded-full border ${theme.badge}`}>
                                   {theme.label}
                                 </span>
                                 {(productDrQty + productSaleQty) > 0 && (
-                                  <span className="text-xs text-slate-500">
+                                  <span className="text-sm text-slate-500">
                                     {productDrQty + productSaleQty} units affected
                                   </span>
                                 )}
@@ -301,14 +301,14 @@ const DeleteErrorModal = ({ message, onClose }) => {
                             </div>
                           </div>
                           {productDrQty > 0 && productSaleQty > 0 && (
-                            <div className="flex gap-1 ml-4">
+                            <div className="flex gap-2 ml-4">
                               {productDrQty > 0 && (
-                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-md border border-blue-200">
+                                <span className="text-sm bg-blue-100 text-blue-700 px-3 py-1.5 rounded-md border border-blue-200">
                                   📦 {productDrQty}
                                 </span>
                               )}
                               {productSaleQty > 0 && (
-                                <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-md border border-orange-200">
+                                <span className="text-sm bg-orange-100 text-orange-700 px-3 py-1.5 rounded-md border border-orange-200">
                                   🛒 {productSaleQty}
                                 </span>
                               )}
@@ -317,27 +317,27 @@ const DeleteErrorModal = ({ message, onClose }) => {
                         </div>
                       </div>
 
-                      {/* Transactions Details */}
-                      <div className="p-5 space-y-4">
+                      {/* Transactions Details - ENLARGED */}
+                      <div className="p-6 space-y-5">
                         {/* Delivery Receipts - PERFECTLY ALIGNED GRID */}
                         {deliveryReceipts.length > 0 && (
                           <div>
-                            <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center">
-                                  <Package size={14} className="text-blue-700" />
+                                <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center">
+                                  <Package size={16} className="text-blue-700" />
                                 </div>
-                                <span className="text-sm font-semibold text-blue-900">
+                                <span className="text-base font-semibold text-blue-900">
                                   Delivery Receipts
                                 </span>
                               </div>
-                              <span className="text-xs bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full font-medium">
+                              <span className="text-sm bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full font-medium">
                                 {deliveryReceipts.length} item{deliveryReceipts.length !== 1 ? 's' : ''} · {productDrQty} units
                               </span>
                             </div>
                             
-                            {/* PERFECTLY ALIGNED DR CARDS - Fixed width grid */}
-                            <div className="grid grid-cols-2 gap-2">
+                            {/* PERFECTLY ALIGNED DR CARDS - 3 column grid for wider modal */}
+                            <div className="grid grid-cols-3 gap-3">
                               {deliveryReceipts.map((dr, idx) => {
                                 const { label, qty, status } = parseRef(dr);
                                 const statusMeta = status ? getStatusMeta(status) : null;
@@ -347,11 +347,11 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                     key={idx}
                                     className="group/receipt w-full"
                                   >
-                                    {/* Fixed width card with consistent layout */}
+                                    {/* Fixed width card with consistent layout - ENLARGED */}
                                     <div className="flex w-full bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow transition-all duration-200 overflow-hidden">
                                       {/* DR Number - Fixed width */}
-                                      <div className="flex-none w-24 px-2 py-1.5 bg-slate-50 border-r border-slate-200">
-                                        <span className="block text-xs font-mono font-medium text-slate-700 truncate" title={label}>
+                                      <div className="flex-none w-28 px-3 py-2 bg-slate-50 border-r border-slate-200">
+                                        <span className="block text-sm font-mono font-medium text-slate-700 truncate" title={label}>
                                           {label}
                                         </span>
                                       </div>
@@ -359,8 +359,8 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                       {/* Quantity - Fixed width */}
                                       {qty && (
                                         <>
-                                          <div className="flex-none w-16 px-2 py-1.5 bg-white border-r border-slate-200">
-                                            <span className="block text-xs font-semibold text-slate-900 text-center">
+                                          <div className="flex-none w-20 px-3 py-2 bg-white border-r border-slate-200">
+                                            <span className="block text-sm font-semibold text-slate-900 text-center">
                                               {qty} pcs
                                             </span>
                                           </div>
@@ -369,9 +369,9 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                       
                                       {/* Status - Takes remaining space */}
                                       {statusMeta && (
-                                        <div className="flex-1 min-w-0 px-2 py-1.5 bg-white">
-                                          <div className={`flex items-center justify-center gap-1 text-xs font-medium ${statusMeta.text}`}>
-                                            <span className={`w-1.5 h-1.5 rounded-full ${statusMeta.dot} flex-shrink-0`} />
+                                        <div className="flex-1 min-w-0 px-3 py-2 bg-white">
+                                          <div className={`flex items-center justify-center gap-1.5 text-sm font-medium ${statusMeta.text}`}>
+                                            <span className={`w-2 h-2 rounded-full ${statusMeta.dot} flex-shrink-0`} />
                                             <span className="truncate">{statusMeta.label}</span>
                                           </div>
                                         </div>
@@ -382,10 +382,10 @@ const DeleteErrorModal = ({ message, onClose }) => {
                               })}
                             </div>
 
-                            {/* Status Legend (only if multiple statuses exist) */}
+                            {/* Status Legend */}
                             {[...new Set(deliveryReceipts.map(dr => parseRef(dr).status).filter(Boolean))].length > 1 && (
-                              <div className="flex items-center gap-3 mt-3 pt-2 border-t border-slate-100">
-                                <span className="text-xs text-slate-400">Status:</span>
+                              <div className="flex items-center gap-4 mt-4 pt-3 border-t border-slate-100">
+                                <span className="text-sm text-slate-400">Status:</span>
                                 {Object.entries(statusConfig)
                                   .filter(([status]) => 
                                     deliveryReceipts.some(dr => parseRef(dr).status === status)
@@ -393,7 +393,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                   .map(([status, config]) => (
                                     <div key={status} className="flex items-center gap-1.5">
                                       <span className={`w-2 h-2 rounded-full ${config.dot}`} />
-                                      <span className="text-xs text-slate-600">{config.label}</span>
+                                      <span className="text-sm text-slate-600">{config.label}</span>
                                     </div>
                                   ))
                                 }
@@ -405,22 +405,22 @@ const DeleteErrorModal = ({ message, onClose }) => {
                         {/* Sales - PERFECTLY ALIGNED GRID */}
                         {saleRefs.length > 0 && (
                           <div>
-                            <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center">
-                                  <ShoppingCart size={14} className="text-orange-700" />
+                                <div className="w-7 h-7 bg-orange-100 rounded-lg flex items-center justify-center">
+                                  <ShoppingCart size={16} className="text-orange-700" />
                                 </div>
-                                <span className="text-sm font-semibold text-orange-900">
+                                <span className="text-base font-semibold text-orange-900">
                                   Sales Orders
                                 </span>
                               </div>
-                              <span className="text-xs bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full font-medium">
+                              <span className="text-sm bg-orange-100 text-orange-700 px-3 py-1.5 rounded-full font-medium">
                                 {saleRefs.length} item{saleRefs.length !== 1 ? 's' : ''} · {productSaleQty} units
                               </span>
                             </div>
                             
-                            {/* PERFECTLY ALIGNED SALE CARDS - Fixed width grid */}
-                            <div className="grid grid-cols-2 gap-2">
+                            {/* PERFECTLY ALIGNED SALE CARDS - 3 column grid */}
+                            <div className="grid grid-cols-3 gap-3">
                               {saleRefs.map((ref, idx) => {
                                 const { label, qty } = parseRef(ref);
                                 return (
@@ -428,19 +428,19 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                     key={idx}
                                     className="group/receipt w-full"
                                   >
-                                    {/* Fixed width card with consistent layout */}
+                                    {/* Fixed width card with consistent layout - ENLARGED */}
                                     <div className="flex w-full bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
                                       {/* Reference Number - Fixed width */}
-                                      <div className="flex-none w-24 px-2 py-1.5 bg-slate-50 border-r border-slate-200">
-                                        <span className="block text-xs font-mono font-medium text-slate-700 truncate" title={label}>
+                                      <div className="flex-none w-28 px-3 py-2 bg-slate-50 border-r border-slate-200">
+                                        <span className="block text-sm font-mono font-medium text-slate-700 truncate" title={label}>
                                           {label}
                                         </span>
                                       </div>
                                       
                                       {/* Quantity - Takes remaining space */}
                                       {qty && (
-                                        <div className="flex-1 px-2 py-1.5 bg-white">
-                                          <span className="block text-xs font-semibold text-slate-900 text-center">
+                                        <div className="flex-1 px-3 py-2 bg-white">
+                                          <span className="block text-sm font-semibold text-slate-900 text-center">
                                             {qty} pcs
                                           </span>
                                         </div>
@@ -457,30 +457,30 @@ const DeleteErrorModal = ({ message, onClose }) => {
                   );
                 })}
 
-                {/* Resolution Guide */}
-                <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 rounded-xl p-5 border border-amber-200/60 mt-6">
-                  <div className="flex gap-4">
-                    <div className="flex-shrink-0 w-10 h-10 bg-amber-200/50 rounded-xl flex items-center justify-center">
-                      <span className="text-2xl">📋</span>
+                {/* Resolution Guide - ENLARGED */}
+                <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 rounded-xl p-6 border border-amber-200/60 mt-8">
+                  <div className="flex gap-5">
+                    <div className="flex-shrink-0 w-12 h-12 bg-amber-200/50 rounded-xl flex items-center justify-center">
+                      <span className="text-3xl">📋</span>
                     </div>
                     <div>
-                      <h4 className="font-semibold text-amber-900 mb-1">Required Actions</h4>
-                      <p className="text-sm text-amber-800/90 leading-relaxed">
+                      <h4 className="text-lg font-semibold text-amber-900 mb-2">Required Actions</h4>
+                      <p className="text-base text-amber-800/90 leading-relaxed">
                         Before deleting this inventory record, you must void or cancel all associated 
                         delivery receipts and sales orders. Once all transactions are voided, the stock 
                         will be released and you can safely delete this record.
                       </p>
-                      <div className="flex items-center gap-4 mt-3 text-xs text-amber-700">
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                      <div className="flex items-center gap-6 mt-4 text-sm text-amber-700">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-amber-500" />
                           Void deliveries first
                         </span>
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-amber-500" />
                           Cancel sales orders
                         </span>
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-amber-500" />
                           Retry deletion
                         </span>
                       </div>
@@ -497,18 +497,18 @@ const DeleteErrorModal = ({ message, onClose }) => {
             )}
           </div>
 
-          {/* ─── Footer with Actions ─── */}
-          <div className="relative flex-shrink-0 px-6 py-4 border-t border-slate-200/50 bg-gradient-to-b from-white to-slate-50/50">
-            <div className="flex items-center justify-end gap-3">
+          {/* ─── Footer with Actions - ENLARGED ─── */}
+          <div className="relative flex-shrink-0 px-8 py-5 border-t border-slate-200/50 bg-gradient-to-b from-white to-slate-50/50">
+            <div className="flex items-center justify-end gap-4">
               <button
                 onClick={onClose}
-                className="px-5 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
+                className="px-6 py-3 text-base font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={onClose}
-                className="px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-slate-800 to-slate-900 rounded-xl hover:from-slate-900 hover:to-slate-950 transition-all duration-200 shadow-lg shadow-slate-900/20"
+                className="px-6 py-3 text-base font-medium text-white bg-gradient-to-r from-slate-800 to-slate-900 rounded-xl hover:from-slate-900 hover:to-slate-950 transition-all duration-200 shadow-lg shadow-slate-900/20"
               >
                 Close Window
               </button>
