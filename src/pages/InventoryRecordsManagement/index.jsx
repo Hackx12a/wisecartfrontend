@@ -248,11 +248,11 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                   const { label, qty, status, from, to } = parseRef(dr);
                                   const sm = status ? getStatusMeta(status) : null;
                                   return (
-                                    <div key={j} className="flex flex-col bg-white/70 backdrop-blur-sm rounded-lg border border-blue-200/60 shadow-sm overflow-hidden">
+                                    <div key={j} className="flex flex-col bg-white/70 backdrop-blur-sm rounded-lg border border-blue-200/60 shadow-sm overflow-visible">
                                       {/* Main pill row */}
                                       <div className="flex w-full min-h-[2rem]">
                                         {/* DR number — FIXED: removed w-24/truncate, now wraps fully */}
-                                        <div className="flex-shrink-0 px-2 py-1.5 bg-blue-500/10 border-r border-blue-200/60 overflow-x-auto" style={{ minWidth: '5rem', maxWidth: '10rem' }}>
+                                        <div className="flex-shrink-0 px-2 py-1.5 bg-blue-500/10 border-r border-blue-200/60" style={{ minWidth: '8rem', maxWidth: '14rem', overflowX: 'auto' }}>
                                           <span className="block text-xs font-mono font-medium text-blue-800 whitespace-nowrap">
                                             {label}
                                           </span>
@@ -337,11 +337,11 @@ const DeleteErrorModal = ({ message, onClose }) => {
                                 {saleRefs.map((ref, j) => {
                                   const { label, qty, status, branch, company } = parseRef(ref);
                                   return (
-                                    <div key={j} className="flex flex-col bg-white/70 backdrop-blur-sm rounded-lg border border-orange-200/60 shadow-sm overflow-hidden">
+                                    <div key={j} className="flex flex-col bg-white/70 backdrop-blur-sm rounded-lg border border-orange-200/60 shadow-sm overflow-visible">
                                       {/* Main pill row */}
                                       <div className="flex w-full min-h-[2rem]">
                                         {/* Reference number — FIXED: same treatment as DR */}
-                                        <div className="flex-shrink-0 px-2 py-1.5 bg-orange-500/10 border-r border-orange-200/60 overflow-x-auto" style={{ minWidth: '5rem', maxWidth: '10rem' }}>
+                                        <div className="flex-shrink-0 px-2 py-1.5 bg-orange-500/10 border-r border-orange-200/60" style={{ minWidth: '8rem', maxWidth: '14rem', overflowX: 'auto' }}>
                                           <span className="block text-xs font-mono font-medium text-orange-800 whitespace-nowrap">
                                             {label}
                                           </span>
