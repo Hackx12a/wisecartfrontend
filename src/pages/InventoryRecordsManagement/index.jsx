@@ -12,7 +12,7 @@ import usePagination from '../../hooks/ui/usePagination';
 import { getCurrentUser, isAdmin } from '../../utils/authUtils';
 import { api } from '../../services/api';
 
-// ─── Scrollable Error Modal ────────────────────────────────────────────────
+// ─── Scrollable Error Modal with Glass Morphism ───────────────────────────
 const DeleteErrorModal = ({ message, onClose }) => {
   if (!message) return null;
 
@@ -52,132 +52,142 @@ const DeleteErrorModal = ({ message, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-      {/* Backdrop */}
+      {/* Backdrop with enhanced blur */}
       <div
-        className="absolute inset-0 bg-black bg-opacity-60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/40 backdrop-blur-md"
         onClick={onClose}
       />
 
-      {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden border border-red-100">
+      {/* Modal with glass morphism effect */}
+      <div className="relative w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden rounded-2xl shadow-2xl">
 
-        {/* Header */}
-        <div className="flex items-center gap-3 px-6 py-5 bg-red-50 border-b border-red-100 flex-shrink-0">
-          <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-            <AlertTriangle size={20} className="text-red-600" />
+        {/* Glass background layers */}
+        <div className="absolute inset-0 bg-white/80 backdrop-blur-xl" />
+        <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-white/30" />
+
+        {/* Border overlay */}
+        <div className="absolute inset-0 border border-white/20 rounded-2xl pointer-events-none" />
+
+        {/* Content container */}
+        <div className="relative flex flex-col max-h-[85vh]">
+          {/* Header */}
+          <div className="flex items-center gap-3 px-6 py-5 border-b border-red-200/30 bg-red-500/5">
+            <div className="flex-shrink-0 w-10 h-10 bg-red-500/10 rounded-full flex items-center justify-center backdrop-blur-sm">
+              <AlertTriangle size={20} className="text-red-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg font-bold text-gray-900">Cannot Delete Inventory Record</h2>
+              <p className="text-sm text-red-600/90 mt-0.5">
+                Stock from this record has already been used in the following transactions
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 text-gray-500 hover:text-gray-700 transition-colors backdrop-blur-sm"
+            >
+              <X size={18} />
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-bold text-red-800">Cannot Delete Inventory Record</h2>
-            <p className="text-sm text-red-600 mt-0.5">
-              Stock from this record has already been used in the following transactions
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-100 text-red-400 hover:text-red-600 transition-colors"
-          >
-            <X size={18} />
-          </button>
-        </div>
 
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
-          {hasStructuredData ? (
-            <>
-              {/* Delivery Receipts Section */}
-              {deliverySection.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Package size={14} className="text-blue-600" />
-                    </div>
-                    <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">
-                      Used in Deliveries
-                    </h3>
-                    <span className="ml-auto bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">
-                      {deliverySection.reduce((sum, d) => sum + d.receipts.length, 0)} receipt{deliverySection.reduce((sum, d) => sum + d.receipts.length, 0) !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-
-                  <div className="space-y-3">
-                    {deliverySection.map((entry, i) => (
-                      <div key={i} className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                        <p className="font-medium text-gray-800 text-sm mb-2">📦 {entry.product}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {entry.receipts.map((receipt, j) => (
-                            <span
-                              key={j}
-                              className="inline-flex items-center px-3 py-1 bg-white border border-blue-200 text-blue-700 text-xs font-mono rounded-lg shadow-sm"
-                            >
-                              {receipt}
-                            </span>
-                          ))}
-                        </div>
+            {hasStructuredData ? (
+              <>
+                {/* Delivery Receipts Section */}
+                {deliverySection.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-7 h-7 bg-blue-500/10 rounded-lg flex items-center justify-center flex-shrink-0 backdrop-blur-sm">
+                        <Package size={14} className="text-blue-600" />
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Sales Section */}
-              {salesSection.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-7 h-7 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <ShoppingCart size={14} className="text-orange-600" />
+                      <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">
+                        Used in Deliveries
+                      </h3>
+                      <span className="ml-auto bg-blue-500/10 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full backdrop-blur-sm">
+                        {deliverySection.reduce((sum, d) => sum + d.receipts.length, 0)} receipt{deliverySection.reduce((sum, d) => sum + d.receipts.length, 0) !== 1 ? 's' : ''}
+                      </span>
                     </div>
-                    <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">
-                      Used in Sales
-                    </h3>
-                    <span className="ml-auto bg-orange-100 text-orange-700 text-xs font-medium px-2 py-0.5 rounded-full">
-                      {salesSection.reduce((sum, s) => sum + s.refs.length, 0)} sale{salesSection.reduce((sum, s) => sum + s.refs.length, 0) !== 1 ? 's' : ''}
-                    </span>
-                  </div>
 
-                  <div className="space-y-3">
-                    {salesSection.map((entry, i) => (
-                      <div key={i} className="bg-orange-50 border border-orange-100 rounded-xl p-4">
-                        <p className="font-medium text-gray-800 text-sm mb-2">🛒 {entry.product}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {entry.refs.map((ref, j) => (
-                            <span
-                              key={j}
-                              className="inline-flex items-center px-3 py-1 bg-white border border-orange-200 text-orange-700 text-xs font-mono rounded-lg shadow-sm"
-                            >
-                              {ref}
-                            </span>
-                          ))}
+                    <div className="space-y-3">
+                      {deliverySection.map((entry, i) => (
+                        <div key={i} className="bg-blue-500/5 border border-blue-200/30 rounded-xl p-4 backdrop-blur-sm">
+                          <p className="font-medium text-gray-800 text-sm mb-2">📦 {entry.product}</p>
+                          <div className="flex flex-wrap gap-2">
+                            {entry.receipts.map((receipt, j) => (
+                              <span
+                                key={j}
+                                className="inline-flex items-center px-3 py-1 bg-white/70 border border-blue-200/50 text-blue-700 text-xs font-mono rounded-lg shadow-sm backdrop-blur-sm"
+                              >
+                                {receipt}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-            </>
-          ) : (
-            /* Fallback: raw message if parsing didn't work */
-            <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono bg-gray-50 rounded-xl p-4 border border-gray-200 leading-relaxed">
-              {message}
-            </pre>
-          )}
+                )}
 
-          {/* Footer note */}
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <p className="text-sm text-amber-800 leading-relaxed">
-              <strong>ℹ️ To delete this record,</strong> you must first void or cancel all the delivery receipts and sales listed above, then try again.
-            </p>
+                {/* Sales Section */}
+                {salesSection.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-7 h-7 bg-orange-500/10 rounded-lg flex items-center justify-center flex-shrink-0 backdrop-blur-sm">
+                        <ShoppingCart size={14} className="text-orange-600" />
+                      </div>
+                      <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">
+                        Used in Sales
+                      </h3>
+                      <span className="ml-auto bg-orange-500/10 text-orange-700 text-xs font-medium px-2 py-0.5 rounded-full backdrop-blur-sm">
+                        {salesSection.reduce((sum, s) => sum + s.refs.length, 0)} sale{salesSection.reduce((sum, s) => sum + s.refs.length, 0) !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {salesSection.map((entry, i) => (
+                        <div key={i} className="bg-orange-500/5 border border-orange-200/30 rounded-xl p-4 backdrop-blur-sm">
+                          <p className="font-medium text-gray-800 text-sm mb-2">🛒 {entry.product}</p>
+                          <div className="flex flex-wrap gap-2">
+                            {entry.refs.map((ref, j) => (
+                              <span
+                                key={j}
+                                className="inline-flex items-center px-3 py-1 bg-white/70 border border-orange-200/50 text-orange-700 text-xs font-mono rounded-lg shadow-sm backdrop-blur-sm"
+                              >
+                                {ref}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              /* Fallback: raw message if parsing didn't work */
+              <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono bg-white/50 backdrop-blur-sm rounded-xl p-4 border border-gray-200/30 leading-relaxed">
+                {message}
+              </pre>
+            )}
+
+            {/* Footer note */}
+            <div className="bg-amber-500/5 border border-amber-200/30 rounded-xl p-4 backdrop-blur-sm">
+              <p className="text-sm text-amber-800/90 leading-relaxed">
+                <strong>ℹ️ To delete this record,</strong> you must first void or cancel all the delivery receipts and sales listed above, then try again.
+              </p>
+            </div>
           </div>
-        </div>
 
-        {/* Footer button */}
-        <div className="flex-shrink-0 px-6 py-4 bg-gray-50 border-t border-gray-100">
-          <button
-            onClick={onClose}
-            className="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-900 text-white font-medium rounded-xl transition-colors text-sm"
-          >
-            Close
-          </button>
+          {/* Footer button */}
+          <div className="flex-shrink-0 px-6 py-4 border-t border-gray-200/30 bg-gray-500/5">
+            <button
+              onClick={onClose}
+              className="w-full py-2.5 px-4 bg-gray-800/90 hover:bg-gray-900 text-white font-medium rounded-xl transition-colors text-sm backdrop-blur-sm"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>
