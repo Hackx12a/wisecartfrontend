@@ -29,7 +29,6 @@ const InventoryRequestManagement = ({ irrRequests: initialRequests, onRefresh, o
         loadSuppliers();
     }, []);
 
-    // REMOVED the rpqDeleted event listener from here - it's now handled in parent
 
     const loadSuppliers = async () => {
         try {
