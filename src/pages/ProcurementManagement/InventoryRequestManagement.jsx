@@ -6,7 +6,7 @@ import LoadingOverlay from '../../components/common/LoadingOverlay';
 import IRRTableRow from './components/IRRTableRow';
 import IRRModal from './components/IRRModal';
 import IRRViewModal from './components/IRRViewModal';
-import Pagination from '../../../components/common/Pagination';
+import Pagination from '../../components/common/Pagination';
 
 
 const InventoryRequestManagement = ({ irrRequests: initialRequests, onRefresh, onProceedToRpq }) => {
