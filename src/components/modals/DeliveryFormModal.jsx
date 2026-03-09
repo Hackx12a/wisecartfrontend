@@ -461,7 +461,7 @@ const DeliveryFormModal = ({
                                         <table className="w-full">
                                             <thead className="bg-gray-50 border-b border-gray-200">
                                                 <tr>
-                                                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase w-10">Number</th>
+                                                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase w-10">#</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase w-1/4">Product Name</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Variation</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">SKU</th>
@@ -493,11 +493,17 @@ const DeliveryFormModal = ({
 
                                                     return (
                                                         <tr key={`item-${i}`} className="hover:bg-gray-50">
+                                                            {/* Number */}
+                                                            <td className="px-4 py-3 text-center">
+                                                                <span className="text-sm font-semibold text-gray-500">{i + 1}</span>
+                                                            </td>
+                                                            {/* Product Name */}
                                                             <td className="px-4 py-3">
                                                                 {selectedOption
                                                                     ? <div className="font-semibold text-gray-900 text-sm line-clamp-2">{selectedOption.fullName}</div>
                                                                     : <div className="text-gray-500 italic text-sm">Product not found</div>}
                                                             </td>
+                                                            {/* Variation */}
                                                             <td className="px-2 py-3">
                                                                 {selectedOption?.subLabel && selectedOption.subLabel !== 'No variations'
                                                                     ? <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{selectedOption.subLabel}</span>
@@ -557,8 +563,8 @@ const DeliveryFormModal = ({
                                             {/* ── Totals footer row ───────────────────────────────────────────── */}
                                             <tfoot>
                                                 <tr className="bg-gray-50 border-t-2 border-gray-300">
-                                                    {/* Label */}
-                                                    <td colSpan={7} className="px-4 py-3 text-right">   
+                                                    {/* Label spans all columns up to Prepared Qty */}
+                                                    <td colSpan={8} className="px-4 py-3 text-right">
                                                         <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
                                                             Total ({formData.items.length} item{formData.items.length !== 1 ? 's' : ''})
                                                         </span>
