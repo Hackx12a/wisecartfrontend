@@ -386,7 +386,7 @@ const DeliveryManagement = () => {
     <>
       <LoadingOverlay show={actionLoading} message={loadingMessage || 'Loading...'} />
 
-      <div className="p-6 max-w-full mx-auto">
+      <div className="p-6 max-w-[1700px] mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Delivery Management</h1>
           <p className="text-gray-600">Track and manage product deliveries to branches</p>
