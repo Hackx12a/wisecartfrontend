@@ -379,7 +379,7 @@ const DeliveryManagement = () => {
 
       {/* Remove min-h-screen to prevent vertical scrolling */}
       <div className="bg-gray-50 p-6">
-        <div className="max-w-[2000px] mx-auto">
+        <div className="max-w-[1700px] mx-auto">
           {/* Header */}
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Delivery Management</h1>
