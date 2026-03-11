@@ -59,13 +59,13 @@ const DeliveryTable = ({
     <div className="bg-white rounded-xl shadow-sm overflow-hidden w-full">
       {/* Only horizontal scroll - no vertical scroll */}
       <div className="overflow-x-auto overflow-y-visible">
-        <table className="w-full" style={{ minWidth: '2000px' }}>
+        <table className="w-full border-collapse" style={{ minWidth: '2000px' }}>
 
           {/* ── HEAD ── */}
           <thead className="bg-gray-50 border-b-2 border-gray-200">
             <tr>
-              <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-16">#</th>
-              <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Receipt #</th>
+              <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-16 sticky left-0 bg-gray-50 z-20 border-r border-gray-200">#</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap sticky left-16 bg-gray-50 z-20 border-r border-gray-200">Receipt #</th>
               <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">From (Warehouse)</th>
               <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">To (Branch)</th>
               <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Company</th>
@@ -100,13 +100,13 @@ const DeliveryTable = ({
               return (
                 <tr key={delivery.id} className="hover:bg-blue-50/30 transition-colors">
 
-                  {/* Row Number */}
-                  <td className="px-4 py-3 text-center whitespace-nowrap">
+                  {/* Row Number - Sticky */}
+                  <td className="px-4 py-3 text-center whitespace-nowrap sticky left-0 bg-white z-10 border-r border-gray-200">
                     <span className="text-sm font-medium text-gray-500">{rowNumber}</span>
                   </td>
 
-                  {/* Receipt # */}
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  {/* Receipt # - Sticky */}
+                  <td className="px-4 py-3 whitespace-nowrap sticky left-16 bg-white z-10 border-r border-gray-200">
                     <div className="text-sm font-bold text-gray-900">{delivery.deliveryReceiptNumber}</div>
                     {delivery.preparedBy && (
                       <div className="text-xs text-gray-400 mt-0.5">By: {delivery.preparedBy}</div>
@@ -268,10 +268,13 @@ const DeliveryTable = ({
           {/* ── FOOTER totals ── */}
           <tfoot>
             <tr className="bg-gray-100 border-t-2 border-gray-300">
-              <td colSpan={7} className="px-4 py-3 text-right">
+              <td colSpan={2} className="px-4 py-3 sticky left-0 bg-gray-100 z-10 border-r border-gray-300">
                 <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
                   Page Totals ({deliveries.length})
                 </span>
+              </td>
+              <td colSpan={5} className="px-4 py-3 text-right">
+                {/* Empty cell for spacing */}
               </td>
               <td className="px-4 py-3 text-center whitespace-nowrap">
                 <span className="text-sm font-bold text-gray-800">{grandTotalItems}</span>
