@@ -373,175 +373,180 @@ const DeliveryManagement = () => {
 
   const productOptions = prepareProductOptions(products);
 
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <LoadingOverlay show={true} message="Loading deliveries..." />
+      </div>
+    );
+  }
+
   return (
     <>
       <LoadingOverlay show={actionLoading} message={loadingMessage || 'Loading...'} />
 
-      {/* Remove all height constraints and scrolling */}
-      <div className="bg-gray-50">
-        <div className="max-w-[1600px] mx-auto px-6 py-6">
-          {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Delivery Management</h1>
-            <p className="text-gray-600">Track and manage product deliveries to branches</p>
-          </div>
+      <div className="p-6 max-w-full mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Delivery Management</h1>
+          <p className="text-gray-600">Track and manage product deliveries to branches</p>
+        </div>
 
-          {/* Toolbar: New Delivery button + Sort control */}
-          <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
-            <button
-              onClick={() => handleOpenModal('create')}
-              className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium"
+        {/* Toolbar: New Delivery button + Sort control */}
+        <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
+          <button
+            onClick={() => handleOpenModal('create')}
+            className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium"
+          >
+            <Plus size={20} />
+            <span>New Delivery</span>
+          </button>
+
+          {/* ── Sort control ── */}
+          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
+            <ArrowUpDown size={16} className="text-gray-500 flex-shrink-0" />
+            <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Sort by:</span>
+            <select
+              value={sortMode}
+              onChange={e => { setSortMode(e.target.value); setCurrentPage(1); }}
+              className="text-sm text-gray-700 bg-transparent border-none outline-none cursor-pointer pr-1"
             >
-              <Plus size={20} />
-              <span>New Delivery</span>
-            </button>
-
-            {/* ── Sort control ── */}
-            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
-              <ArrowUpDown size={16} className="text-gray-500 flex-shrink-0" />
-              <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Sort by:</span>
-              <select
-                value={sortMode}
-                onChange={e => { setSortMode(e.target.value); setCurrentPage(1); }}
-                className="text-sm text-gray-700 bg-transparent border-none outline-none cursor-pointer pr-1"
-              >
-                {SORT_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
+              {SORT_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
           </div>
+        </div>
 
-          <DeliveryFilters
-            filterData={filterData}
-            onFilterChange={handleFilterChange}
-            onReset={handleResetFilter}
-            companies={companies}
-            branches={branches}
-            warehouses={warehouses}
-          />
+        <DeliveryFilters
+          filterData={filterData}
+          onFilterChange={handleFilterChange}
+          onReset={handleResetFilter}
+          companies={companies}
+          branches={branches}
+          warehouses={warehouses}
+        />
 
-          <DeliveryTable
-            deliveries={currentDeliveries}
-            onView={handleViewDelivery}
-            onEdit={handleOpenModal.bind(null, 'edit')}
-            onDelete={handleDeleteDelivery}
-            onCancel={handleOpenCancelModal}
+        <DeliveryTable
+          deliveries={currentDeliveries}
+          onView={handleViewDelivery}
+          onEdit={handleOpenModal.bind(null, 'edit')}
+          onDelete={handleDeleteDelivery}
+          onCancel={handleOpenCancelModal}
+          onPrint={handleGenerateReceipt}
+          onPageChange={setCurrentPage}
+          currentPage={currentPage}
+          itemsPerPage={itemsPerPage}
+          totalItems={filteredDeliveries.length}
+          isLoading={loading}
+        />
+
+        {/* Modals */}
+        {modalState.show && modalState.mode === 'view' && modalState.delivery && (
+          <DeliveryViewModal
+            delivery={modalState.delivery}
+            onClose={handleCloseModal}
+            onEdit={() => {
+              handleCloseModal();
+              setTimeout(() => handleOpenModal('edit', modalState.delivery), 100);
+            }}
             onPrint={handleGenerateReceipt}
-            onPageChange={setCurrentPage}
-            currentPage={currentPage}
-            itemsPerPage={itemsPerPage}
-            totalItems={filteredDeliveries.length}
-            isLoading={loading}
+            isLoading={actionLoading}
           />
+        )}
 
-          {/* Modals */}
-          {modalState.show && modalState.mode === 'view' && modalState.delivery && (
-            <DeliveryViewModal
-              delivery={modalState.delivery}
-              onClose={handleCloseModal}
-              onEdit={() => {
-                handleCloseModal();
-                setTimeout(() => handleOpenModal('edit', modalState.delivery), 100);
-              }}
-              onPrint={handleGenerateReceipt}
-              isLoading={actionLoading}
-            />
-          )}
+        {modalState.show && (modalState.mode === 'create' || modalState.mode === 'edit') && (
+          <DeliveryFormModal
+            mode={modalState.mode}
+            delivery={modalState.delivery}
+            onClose={handleCloseModal}
+            onSave={handleSaveDelivery}
+            branches={branches}
+            products={products}
+            warehouses={warehouses}
+            companies={companies}
+            isLoading={actionLoading}
+          />
+        )}
 
-          {modalState.show && (modalState.mode === 'create' || modalState.mode === 'edit') && (
-            <DeliveryFormModal
-              mode={modalState.mode}
-              delivery={modalState.delivery}
-              onClose={handleCloseModal}
-              onSave={handleSaveDelivery}
-              branches={branches}
-              products={products}
-              warehouses={warehouses}
-              companies={companies}
-              isLoading={actionLoading}
-            />
-          )}
+        {receiptModalState.show && receiptModalState.receiptData && (
+          <DeliveryReceiptModal
+            receiptData={receiptModalState.receiptData}
+            onClose={() => setReceiptModalState({ show: false, receiptData: null })}
+            onSave={handleSaveReceipt}
+          />
+        )}
 
-          {receiptModalState.show && receiptModalState.receiptData && (
-            <DeliveryReceiptModal
-              receiptData={receiptModalState.receiptData}
-              onClose={() => setReceiptModalState({ show: false, receiptData: null })}
-              onSave={handleSaveReceipt}
-            />
-          )}
-
-          {/* ── Cancel Delivered Delivery Modal ── */}
-          {cancelModal.show && cancelModal.delivery && (
-            <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-6">
-              <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl">
-                {/* Header */}
-                <div className="p-6 border-b border-gray-200 flex items-center gap-3">
-                  <div className="p-2 bg-orange-100 rounded-lg">
-                    <XCircle size={22} className="text-orange-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-gray-900">Cancel Delivered Delivery</h2>
-                    <p className="text-sm text-gray-500 mt-0.5">
-                      DR# {cancelModal.delivery.deliveryReceiptNumber}
-                    </p>
-                  </div>
+        {/* ── Cancel Delivered Delivery Modal ── */}
+        {cancelModal.show && cancelModal.delivery && (
+          <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-6">
+            <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl">
+              {/* Header */}
+              <div className="p-6 border-b border-gray-200 flex items-center gap-3">
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <XCircle size={22} className="text-orange-600" />
                 </div>
-
-                {/* Body */}
-                <div className="p-6 space-y-4">
-                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                    <p className="font-semibold mb-1">⚠️ What this action does:</p>
-                    <ul className="list-disc list-inside space-y-1">
-                      <li>Marks the delivery as <strong>CANCELLED</strong></li>
-                      <li>Returns all delivered stock back to the warehouse</li>
-                      <li>Removes the stock from the branch</li>
-                      <li>Records reversal transactions</li>
-                    </ul>
-                    <p className="mt-2 text-amber-700">
-                      This can only proceed if <strong>none</strong> of the delivered items have been sold.
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Reason for Cancellation <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      value={cancelModal.remarks}
-                      onChange={(e) => setCancelModal(prev => ({ ...prev, remarks: e.target.value }))}
-                      placeholder="Enter the reason why this delivered delivery is being cancelled..."
-                      rows={4}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm resize-none"
-                      autoFocus
-                    />
-                    {cancelModal.remarks.trim().length === 0 && (
-                      <p className="text-xs text-gray-400 mt-1">Required — this will be saved to the delivery record.</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Footer */}
-                <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
-                  <button
-                    onClick={() => setCancelModal({ show: false, delivery: null, remarks: '' })}
-                    className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium text-sm"
-                  >
-                    Keep Delivery
-                  </button>
-                  <button
-                    onClick={handleConfirmCancel}
-                    disabled={!cancelModal.remarks.trim()}
-                    className="px-5 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    <XCircle size={16} />
-                    Confirm Cancellation
-                  </button>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Cancel Delivered Delivery</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    DR# {cancelModal.delivery.deliveryReceiptNumber}
+                  </p>
                 </div>
               </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-4">
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                  <p className="font-semibold mb-1">⚠️ What this action does:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Marks the delivery as <strong>CANCELLED</strong></li>
+                    <li>Returns all delivered stock back to the warehouse</li>
+                    <li>Removes the stock from the branch</li>
+                    <li>Records reversal transactions</li>
+                  </ul>
+                  <p className="mt-2 text-amber-700">
+                    This can only proceed if <strong>none</strong> of the delivered items have been sold.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Reason for Cancellation <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={cancelModal.remarks}
+                    onChange={(e) => setCancelModal(prev => ({ ...prev, remarks: e.target.value }))}
+                    placeholder="Enter the reason why this delivered delivery is being cancelled..."
+                    rows={4}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm resize-none"
+                    autoFocus
+                  />
+                  {cancelModal.remarks.trim().length === 0 && (
+                    <p className="text-xs text-gray-400 mt-1">Required — this will be saved to the delivery record.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+                <button
+                  onClick={() => setCancelModal({ show: false, delivery: null, remarks: '' })}
+                  className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium text-sm"
+                >
+                  Keep Delivery
+                </button>
+                <button
+                  onClick={handleConfirmCancel}
+                  disabled={!cancelModal.remarks.trim()}
+                  className="px-5 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <XCircle size={16} />
+                  Confirm Cancellation
+                </button>
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </>
   );
