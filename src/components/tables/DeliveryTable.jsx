@@ -58,26 +58,23 @@ const DeliveryTable = ({
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden w-full">
       <div className="overflow-x-auto">
-        {/* minWidth forces the table to always be wider than the viewport */}
-        <table className="w-full" style={{ minWidth: '1600px' }}>
-
+        {/* Remove fixed minWidth and let the table size naturally */}
+        <table className="w-full min-w-[1200px] lg:min-w-full table-auto">
+          
           {/* ── HEAD ── */}
           <thead className="bg-gray-50 border-b-2 border-gray-200">
             <tr>
-              <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-44">Receipt #</th>
-              <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-44">From (Warehouse)</th>
-              <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-44">To (Branch)</th>
-              <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-40">Company</th>
-              <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-36">Date Prepared</th>
-              <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-36">Date Delivered</th>
-              <th className="px-5 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-24">Items</th>
-              <th className="px-5 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-32">Prepared Qty</th>
-              <th className="px-5 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-32">Delivered Qty</th>
-              <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-36">Status</th>
-              {/* Actions column - adjusted width for better spacing */}
-              <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap" style={{ width: 280 }}>
-                Actions
-              </th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Receipt #</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">From (Warehouse)</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">To (Branch)</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Company</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Date Prepared</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Date Delivered</th>
+              <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Items</th>
+              <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Prepared Qty</th>
+              <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Delivered Qty</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Status</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
             </tr>
           </thead>
 
@@ -100,7 +97,7 @@ const DeliveryTable = ({
                 <tr key={delivery.id} className="hover:bg-blue-50/30 transition-colors">
 
                   {/* Receipt # */}
-                  <td className="px-5 py-4 whitespace-nowrap">
+                  <td className="px-4 py-3 whitespace-nowrap">
                     <div className="text-sm font-bold text-gray-900">{delivery.deliveryReceiptNumber}</div>
                     {delivery.preparedBy && (
                       <div className="text-xs text-gray-400 mt-0.5">By: {delivery.preparedBy}</div>
@@ -108,7 +105,7 @@ const DeliveryTable = ({
                   </td>
 
                   {/* From Warehouse */}
-                  <td className="px-5 py-4">
+                  <td className="px-4 py-3">
                     {delivery.warehouses && delivery.warehouses.length > 0 ? (
                       <div className="space-y-1">
                         {delivery.warehouses.map((wh, idx) => (
@@ -124,7 +121,7 @@ const DeliveryTable = ({
                   </td>
 
                   {/* To Branch */}
-                  <td className="px-5 py-4 whitespace-nowrap">
+                  <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex items-center gap-1.5">
                       <Truck size={13} className="text-green-500 flex-shrink-0" />
                       <span className="text-sm font-semibold text-gray-800">{delivery.branchName}</span>
@@ -132,26 +129,26 @@ const DeliveryTable = ({
                   </td>
 
                   {/* Company */}
-                  <td className="px-5 py-4 whitespace-nowrap text-sm font-medium text-gray-800">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-800">
                     {delivery.companyName}
                   </td>
 
                   {/* Date Prepared */}
-                  <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                     {delivery.datePrepared
                       ? new Date(delivery.datePrepared).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
                       : <span className="text-gray-300">—</span>}
                   </td>
 
                   {/* Date Delivered */}
-                  <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                     {delivery.dateDelivered
                       ? new Date(delivery.dateDelivered).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
                       : <span className="text-gray-300">—</span>}
                   </td>
 
                   {/* Item Count */}
-                  <td className="px-5 py-4 whitespace-nowrap text-center">
+                  <td className="px-4 py-3 whitespace-nowrap text-center">
                     <span className="inline-flex items-center gap-1">
                       <Package size={14} className="text-gray-400" />
                       <span className="text-sm font-bold text-gray-800">{delivery.itemCount}</span>
@@ -159,7 +156,7 @@ const DeliveryTable = ({
                   </td>
 
                   {/* Prepared Qty */}
-                  <td className="px-5 py-4 whitespace-nowrap text-right">
+                  <td className="px-4 py-3 whitespace-nowrap text-right">
                     {drTotalPrepared > 0 ? (
                       <span className="text-sm font-bold text-blue-700">
                         {drTotalPrepared}
@@ -171,7 +168,7 @@ const DeliveryTable = ({
                   </td>
 
                   {/* Delivered Qty */}
-                  <td className="px-5 py-4 whitespace-nowrap text-right">
+                  <td className="px-4 py-3 whitespace-nowrap text-right">
                     {isDelivered && drTotalDelivered > 0 ? (
                       <span className="text-sm font-bold text-green-700">
                         {drTotalDelivered}
@@ -185,72 +182,70 @@ const DeliveryTable = ({
                   </td>
 
                   {/* Status */}
-                  <td className="px-5 py-4 whitespace-nowrap">
-                    <span className={`px-3 py-1 inline-flex text-xs font-bold rounded-full ${getStatusColor(delivery.status)}`}>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className={`px-2.5 py-1 inline-flex text-xs font-bold rounded-full ${getStatusColor(delivery.status)}`}>
                       {delivery.customStatus || delivery.status}
                     </span>
                     {isDelivered && delivery.dateDelivered && (
                       <div className="text-[11px] text-green-600 mt-1 whitespace-nowrap font-medium">
-                        {new Date(delivery.dateDelivered).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        {' '}
-                        {new Date(delivery.dateDelivered).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(delivery.dateDelivered).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </div>
                     )}
                   </td>
 
-                  {/* ── Actions with consistent flex layout ── */}
-                  <td className="px-5 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-1.5">
+                  {/* ── Actions ── */}
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center gap-1">
                       {/* 1. View — always visible */}
                       <button
                         onClick={() => onView(delivery)}
                         title="View details"
-                        className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-blue-600 hover:bg-blue-100 transition-colors flex-shrink-0"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-blue-600 hover:bg-blue-100 transition-colors flex-shrink-0"
                       >
-                        <Eye size={18} />
+                        <Eye size={16} />
                       </button>
 
-                      {/* 2. Edit — visible when editable, hidden otherwise */}
-                      {canEdit ? (
+                      {/* 2. Edit — visible when editable */}
+                      {canEdit && (
                         <button
                           onClick={() => onEdit(delivery)}
                           title="Edit delivery"
-                          className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-indigo-600 hover:bg-indigo-100 transition-colors flex-shrink-0"
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-indigo-600 hover:bg-indigo-100 transition-colors flex-shrink-0"
                         >
-                          <Edit2 size={18} />
+                          <Edit2 size={16} />
                         </button>
-                      ) : null}
+                      )}
 
-                      {/* 3. Delete — visible for PENDING/PREPARING, hidden otherwise */}
-                      {canDelete ? (
+                      {/* 3. Delete — visible for PENDING/PREPARING */}
+                      {canDelete && (
                         <button
                           onClick={() => onDelete(delivery.id)}
                           title="Delete delivery"
-                          className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-red-600 hover:bg-red-100 transition-colors flex-shrink-0"
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-600 hover:bg-red-100 transition-colors flex-shrink-0"
                         >
-                          <Trash2 size={18} />
+                          <Trash2 size={16} />
                         </button>
-                      ) : null}
+                      )}
 
                       {/* 4. Cancel — visible for DELIVERED */}
-                      {isDelivered ? (
+                      {isDelivered && (
                         <button
                           onClick={() => onCancel(delivery)}
                           title="Cancel delivery — reverts stock"
-                          className="inline-flex items-center gap-1.5 px-3 h-9 rounded-lg text-orange-600 hover:bg-orange-100 transition-colors font-semibold text-sm flex-shrink-0"
+                          className="inline-flex items-center gap-1 px-2 h-8 rounded-lg text-orange-600 hover:bg-orange-100 transition-colors font-semibold text-xs flex-shrink-0"
                         >
-                          <XCircle size={18} />
+                          <XCircle size={16} />
                           Cancel
                         </button>
-                      ) : null}
+                      )}
 
                       {/* 5. Print — always visible */}
                       <button
                         onClick={() => onPrint(delivery)}
                         title="Print receipt"
-                        className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-green-600 hover:bg-green-100 transition-colors flex-shrink-0"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-green-600 hover:bg-green-100 transition-colors flex-shrink-0"
                       >
-                        <Printer size={18} />
+                        <Printer size={16} />
                       </button>
                     </div>
                   </td>
@@ -262,23 +257,23 @@ const DeliveryTable = ({
 
           {/* ── FOOTER totals ── */}
           <tfoot>
-            <tr className="bg-gray-100 border-t-2 border-gray-300">
-              <td colSpan={6} className="px-5 py-3 text-right">
+            <tr className="bg-gray-50 border-t-2 border-gray-200">
+              <td colSpan={6} className="px-4 py-3 text-right">
                 <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  Page Totals — {deliveries.length} DR{deliveries.length !== 1 ? 's' : ''}
+                  Page Totals ({deliveries.length} DR{deliveries.length !== 1 ? 's' : ''})
                 </span>
               </td>
-              <td className="px-5 py-3 text-center whitespace-nowrap">
+              <td className="px-4 py-3 text-center whitespace-nowrap">
                 <div className="inline-flex items-center gap-1">
                   <Package size={14} className="text-gray-500" />
                   <span className="text-sm font-bold text-gray-800">{grandTotalItems}</span>
                 </div>
               </td>
-              <td className="px-5 py-3 text-right whitespace-nowrap">
+              <td className="px-4 py-3 text-right whitespace-nowrap">
                 <span className="text-sm font-bold text-blue-800">{grandTotalPrepared}</span>
                 <span className="text-xs text-blue-500 ml-1">pcs</span>
               </td>
-              <td className="px-5 py-3 text-right whitespace-nowrap">
+              <td className="px-4 py-3 text-right whitespace-nowrap">
                 <span className="text-sm font-bold text-green-800">{grandTotalDelivered}</span>
                 <span className="text-xs text-green-500 ml-1">pcs</span>
               </td>
