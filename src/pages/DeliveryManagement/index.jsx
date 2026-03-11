@@ -378,18 +378,19 @@ const DeliveryManagement = () => {
       <LoadingOverlay show={actionLoading} message={loadingMessage || 'Loading...'} />
 
       <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-[1600px] mx-auto">
+        {/* Increased max-width for wider layout */}
+        <div className="max-w-[2000px] mx-auto">
           {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Delivery Management</h1>
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Delivery Management</h1>
             <p className="text-gray-600">Track and manage product deliveries to branches</p>
           </div>
 
           {/* Toolbar */}
-          <div className="flex flex-wrap items-center gap-4 mb-6">
+          <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
             <button
               onClick={() => handleOpenModal('create')}
-              className="flex items-center gap-3 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium"
+              className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium"
             >
               <Plus size={20} />
               <span>New Delivery</span>
@@ -397,12 +398,12 @@ const DeliveryManagement = () => {
 
             {/* Sort control */}
             <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
-              <ArrowUpDown size={16} className="text-gray-500" />
-              <span className="text-sm text-gray-500 font-medium">Sort by:</span>
+              <ArrowUpDown size={16} className="text-gray-500 flex-shrink-0" />
+              <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Sort by:</span>
               <select
                 value={sortMode}
                 onChange={e => { setSortMode(e.target.value); setCurrentPage(1); }}
-                className="text-sm text-gray-700 bg-transparent border-none outline-none cursor-pointer"
+                className="text-sm text-gray-700 bg-transparent border-none outline-none cursor-pointer pr-1"
               >
                 {SORT_OPTIONS.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
