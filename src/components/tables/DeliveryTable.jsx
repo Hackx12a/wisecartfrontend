@@ -299,5 +299,5 @@ const DeliveryTable = ({
     </div>
   );
 };
-
+  
 export default DeliveryTable;
