@@ -14,7 +14,8 @@ const DeliveryTable = ({
   currentPage = 1,
   itemsPerPage = 10,
   totalItems = 0,
-  isLoading = false
+  isLoading = false,
+  currentPageItems = [] // Add this prop for numbering
 }) => {
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage + 1;
@@ -59,11 +60,12 @@ const DeliveryTable = ({
     <div className="bg-white rounded-xl shadow-sm overflow-hidden w-full">
       {/* Only horizontal scroll - no vertical scroll */}
       <div className="overflow-x-auto overflow-y-visible">
-        <table className="w-full" style={{ minWidth: '2000px' }}>
+        <table className="w-full" style={{ minWidth: '2100px' }}> {/* Increased width to accommodate # column */}
 
           {/* ── HEAD ── */}
           <thead className="bg-gray-50 border-b-2 border-gray-200">
             <tr>
+              <th className="px-3 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-12">#</th> {/* New # column */}
               <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Receipt #</th>
               <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">From (Warehouse)</th>
               <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">To (Branch)</th>
@@ -80,7 +82,7 @@ const DeliveryTable = ({
 
           {/* ── BODY ── */}
           <tbody className="bg-white divide-y divide-gray-100">
-            {deliveries.map((delivery) => {
+            {deliveries.map((delivery, index) => {
               const drTotalPrepared  = delivery.totalPreparedQty  || 0;
               const drTotalDelivered = delivery.totalDeliveredQty || 0;
 
@@ -93,8 +95,16 @@ const DeliveryTable = ({
               const canDelete = isPending || isPreparing;
               const canEdit   = !isDelivered && !isCancelled && !isReturned;
 
+              // Calculate the actual row number based on current page
+              const rowNumber = (currentPage - 1) * itemsPerPage + index + 1;
+
               return (
                 <tr key={delivery.id} className="hover:bg-blue-50/30 transition-colors">
+
+                  {/* Row Number */}
+                  <td className="px-3 py-4 text-center whitespace-nowrap">
+                    <span className="text-sm font-medium text-gray-500">{rowNumber}</span>
+                  </td>
 
                   {/* Receipt # */}
                   <td className="px-5 py-4 whitespace-nowrap">
@@ -260,7 +270,7 @@ const DeliveryTable = ({
           {/* ── FOOTER totals ── */}
           <tfoot>
             <tr className="bg-gray-100 border-t-2 border-gray-300">
-              <td colSpan={6} className="px-5 py-3 text-right">
+              <td colSpan={7} className="px-5 py-3 text-right"> {/* Adjusted colSpan to account for new # column */}
                 <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
                   Page Totals — {deliveries.length} DR{deliveries.length !== 1 ? 's' : ''}
                 </span>
