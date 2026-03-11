@@ -78,6 +78,20 @@ export const useDeliveries = () => {
     }
   };
 
+  const cancelDelivery = async (id, remarks) => {
+    try {
+      const encodedRemarks = encodeURIComponent(remarks);
+      const response = await api.patch(`/deliveries/${id}/cancel?remarks=${encodedRemarks}`);
+      if (response.success) {
+        await loadData();
+        return { success: true, data: response.data };
+      }
+      return { success: false, error: response.error };
+    } catch (err) {
+      return { success: false, error: err.message || 'Failed to cancel delivery' };
+    }
+  };
+
   const updateDeliveryStatus = async (id, status) => {
     try {
       const response = await api.patch(`/deliveries/${id}/status`, null, {
@@ -232,11 +246,53 @@ export const useDeliveries = () => {
     });
   };
 
-  const sortDeliveriesByStatus = (deliveriesList) => {
+  /**
+   * Extract the numeric portion of a delivery receipt number for proper numeric sorting.
+   * e.g. "DR-00123" → 123, "DR-00045" → 45, "00099" → 99
+   * Falls back to string comparison if no numeric part is found.
+   */
+  const extractReceiptNumber = (receiptStr) => {
+    if (!receiptStr) return 0;
+    const digits = receiptStr.replace(/\D/g, '');
+    return digits.length > 0 ? parseInt(digits, 10) : 0;
+  };
+
+  /**
+   * Sort deliveries.
+   *
+   * sortMode:
+   *   'receipt_desc'   — highest DR number first (default)
+   *   'receipt_asc'    — lowest DR number first
+   *   'timestamp_desc' — most recently created first
+   *   'timestamp_asc'  — oldest created first
+   */
+  const sortDeliveriesByStatus = (deliveriesList, sortMode = 'receipt_desc') => {
     return [...deliveriesList].sort((a, b) => {
-      const createdA = new Date(a.createdAt || a.date);
-      const createdB = new Date(b.createdAt || b.date);
-      return createdB - createdA;
+      switch (sortMode) {
+        case 'receipt_asc': {
+          const numA = extractReceiptNumber(a.deliveryReceiptNumber);
+          const numB = extractReceiptNumber(b.deliveryReceiptNumber);
+          if (numA !== numB) return numA - numB;
+          return (a.deliveryReceiptNumber || '').localeCompare(b.deliveryReceiptNumber || '');
+        }
+        case 'timestamp_desc': {
+          const tA = new Date(a.createdAt || a.date);
+          const tB = new Date(b.createdAt || b.date);
+          return tB - tA;
+        }
+        case 'timestamp_asc': {
+          const tA = new Date(a.createdAt || a.date);
+          const tB = new Date(b.createdAt || b.date);
+          return tA - tB;
+        }
+        case 'receipt_desc':
+        default: {
+          const numA = extractReceiptNumber(a.deliveryReceiptNumber);
+          const numB = extractReceiptNumber(b.deliveryReceiptNumber);
+          if (numA !== numB) return numB - numA;
+          return (b.deliveryReceiptNumber || '').localeCompare(a.deliveryReceiptNumber || '');
+        }
+      }
     });
   };
 
@@ -301,6 +357,7 @@ export const useDeliveries = () => {
     createDelivery,
     updateDelivery,
     deleteDelivery,
+    cancelDelivery,
     updateDeliveryStatus,
     saveReceiptDetails,
     getDeliveryDetails,

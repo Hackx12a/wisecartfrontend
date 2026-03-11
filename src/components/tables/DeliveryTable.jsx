@@ -1,6 +1,6 @@
 // src/components/tables/DeliveryTable.jsx
 import React from 'react';
-import { Eye, Edit2, Trash2, Printer, Package, Truck } from 'lucide-react';
+import { Eye, Edit2, Trash2, Printer, Package, Truck, XCircle } from 'lucide-react';
 import Pagination from '../common/Pagination';
 
 const DeliveryTable = ({
@@ -8,6 +8,7 @@ const DeliveryTable = ({
   onView,
   onEdit,
   onDelete,
+  onCancel,
   onPrint,
   onPageChange,
   currentPage = 1,
@@ -17,29 +18,30 @@ const DeliveryTable = ({
 }) => {
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage + 1;
-  const indexOfLastItem = Math.min(currentPage * itemsPerPage, totalItems);
+  const indexOfLastItem  = Math.min(currentPage * itemsPerPage, totalItems);
 
   const getStatusColor = (status) => {
     const colors = {
-      PREPARING: 'bg-yellow-100 text-yellow-800',
+      PENDING:    'bg-gray-100 text-gray-700',
+      PREPARING:  'bg-yellow-100 text-yellow-800',
       IN_TRANSIT: 'bg-purple-100 text-purple-800',
-      DELIVERED: 'bg-green-100 text-green-800',
-      CANCELLED: 'bg-red-100 text-red-800'
+      DELIVERED:  'bg-green-100 text-green-800',
+      CANCELLED:  'bg-red-100 text-red-800',
+      RETURNED:   'bg-orange-100 text-orange-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
-
-  const grandTotalPrepared = deliveries.reduce((sum, d) => sum + (d.totalPreparedQty || 0), 0);
-  const grandTotalDelivered = deliveries.reduce((sum, d) => sum + (d.totalDeliveredQty || 0), 0);
-  const grandTotalItems = deliveries.reduce((sum, d) => sum + (d.itemCount || 0), 0);
+  const grandTotalPrepared  = deliveries.reduce((s, d) => s + (d.totalPreparedQty  || 0), 0);
+  const grandTotalDelivered = deliveries.reduce((s, d) => s + (d.totalDeliveredQty || 0), 0);
+  const grandTotalItems     = deliveries.reduce((s, d) => s + (d.itemCount         || 0), 0);
 
   if (isLoading) {
     return (
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="px-6 py-12 text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-          <p className="mt-2 text-gray-500">Loading deliveries...</p>
+        <div className="px-6 py-16 text-center">
+          <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+          <p className="mt-3 text-gray-500">Loading deliveries...</p>
         </div>
       </div>
     );
@@ -48,214 +50,245 @@ const DeliveryTable = ({
   if (deliveries.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="px-6 py-12 text-center text-gray-500">No deliveries found</div>
+        <div className="px-6 py-16 text-center text-gray-500">No deliveries found</div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden w-full">
       <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
+        {/* minWidth forces the table to always be wider than the viewport */}
+        <table className="w-full" style={{ minWidth: '1600px' }}>
+
+          {/* ── HEAD ── */}
+          <thead className="bg-gray-50 border-b-2 border-gray-200">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receipt #</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">From (Warehouse)</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">To (Branch)</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Prepared</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Delivered</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
-              {/* ── NEW: Prepared / Delivered qty columns ── */}
-              <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Prepared Qty</th>
-              <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Delivered Qty</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-44">Receipt #</th>
+              <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-44">From (Warehouse)</th>
+              <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-44">To (Branch)</th>
+              <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-40">Company</th>
+              <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-36">Date Prepared</th>
+              <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-36">Date Delivered</th>
+              <th className="px-5 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-24">Items</th>
+              <th className="px-5 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-32">Prepared Qty</th>
+              <th className="px-5 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-32">Delivered Qty</th>
+              <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-36">Status</th>
+              {/* Actions column - adjusted width for better spacing */}
+              <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap" style={{ width: 280 }}>
+                Actions
+              </th>
             </tr>
           </thead>
 
-          <tbody className="bg-white divide-y divide-gray-200">
+          {/* ── BODY ── */}
+          <tbody className="bg-white divide-y divide-gray-100">
             {deliveries.map((delivery) => {
-              // ── Per-DR totals: read pre-summed fields from the list response ──
-              // delivery.items is empty in list view; quantities come from the backend directly.
-              const drTotalPrepared = delivery.totalPreparedQty || 0;
+              const drTotalPrepared  = delivery.totalPreparedQty  || 0;
               const drTotalDelivered = delivery.totalDeliveredQty || 0;
 
+              const isDelivered = delivery.status === 'DELIVERED';
+              const isPending   = delivery.status === 'PENDING';
+              const isPreparing = delivery.status === 'PREPARING';
+              const isCancelled = delivery.status === 'CANCELLED';
+              const isReturned  = delivery.status === 'RETURNED';
+
+              const canDelete = isPending || isPreparing;
+              const canEdit   = !isDelivered && !isCancelled && !isReturned;
+
               return (
-                <tr key={delivery.id} className="hover:bg-gray-50 transition">
+                <tr key={delivery.id} className="hover:bg-blue-50/30 transition-colors">
+
                   {/* Receipt # */}
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{delivery.deliveryReceiptNumber}</div>
+                  <td className="px-5 py-4 whitespace-nowrap">
+                    <div className="text-sm font-bold text-gray-900">{delivery.deliveryReceiptNumber}</div>
                     {delivery.preparedBy && (
-                      <div className="text-sm text-gray-500">By: {delivery.preparedBy}</div>
+                      <div className="text-xs text-gray-400 mt-0.5">By: {delivery.preparedBy}</div>
                     )}
                   </td>
 
                   {/* From Warehouse */}
-                  <td className="px-6 py-4 text-sm text-gray-900">
+                  <td className="px-5 py-4">
                     {delivery.warehouses && delivery.warehouses.length > 0 ? (
                       <div className="space-y-1">
-                        {delivery.warehouses.map((warehouse, idx) => (
-                          <div key={idx} className="flex items-center gap-1">
-                            <Package size={14} className="text-blue-500 flex-shrink-0" />
-                            <div className="font-medium">{warehouse.warehouseName}</div>
+                        {delivery.warehouses.map((wh, idx) => (
+                          <div key={idx} className="flex items-center gap-1.5 whitespace-nowrap">
+                            <Package size={13} className="text-blue-400 flex-shrink-0" />
+                            <span className="text-sm font-medium text-gray-800">{wh.warehouseName}</span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <span className="text-gray-400 italic">No warehouse</span>
+                      <span className="text-xs text-gray-400 italic">No warehouse</span>
                     )}
                   </td>
 
                   {/* To Branch */}
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    <div className="flex items-center gap-1">
-                      <Truck size={14} className="text-green-500 flex-shrink-0" />
-                      <span className="font-medium text-[11px]">{delivery.branchName}</span>
+                  <td className="px-5 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-1.5">
+                      <Truck size={13} className="text-green-500 flex-shrink-0" />
+                      <span className="text-sm font-semibold text-gray-800">{delivery.branchName}</span>
                     </div>
                   </td>
 
                   {/* Company */}
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-5 py-4 whitespace-nowrap text-sm font-medium text-gray-800">
                     {delivery.companyName}
                   </td>
 
                   {/* Date Prepared */}
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
                     {delivery.datePrepared
                       ? new Date(delivery.datePrepared).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-                      : 'Not prepared'}
+                      : <span className="text-gray-300">—</span>}
                   </td>
 
                   {/* Date Delivered */}
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
                     {delivery.dateDelivered
                       ? new Date(delivery.dateDelivered).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-                      : 'Not delivered'}
+                      : <span className="text-gray-300">—</span>}
                   </td>
 
-                  {/* Item count */}
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      <Package size={16} className="text-gray-400" />
-                      <span className="text-sm font-semibold text-gray-900">{delivery.itemCount}</span>
-                    </div>
+                  {/* Item Count */}
+                  <td className="px-5 py-4 whitespace-nowrap text-center">
+                    <span className="inline-flex items-center gap-1">
+                      <Package size={14} className="text-gray-400" />
+                      <span className="text-sm font-bold text-gray-800">{delivery.itemCount}</span>
+                    </span>
                   </td>
 
-                  {/* ── Prepared Qty total for this DR ── */}
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                  {/* Prepared Qty */}
+                  <td className="px-5 py-4 whitespace-nowrap text-right">
                     {drTotalPrepared > 0 ? (
-                      <div className="inline-flex items-center gap-1 justify-end">
-                        <span className="text-sm font-bold text-blue-700">{drTotalPrepared}</span>
-                        <span className="text-xs text-blue-500">pcs</span>
-                      </div>
+                      <span className="text-sm font-bold text-blue-700">
+                        {drTotalPrepared}
+                        <span className="text-xs font-normal text-blue-400 ml-1">pcs</span>
+                      </span>
                     ) : (
-                      <span className="text-xs text-gray-400">—</span>
+                      <span className="text-gray-300">—</span>
                     )}
                   </td>
 
-                  {/* ── Delivered Qty total for this DR ── */}
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    {delivery.status === 'DELIVERED' && drTotalDelivered > 0 ? (
-                      <div className="inline-flex items-center gap-1 justify-end">
-                        <span className="text-sm font-bold text-green-700">{drTotalDelivered}</span>
-                        <span className="text-xs text-green-500">pcs</span>
-                      </div>
-                    ) : delivery.status !== 'DELIVERED' ? (
-                      <span className="text-xs text-gray-400 italic">Pending</span>
+                  {/* Delivered Qty */}
+                  <td className="px-5 py-4 whitespace-nowrap text-right">
+                    {isDelivered && drTotalDelivered > 0 ? (
+                      <span className="text-sm font-bold text-green-700">
+                        {drTotalDelivered}
+                        <span className="text-xs font-normal text-green-400 ml-1">pcs</span>
+                      </span>
+                    ) : !isDelivered ? (
+                      <span className="text-xs italic text-gray-400">Pending</span>
                     ) : (
-                      <span className="text-xs text-gray-400">—</span>
+                      <span className="text-gray-300">—</span>
                     )}
                   </td>
 
                   {/* Status */}
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex flex-col gap-1">
-                      <span className={`px-3 py-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(delivery.status)} w-fit`}>
-                        {delivery.customStatus || delivery.status}
-                      </span>
-                      {delivery.status === 'DELIVERED' && delivery.dateDelivered && (
-                        <div className="flex items-center gap-1 text-xs text-green-700">
-                          <span className="font-medium">Delivered:</span>
-                          <span>
-                            {new Date(delivery.dateDelivered).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </span>
-                          <span className="text-gray-500">
-                            {new Date(delivery.dateDelivered).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                  <td className="px-5 py-4 whitespace-nowrap">
+                    <span className={`px-3 py-1 inline-flex text-xs font-bold rounded-full ${getStatusColor(delivery.status)}`}>
+                      {delivery.customStatus || delivery.status}
+                    </span>
+                    {isDelivered && delivery.dateDelivered && (
+                      <div className="text-[11px] text-green-600 mt-1 whitespace-nowrap font-medium">
+                        {new Date(delivery.dateDelivered).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {' '}
+                        {new Date(delivery.dateDelivered).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    )}
                   </td>
 
-                  {/* Actions */}
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center gap-3">
-                      <button onClick={() => onView(delivery)} className="flex items-center gap-2 px-3 py-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition" title="View">
+                  {/* ── Actions with consistent flex layout ── */}
+                  <td className="px-5 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-1.5">
+                      {/* 1. View — always visible */}
+                      <button
+                        onClick={() => onView(delivery)}
+                        title="View details"
+                        className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-blue-600 hover:bg-blue-100 transition-colors flex-shrink-0"
+                      >
                         <Eye size={18} />
                       </button>
-                      <button onClick={() => onEdit(delivery)} className="flex items-center gap-2 px-3 py-2 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded-lg transition" title="Edit">
-                        <Edit2 size={18} />
-                      </button>
-                      <button onClick={() => onDelete(delivery.id)} className="flex items-center gap-2 px-3 py-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-lg transition" title="Delete">
-                        <Trash2 size={18} />
-                      </button>
-                      <button onClick={() => onPrint(delivery)} className="flex items-center gap-2 px-3 py-2 text-green-600 hover:text-green-900 hover:bg-green-50 rounded-lg transition" title="Print Receipt">
+
+                      {/* 2. Edit — visible when editable, hidden otherwise */}
+                      {canEdit ? (
+                        <button
+                          onClick={() => onEdit(delivery)}
+                          title="Edit delivery"
+                          className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-indigo-600 hover:bg-indigo-100 transition-colors flex-shrink-0"
+                        >
+                          <Edit2 size={18} />
+                        </button>
+                      ) : null}
+
+                      {/* 3. Delete — visible for PENDING/PREPARING, hidden otherwise */}
+                      {canDelete ? (
+                        <button
+                          onClick={() => onDelete(delivery.id)}
+                          title="Delete delivery"
+                          className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-red-600 hover:bg-red-100 transition-colors flex-shrink-0"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      ) : null}
+
+                      {/* 4. Cancel — visible for DELIVERED */}
+                      {isDelivered ? (
+                        <button
+                          onClick={() => onCancel(delivery)}
+                          title="Cancel delivery — reverts stock"
+                          className="inline-flex items-center gap-1.5 px-3 h-9 rounded-lg text-orange-600 hover:bg-orange-100 transition-colors font-semibold text-sm flex-shrink-0"
+                        >
+                          <XCircle size={18} />
+                          Cancel
+                        </button>
+                      ) : null}
+
+                      {/* 5. Print — always visible */}
+                      <button
+                        onClick={() => onPrint(delivery)}
+                        title="Print receipt"
+                        className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-green-600 hover:bg-green-100 transition-colors flex-shrink-0"
+                      >
                         <Printer size={18} />
                       </button>
                     </div>
                   </td>
+
                 </tr>
               );
             })}
           </tbody>
 
-          {/* ── Grand totals footer row ─────────────────────────────────────── */}
+          {/* ── FOOTER totals ── */}
           <tfoot>
             <tr className="bg-gray-100 border-t-2 border-gray-300">
-              {/* Label spans first 6 cols */}
-              <td colSpan={6} className="px-6 py-3 text-right">
-                <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">
-                  Page Totals ({deliveries.length} DR{deliveries.length !== 1 ? 's' : ''})
+              <td colSpan={6} className="px-5 py-3 text-right">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  Page Totals — {deliveries.length} DR{deliveries.length !== 1 ? 's' : ''}
                 </span>
               </td>
-
-              {/* Total items */}
-              <td className="px-6 py-3 whitespace-nowrap">
-                <div className="flex items-center gap-1">
+              <td className="px-5 py-3 text-center whitespace-nowrap">
+                <div className="inline-flex items-center gap-1">
                   <Package size={14} className="text-gray-500" />
                   <span className="text-sm font-bold text-gray-800">{grandTotalItems}</span>
                 </div>
               </td>
-
-              {/* Total prepared qty */}
-              <td className="px-6 py-3 text-right whitespace-nowrap">
-                <div className="inline-flex flex-col items-end">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm font-bold text-blue-800">{grandTotalPrepared}</span>
-                    <span className="text-xs text-blue-600">pcs</span>
-                  </div>
-                  <span className="text-[10px] text-gray-500 uppercase tracking-wide">prepared</span>
-                </div>
+              <td className="px-5 py-3 text-right whitespace-nowrap">
+                <span className="text-sm font-bold text-blue-800">{grandTotalPrepared}</span>
+                <span className="text-xs text-blue-500 ml-1">pcs</span>
               </td>
-
-              {/* Total delivered qty */}
-              <td className="px-6 py-3 text-right whitespace-nowrap">
-                <div className="inline-flex flex-col items-end">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm font-bold text-green-800">{grandTotalDelivered}</span>
-                    <span className="text-xs text-green-600">pcs</span>
-                  </div>
-                  <span className="text-[10px] text-gray-500 uppercase tracking-wide">delivered</span>
-                </div>
+              <td className="px-5 py-3 text-right whitespace-nowrap">
+                <span className="text-sm font-bold text-green-800">{grandTotalDelivered}</span>
+                <span className="text-xs text-green-500 ml-1">pcs</span>
               </td>
-
-              {/* Empty status + actions cols */}
-              <td colSpan={2} className="px-6 py-3" />
+              <td colSpan={2} />
             </tr>
           </tfoot>
+
         </table>
       </div>
+
       {totalItems > 0 && (
         <Pagination
           currentPage={currentPage}

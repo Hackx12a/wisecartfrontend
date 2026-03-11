@@ -1,6 +1,6 @@
 // src/pages/DeliveryManagement/index.jsx
 import React, { useState, useEffect } from 'react';
-import { Search, Plus } from 'lucide-react';
+import { Plus, ArrowUpDown, Hash, Clock, XCircle } from 'lucide-react';
 import { LoadingOverlay } from '../../components/common/LoadingOverlay';
 import DeliveryTable from '../../components/tables/DeliveryTable';
 import DeliveryFilters from '../../components/filters/DeliveryFilters';
@@ -9,7 +9,15 @@ import DeliveryViewModal from '../../components/modals/DeliveryViewModal';
 import DeliveryReceiptModal from '../../components/modals/DeliveryReceiptModal';
 import { useDeliveries } from '../../hooks/useDeliveries';
 import { api } from '../../services/api';
-import '../../styles/deliveryReceipt.css'
+import '../../styles/deliveryReceipt.css';
+
+// Sort option definitions
+const SORT_OPTIONS = [
+  { value: 'receipt_desc', label: 'DR # — Highest first', icon: Hash },
+  { value: 'receipt_asc',  label: 'DR # — Lowest first',  icon: Hash },
+  { value: 'timestamp_desc', label: 'Date — Newest first', icon: Clock },
+  { value: 'timestamp_asc',  label: 'Date — Oldest first', icon: Clock },
+];
 
 const DeliveryManagement = () => {
   const {
@@ -23,6 +31,7 @@ const DeliveryManagement = () => {
     createDelivery,
     updateDelivery,
     deleteDelivery,
+    cancelDelivery,
     saveReceiptDetails,
     getDeliveryDetails,
     validateDeliveryForm,
@@ -44,6 +53,13 @@ const DeliveryManagement = () => {
   const [loadingMessage, setLoadingMessage] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+
+  // Default sort: highest DR number first
+  const [sortMode, setSortMode] = useState('receipt_desc');
+
+  // Cancel-delivered modal state
+  const [cancelModal, setCancelModal] = useState({ show: false, delivery: null, remarks: '' });
+
   const [filterData, setFilterData] = useState({
     companyId: '',
     branchId: '',
@@ -59,7 +75,8 @@ const DeliveryManagement = () => {
   }, []);
 
   const filteredDeliveries = sortDeliveriesByStatus(
-    filterDeliveries(deliveries, filterData)
+    filterDeliveries(deliveries, filterData),
+    sortMode
   );
 
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -84,7 +101,6 @@ const DeliveryManagement = () => {
 
         if (response.success) {
           setModalState({
-            
             show: true,
             mode: 'edit',
             delivery: response.data
@@ -100,7 +116,6 @@ const DeliveryManagement = () => {
         setLoadingMessage('');
       }
     } else if (mode === 'view' && delivery) {
-      // View mode already has its own handler (handleViewDelivery)
       setModalState({ show: true, mode: 'view', delivery });
     }
   };
@@ -209,19 +224,18 @@ const DeliveryManagement = () => {
 
   const handleDeleteDelivery = async (id) => {
     const delivery = deliveries.find(d => d.id === id);
-    const userRole = localStorage.getItem('userRole') || 'USER';
 
-    let confirmMessage = 'Are you sure you want to delete this delivery?';
-
-    if (delivery?.status === 'DELIVERED') {
-      if (userRole !== 'ADMIN') {
-        alert('⚠️ PERMISSION DENIED\n\nOnly administrators can delete delivered deliveries.\n\nPlease contact your system administrator.');
-        return;
-      }
-      confirmMessage = '⚠️ ADMIN ACTION REQUIRED\n\nYou are about to delete a DELIVERED delivery.\nThis action will reverse all stock movements.\n\nAre you sure you want to proceed?';
+    // Guard: DELIVERED, IN_TRANSIT, CANCELLED cannot be deleted
+    if (['DELIVERED', 'IN_TRANSIT', 'CANCELLED'].includes(delivery?.status)) {
+      alert(
+        `🚫 DELETION NOT ALLOWED\n\n` +
+        `Deliveries with status "${delivery.status}" cannot be deleted.\n\n` +
+        `Only deliveries in PENDING or PREPARING status may be deleted.`
+      );
+      return;
     }
 
-    if (!window.confirm(confirmMessage)) return;
+    if (!window.confirm('Are you sure you want to delete this delivery?')) return;
 
     try {
       setActionLoading(true);
@@ -238,6 +252,35 @@ const DeliveryManagement = () => {
       }
     } catch (error) {
       alert(error.message || 'Failed to delete delivery');
+    } finally {
+      setActionLoading(false);
+      setLoadingMessage('');
+    }
+  };
+
+  const handleOpenCancelModal = (delivery) => {
+    setCancelModal({ show: true, delivery, remarks: '' });
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelModal.remarks.trim()) {
+      alert('Please enter a reason for cancellation.');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      setLoadingMessage('Cancelling delivery and reverting stocks...');
+
+      const result = await cancelDelivery(cancelModal.delivery.id, cancelModal.remarks.trim());
+      if (result.success) {
+        alert('Delivery cancelled successfully. All stocks have been reverted.');
+        setCancelModal({ show: false, delivery: null, remarks: '' });
+      } else {
+        alert(result.error || 'Failed to cancel delivery');
+      }
+    } catch (error) {
+      alert(error.message || 'Failed to cancel delivery');
     } finally {
       setActionLoading(false);
       setLoadingMessage('');
@@ -335,13 +378,15 @@ const DeliveryManagement = () => {
       <LoadingOverlay show={actionLoading} message={loadingMessage || 'Loading...'} />
 
       <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-[1600px] mx-auto">
+        <div className="max-w-[1900px] mx-auto">
+          {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Delivery Management</h1>
             <p className="text-gray-600">Track and manage product deliveries to branches</p>
           </div>
 
-          <div className="flex justify-between items-center mb-6">
+          {/* Toolbar: New Delivery button + Sort control */}
+          <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
             <button
               onClick={() => handleOpenModal('create')}
               className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium"
@@ -349,6 +394,21 @@ const DeliveryManagement = () => {
               <Plus size={20} />
               <span>New Delivery</span>
             </button>
+
+            {/* ── Sort control ── */}
+            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
+              <ArrowUpDown size={16} className="text-gray-500 flex-shrink-0" />
+              <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Sort by:</span>
+              <select
+                value={sortMode}
+                onChange={e => { setSortMode(e.target.value); setCurrentPage(1); }}
+                className="text-sm text-gray-700 bg-transparent border-none outline-none cursor-pointer pr-1"
+              >
+                {SORT_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <DeliveryFilters
@@ -365,6 +425,7 @@ const DeliveryManagement = () => {
             onView={handleViewDelivery}
             onEdit={handleOpenModal.bind(null, 'edit')}
             onDelete={handleDeleteDelivery}
+            onCancel={handleOpenCancelModal}
             onPrint={handleGenerateReceipt}
             onPageChange={setCurrentPage}
             currentPage={currentPage}
@@ -407,6 +468,77 @@ const DeliveryManagement = () => {
               onClose={() => setReceiptModalState({ show: false, receiptData: null })}
               onSave={handleSaveReceipt}
             />
+          )}
+
+          {/* ── Cancel Delivered Delivery Modal ── */}
+          {cancelModal.show && cancelModal.delivery && (
+            <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-6">
+              <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl">
+                {/* Header */}
+                <div className="p-6 border-b border-gray-200 flex items-center gap-3">
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <XCircle size={22} className="text-orange-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">Cancel Delivered Delivery</h2>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      DR# {cancelModal.delivery.deliveryReceiptNumber}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div className="p-6 space-y-4">
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                    <p className="font-semibold mb-1">⚠️ What this action does:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Marks the delivery as <strong>CANCELLED</strong></li>
+                      <li>Returns all delivered stock back to the warehouse</li>
+                      <li>Removes the stock from the branch</li>
+                      <li>Records reversal transactions</li>
+                    </ul>
+                    <p className="mt-2 text-amber-700">
+                      This can only proceed if <strong>none</strong> of the delivered items have been sold.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Reason for Cancellation <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      value={cancelModal.remarks}
+                      onChange={(e) => setCancelModal(prev => ({ ...prev, remarks: e.target.value }))}
+                      placeholder="Enter the reason why this delivered delivery is being cancelled..."
+                      rows={4}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm resize-none"
+                      autoFocus
+                    />
+                    {cancelModal.remarks.trim().length === 0 && (
+                      <p className="text-xs text-gray-400 mt-1">Required — this will be saved to the delivery record.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+                  <button
+                    onClick={() => setCancelModal({ show: false, delivery: null, remarks: '' })}
+                    className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium text-sm"
+                  >
+                    Keep Delivery
+                  </button>
+                  <button
+                    onClick={handleConfirmCancel}
+                    disabled={!cancelModal.remarks.trim()}
+                    className="px-5 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <XCircle size={16} />
+                    Confirm Cancellation
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>
