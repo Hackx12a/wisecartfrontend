@@ -36,13 +36,6 @@ const DeliveryTable = ({
   const grandTotalDelivered = deliveries.reduce((s, d) => s + (d.totalDeliveredQty || 0), 0);
   const grandTotalItems     = deliveries.reduce((s, d) => s + (d.itemCount         || 0), 0);
 
-  // Format date to shortest possible
-  const formatShortDate = (dateString) => {
-    if (!dateString) return '—';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
-  };
-
   if (isLoading) {
     return (
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -66,23 +59,23 @@ const DeliveryTable = ({
     <div className="bg-white rounded-xl shadow-sm overflow-hidden w-full">
       {/* Only horizontal scroll - no vertical scroll */}
       <div className="overflow-x-auto overflow-y-visible">
-        <table className="w-full" style={{ minWidth: '1800px' }}>
+        <table className="w-full" style={{ minWidth: '2000px' }}>
 
           {/* ── HEAD ── */}
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-gray-50 border-b-2 border-gray-200">
             <tr>
-              <th className="px-2 py-2 text-center text-xs font-bold text-gray-500 uppercase w-10">#</th>
-              <th className="px-2 py-2 text-left text-xs font-bold text-gray-500 uppercase">Receipt</th>
-              <th className="px-2 py-2 text-left text-xs font-bold text-gray-500 uppercase">From</th>
-              <th className="px-2 py-2 text-left text-xs font-bold text-gray-500 uppercase">To</th>
-              <th className="px-2 py-2 text-left text-xs font-bold text-gray-500 uppercase">Company</th>
-              <th className="px-2 py-2 text-left text-xs font-bold text-gray-500 uppercase">Prepared</th>
-              <th className="px-2 py-2 text-left text-xs font-bold text-gray-500 uppercase">Delivered</th>
-              <th className="px-2 py-2 text-center text-xs font-bold text-gray-500 uppercase w-12">Items</th>
-              <th className="px-2 py-2 text-right text-xs font-bold text-gray-500 uppercase w-16">Prep</th>
-              <th className="px-2 py-2 text-right text-xs font-bold text-gray-500 uppercase w-16">Del</th>
-              <th className="px-2 py-2 text-left text-xs font-bold text-gray-500 uppercase w-20">Status</th>
-              <th className="px-2 py-2 text-left text-xs font-bold text-gray-500 uppercase">Actions</th>
+              <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap w-16">#</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Receipt #</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">From (Warehouse)</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">To (Branch)</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Company</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Date Prepared</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Date Delivered</th>
+              <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Items</th>
+              <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Prepared</th>
+              <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Delivered</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Status</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
             </tr>
           </thead>
 
@@ -95,9 +88,11 @@ const DeliveryTable = ({
               const isDelivered = delivery.status === 'DELIVERED';
               const isPending   = delivery.status === 'PENDING';
               const isPreparing = delivery.status === 'PREPARING';
+              const isCancelled = delivery.status === 'CANCELLED';
+              const isReturned  = delivery.status === 'RETURNED';
 
               const canDelete = isPending || isPreparing;
-              const canEdit = !isDelivered && delivery.status !== 'CANCELLED' && delivery.status !== 'RETURNED';
+              const canEdit   = !isDelivered && !isCancelled && !isReturned;
 
               // Calculate the actual row number based on current page
               const rowNumber = (currentPage - 1) * itemsPerPage + index + 1;
@@ -106,102 +101,128 @@ const DeliveryTable = ({
                 <tr key={delivery.id} className="hover:bg-blue-50/30 transition-colors">
 
                   {/* Row Number */}
-                  <td className="px-2 py-2 text-center text-xs text-gray-500">
-                    {rowNumber}
+                  <td className="px-4 py-3 text-center whitespace-nowrap">
+                    <span className="text-sm font-medium text-gray-500">{rowNumber}</span>
                   </td>
 
                   {/* Receipt # */}
-                  <td className="px-2 py-2 whitespace-nowrap">
-                    <div className="text-xs font-bold text-gray-900">{delivery.deliveryReceiptNumber}</div>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="text-sm font-bold text-gray-900">{delivery.deliveryReceiptNumber}</div>
+                    {delivery.preparedBy && (
+                      <div className="text-xs text-gray-400 mt-0.5">By: {delivery.preparedBy}</div>
+                    )}
                   </td>
 
                   {/* From Warehouse */}
-                  <td className="px-2 py-2">
+                  <td className="px-4 py-3">
                     {delivery.warehouses && delivery.warehouses.length > 0 ? (
-                      <div className="text-xs text-gray-800">
+                      <div className="space-y-1">
                         {delivery.warehouses.map((wh, idx) => (
-                          <div key={idx} className="truncate max-w-[100px]">
-                            {wh.warehouseName}
+                          <div key={idx} className="flex items-center gap-1.5 whitespace-nowrap">
+                            <Package size={13} className="text-blue-400 flex-shrink-0" />
+                            <span className="text-sm font-medium text-gray-800">{wh.warehouseName}</span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <span className="text-xs text-gray-400">—</span>
+                      <span className="text-xs text-gray-400 italic">No warehouse</span>
                     )}
                   </td>
 
                   {/* To Branch */}
-                  <td className="px-2 py-2">
-                    <div className="text-xs font-medium text-gray-800 truncate max-w-[100px]">
-                      {delivery.branchName}
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center gap-1.5">
+                      <Truck size={13} className="text-green-500 flex-shrink-0" />
+                      <span className="text-sm font-semibold text-gray-800">{delivery.branchName}</span>
                     </div>
                   </td>
 
                   {/* Company */}
-                  <td className="px-2 py-2">
-                    <span className="text-xs text-gray-800 truncate max-w-[100px] block">
-                      {delivery.companyName}
-                    </span>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-800">
+                    {delivery.companyName}
                   </td>
 
                   {/* Date Prepared */}
-                  <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
-                    {formatShortDate(delivery.datePrepared)}
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                    {delivery.datePrepared
+                      ? new Date(delivery.datePrepared).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })
+                      : '—'}
                   </td>
 
                   {/* Date Delivered */}
-                  <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
-                    {formatShortDate(delivery.dateDelivered)}
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                    {delivery.dateDelivered
+                      ? new Date(delivery.dateDelivered).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })
+                      : '—'}
                   </td>
 
                   {/* Item Count */}
-                  <td className="px-2 py-2 text-center text-xs font-bold text-gray-800">
-                    {delivery.itemCount}
+                  <td className="px-4 py-3 whitespace-nowrap text-center">
+                    <span className="inline-flex items-center gap-1">
+                      <Package size={14} className="text-gray-400" />
+                      <span className="text-sm font-bold text-gray-800">{delivery.itemCount}</span>
+                    </span>
                   </td>
 
                   {/* Prepared Qty */}
-                  <td className="px-2 py-2 text-right text-xs font-bold text-blue-700">
-                    {drTotalPrepared > 0 ? drTotalPrepared : '—'}
+                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                    {drTotalPrepared > 0 ? (
+                      <span className="text-sm font-bold text-blue-700">
+                        {drTotalPrepared}
+                      </span>
+                    ) : (
+                      '—'
+                    )}
                   </td>
 
                   {/* Delivered Qty */}
-                  <td className="px-2 py-2 text-right text-xs font-bold text-green-700">
-                    {isDelivered && drTotalDelivered > 0 ? drTotalDelivered : '—'}
+                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                    {isDelivered && drTotalDelivered > 0 ? (
+                      <span className="text-sm font-bold text-green-700">
+                        {drTotalDelivered}
+                      </span>
+                    ) : !isDelivered ? (
+                      <span className="text-xs italic text-gray-400">—</span>
+                    ) : (
+                      '—'
+                    )}
                   </td>
 
                   {/* Status */}
-                  <td className="px-2 py-2">
-                    <span className={`px-1.5 py-0.5 inline-flex text-[10px] font-bold rounded-full ${getStatusColor(delivery.status)}`}>
-                      {delivery.status === 'DELIVERED' ? 'DEL' : 
-                       delivery.status === 'PENDING' ? 'PEND' :
-                       delivery.status === 'PREPARING' ? 'PREP' :
-                       delivery.status === 'CANCELLED' ? 'CNCL' :
-                       delivery.status === 'RETURNED' ? 'RET' :
-                       delivery.status === 'IN_TRANSIT' ? 'TRANS' : 
-                       delivery.status.substring(0, 4)}
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className={`px-2 py-1 inline-flex text-xs font-bold rounded-full ${getStatusColor(delivery.status)}`}>
+                      {delivery.customStatus || delivery.status}
                     </span>
                   </td>
 
                   {/* Actions */}
-                  <td className="px-2 py-2">
-                    <div className="flex items-center gap-0.5">
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center gap-1">
                       {/* View */}
                       <button
                         onClick={() => onView(delivery)}
-                        title="View"
-                        className="p-1 rounded text-blue-600 hover:bg-blue-100"
+                        title="View details"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-blue-600 hover:bg-blue-100 transition-colors"
                       >
-                        <Eye size={14} />
+                        <Eye size={16} />
                       </button>
 
                       {/* Edit */}
                       {canEdit && (
                         <button
                           onClick={() => onEdit(delivery)}
-                          title="Edit"
-                          className="p-1 rounded text-indigo-600 hover:bg-indigo-100"
+                          title="Edit delivery"
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-indigo-600 hover:bg-indigo-100 transition-colors"
                         >
-                          <Edit2 size={14} />
+                          <Edit2 size={16} />
                         </button>
                       )}
 
@@ -209,10 +230,10 @@ const DeliveryTable = ({
                       {canDelete && (
                         <button
                           onClick={() => onDelete(delivery.id)}
-                          title="Delete"
-                          className="p-1 rounded text-red-600 hover:bg-red-100"
+                          title="Delete delivery"
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-600 hover:bg-red-100 transition-colors"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={16} />
                         </button>
                       )}
 
@@ -220,20 +241,21 @@ const DeliveryTable = ({
                       {isDelivered && (
                         <button
                           onClick={() => onCancel(delivery)}
-                          title="Cancel"
-                          className="p-1 rounded text-orange-600 hover:bg-orange-100"
+                          title="Cancel delivery"
+                          className="inline-flex items-center gap-1 px-2 h-8 rounded-lg text-orange-600 hover:bg-orange-100 transition-colors font-semibold text-xs"
                         >
-                          <XCircle size={14} />
+                          <XCircle size={16} />
+                          Cancel
                         </button>
                       )}
 
                       {/* Print */}
                       <button
                         onClick={() => onPrint(delivery)}
-                        title="Print"
-                        className="p-1 rounded text-green-600 hover:bg-green-100"
+                        title="Print receipt"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-green-600 hover:bg-green-100 transition-colors"
                       >
-                        <Printer size={14} />
+                        <Printer size={16} />
                       </button>
                     </div>
                   </td>
@@ -245,18 +267,20 @@ const DeliveryTable = ({
 
           {/* ── FOOTER totals ── */}
           <tfoot>
-            <tr className="bg-gray-100 border-t border-gray-300">
-              <td colSpan={7} className="px-2 py-2 text-right">
-                <span className="text-[10px] font-bold text-gray-500">Total ({deliveries.length})</span>
+            <tr className="bg-gray-100 border-t-2 border-gray-300">
+              <td colSpan={7} className="px-4 py-3 text-right">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  Page Totals ({deliveries.length})
+                </span>
               </td>
-              <td className="px-2 py-2 text-center text-xs font-bold text-gray-800">
-                {grandTotalItems}
+              <td className="px-4 py-3 text-center whitespace-nowrap">
+                <span className="text-sm font-bold text-gray-800">{grandTotalItems}</span>
               </td>
-              <td className="px-2 py-2 text-right text-xs font-bold text-blue-800">
-                {grandTotalPrepared}
+              <td className="px-4 py-3 text-right whitespace-nowrap">
+                <span className="text-sm font-bold text-blue-800">{grandTotalPrepared}</span>
               </td>
-              <td className="px-2 py-2 text-right text-xs font-bold text-green-800">
-                {grandTotalDelivered}
+              <td className="px-4 py-3 text-right whitespace-nowrap">
+                <span className="text-sm font-bold text-green-800">{grandTotalDelivered}</span>
               </td>
               <td colSpan={2} />
             </tr>
