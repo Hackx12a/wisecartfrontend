@@ -56,13 +56,13 @@ const DeliveryTable = ({
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm overflow-hidden w-full">
-      <div className="overflow-x-auto">
-        {/* Increased minWidth for wider scrollable area */}
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden w-full flex flex-col">
+      {/* Scrollable table container with fixed height */}
+      <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 350px)' }}>
         <table className="w-full" style={{ minWidth: '2000px' }}>
 
           {/* ── HEAD ── */}
-          <thead className="bg-gray-50 border-b-2 border-gray-200">
+          <thead className="bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10">
             <tr>
               <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Receipt #</th>
               <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">From (Warehouse)</th>
@@ -287,16 +287,18 @@ const DeliveryTable = ({
       </div>
 
       {totalItems > 0 && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={onPageChange}
-          onNextPage={() => onPageChange(currentPage + 1)}
-          onPrevPage={() => onPageChange(currentPage - 1)}
-          showingStart={indexOfFirstItem}
-          showingEnd={indexOfLastItem}
-          totalItems={totalItems}
-        />
+        <div className="flex-shrink-0">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={onPageChange}
+            onNextPage={() => onPageChange(currentPage + 1)}
+            onPrevPage={() => onPageChange(currentPage - 1)}
+            showingStart={indexOfFirstItem}
+            showingEnd={indexOfLastItem}
+            totalItems={totalItems}
+          />
+        </div>
       )}
     </div>
   );
