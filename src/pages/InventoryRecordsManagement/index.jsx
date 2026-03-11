@@ -421,7 +421,29 @@ const DeleteErrorModal = ({ message, onClose }) => {
   );
 };
 
+// ─── Toast Notification ───────────────────────────────────────────────────────
+const Toast = ({ toasts, removeToast }) => (
+  <div className="fixed top-5 right-5 z-[99999] flex flex-col gap-2 pointer-events-none">
+    {toasts.map(({ id, message, type }) => (
+      <div
+        key={id}
+        className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium pointer-events-auto transition-all duration-300
+          ${type === 'error' ? 'bg-red-50 border-red-200 text-red-800'
+            : type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-800'
+              : 'bg-green-50 border-green-200 text-green-800'}`}
+      >
+        <span className="text-base">
+          {type === 'error' ? '❌' : type === 'warning' ? '⚠️' : '✅'}
+        </span>
+        <span className="flex-1">{message}</span>
+        <button onClick={() => removeToast(id)} className="ml-2 opacity-50 hover:opacity-100 transition-opacity text-lg leading-none">×</button>
+      </div>
+    ))}
+  </div>
+);
+
 // ─── Main Component ────────────────────────────────────────────────────────
+
 const InventoryRecordsManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -439,6 +461,15 @@ const InventoryRecordsManagement = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [deleteErrorMessage, setDeleteErrorMessage] = useState(null);
+  const [toasts, setToasts] = useState([]);
+
+  const showToast = (message, type = 'error', duration = 4500) => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), duration);
+  };
+
+  const removeToast = (id) => setToasts(prev => prev.filter(t => t.id !== id));
 
   const [products, setProducts] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
@@ -711,8 +742,34 @@ const InventoryRecordsManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.processedBy) { alert('Please enter processed by name'); return; }
-    if (formData.items.length === 0) { alert('Please add at least one item'); return; }
+    if (!formData.processedBy) { showToast('Please enter the name of the person who processed this.', 'error'); return; }
+
+    const type = formData.inventoryType;
+    if (type === 'STOCK_IN') {
+      if (!formData.toWarehouseId && !formData.toBranchId) {
+        showToast('Please select a destination warehouse or branch before saving.', 'warning'); return;
+      }
+    } else if (type === 'TRANSFER') {
+      if (!formData.fromWarehouseId && !formData.fromBranchId) {
+        showToast('Please select a source warehouse or branch for the transfer.', 'warning'); return;
+      }
+      if (!formData.toWarehouseId && !formData.toBranchId) {
+        showToast('Please select a destination warehouse or branch for the transfer.', 'warning'); return;
+      }
+    } else if (type === 'RETURN') {
+      if (!formData.fromBranchId) {
+        showToast('Please select the source branch for the return.', 'warning'); return;
+      }
+      if (!formData.toWarehouseId) {
+        showToast('Please select the destination warehouse for the return.', 'warning'); return;
+      }
+    } else if (type === 'DAMAGE') {
+      if (!formData.toWarehouseId && !formData.toBranchId) {
+        showToast('Please select a warehouse or branch where the damaged items are located.', 'warning'); return;
+      }
+    }
+
+    if (formData.items.length === 0) { showToast('Please add at least one item before saving.', 'error'); return; }
     const duplicates = formData.items.filter((item, index) => formData.items.findIndex(i => i.productId === item.productId && i.variationId === item.variationId) !== index);
     if (duplicates.length > 0) { alert('Error: Duplicate items detected!'); return; }
     if (formData.inventoryType !== 'STOCK_IN') {
@@ -856,6 +913,7 @@ const InventoryRecordsManagement = () => {
     <>
       <LoadingOverlay show={loading || actionLoading} message={loadingMessage || ''} />
       <DeleteErrorModal message={deleteErrorMessage} onClose={() => setDeleteErrorMessage(null)} />
+      <Toast toasts={toasts} removeToast={removeToast} />
 
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="p-6 max-w-full mx-auto px-8">
