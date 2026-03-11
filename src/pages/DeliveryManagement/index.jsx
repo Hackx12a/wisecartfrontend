@@ -14,9 +14,9 @@ import '../../styles/deliveryReceipt.css';
 // Sort option definitions
 const SORT_OPTIONS = [
   { value: 'receipt_desc', label: 'DR # — Highest first', icon: Hash },
-  { value: 'receipt_asc',  label: 'DR # — Lowest first',  icon: Hash },
+  { value: 'receipt_asc', label: 'DR # — Lowest first', icon: Hash },
   { value: 'timestamp_desc', label: 'Date — Newest first', icon: Clock },
-  { value: 'timestamp_asc',  label: 'Date — Oldest first', icon: Clock },
+  { value: 'timestamp_asc', label: 'Date — Oldest first', icon: Clock },
 ];
 
 const DeliveryManagement = () => {
@@ -377,32 +377,32 @@ const DeliveryManagement = () => {
     <>
       <LoadingOverlay show={actionLoading} message={loadingMessage || 'Loading...'} />
 
-      <div className="min-h-screen bg-gray-50 p-3">
-        <div className="max-w-full mx-auto">
-          {/* Header - more compact */}
-          <div className="mb-4">
-            <h1 className="text-xl font-bold text-gray-900">Delivery Management</h1>
-            <p className="text-xs text-gray-600">Track and manage product deliveries to branches</p>
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-[1600px] mx-auto">
+          {/* Header */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Delivery Management</h1>
+            <p className="text-gray-600">Track and manage product deliveries to branches</p>
           </div>
 
-          {/* Toolbar - more compact */}
-          <div className="flex flex-wrap items-center gap-2 mb-4">
+          {/* Toolbar */}
+          <div className="flex flex-wrap items-center gap-4 mb-6">
             <button
               onClick={() => handleOpenModal('create')}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium text-sm"
+              className="flex items-center gap-3 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium"
             >
-              <Plus size={16} />
+              <Plus size={20} />
               <span>New Delivery</span>
             </button>
 
-            {/* Sort control - more compact */}
-            <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg px-2 py-1.5 shadow-sm">
-              <ArrowUpDown size={14} className="text-gray-500" />
-              <span className="text-[10px] text-gray-500 font-medium">Sort:</span>
+            {/* Sort control */}
+            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
+              <ArrowUpDown size={16} className="text-gray-500" />
+              <span className="text-sm text-gray-500 font-medium">Sort by:</span>
               <select
                 value={sortMode}
                 onChange={e => { setSortMode(e.target.value); setCurrentPage(1); }}
-                className="text-xs text-gray-700 bg-transparent border-none outline-none cursor-pointer"
+                className="text-sm text-gray-700 bg-transparent border-none outline-none cursor-pointer"
               >
                 {SORT_OPTIONS.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
