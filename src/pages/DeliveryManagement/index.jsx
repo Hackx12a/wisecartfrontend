@@ -377,9 +377,9 @@ const DeliveryManagement = () => {
     <>
       <LoadingOverlay show={actionLoading} message={loadingMessage || 'Loading...'} />
 
-      {/* Remove min-h-screen to prevent vertical scrolling */}
-      <div className="bg-gray-50 p-6">
-        <div className="max-w-[1700px] mx-auto">
+      {/* Remove all height constraints and scrolling */}
+      <div className="bg-gray-50">
+        <div className="max-w-[2000px] mx-auto px-6 py-6">
           {/* Header */}
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Delivery Management</h1>
@@ -433,7 +433,6 @@ const DeliveryManagement = () => {
             itemsPerPage={itemsPerPage}
             totalItems={filteredDeliveries.length}
             isLoading={loading}
-            currentPageItems={currentDeliveries} // Pass current page items for numbering
           />
 
           {/* Modals */}
