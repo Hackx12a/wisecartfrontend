@@ -59,11 +59,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
 
   const collapseAll = () => { setExpandedProducts({}); };
 
-  /**
-   * Parses the encoded ref string into a structured object.
-   * DR format:   "DR-0001 (qty:50|status:DELIVERED|from:Main Warehouse|to:Branch A)"
-   * Sale format: "SALE-12 (qty:30|status:INVOICED|branch:Branch A|company:Company X)"
-   */
+
   const parseRef = (raw) => {
     const parenMatch = raw.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
     if (!parenMatch) return { label: raw, qty: null, status: null, from: null, to: null, branch: null, company: null };
