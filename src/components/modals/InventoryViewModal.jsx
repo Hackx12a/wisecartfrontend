@@ -191,20 +191,30 @@ const InventoryViewModal = ({ selectedInventory, onClose, onConfirm }) => {
         </div>
 
         <div className="p-8 border-t border-gray-200 flex justify-between items-center">
-          <div>
+          <div className="flex items-center gap-4">
             {selectedInventory.status === 'PENDING' && (
               <button
-                onClick={() => {
-                  onClose();
-                  onConfirm(selectedInventory);
-                }}
+                onClick={() => { onClose(); onConfirm(selectedInventory); }}
                 className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white hover:bg-green-700 rounded-lg transition shadow-sm font-medium"
               >
                 <Check size={18} />
                 <span>Confirm Inventory</span>
               </button>
             )}
+
+            {/* Totals */}
+            {selectedInventory.items?.length > 0 && (
+              <div className="flex items-center gap-3 text-sm">
+                <span className="px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-lg font-medium text-gray-700">
+                  📦 {selectedInventory.items.length} product{selectedInventory.items.length !== 1 ? 's' : ''}
+                </span>
+                <span className="px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg font-bold text-blue-700">
+                  Total Qty: {selectedInventory.items.reduce((sum, item) => sum + (item.quantity || 0), 0).toLocaleString()}
+                </span>
+              </div>
+            )}
           </div>
+
           <button
             onClick={onClose}
             className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium"

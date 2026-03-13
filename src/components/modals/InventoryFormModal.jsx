@@ -30,6 +30,9 @@ const InventoryFormModal = ({
 }) => {
   if (!showModal) return null;
 
+  const totalItems = formData.items.length;
+  const totalQuantity = formData.items.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0);
+
   return (
     <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-6">
       <div className="bg-white rounded-2xl max-w-7xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
@@ -67,8 +70,9 @@ const InventoryFormModal = ({
           setTempQuantity={setTempQuantity}
         />
 
+
         <div className="mt-8 flex justify-between items-center pt-6 border-t border-gray-200 p-8">
-          <div>
+          <div className="flex items-center gap-4">
             {modalMode === 'edit' && selectedInventory && selectedInventory.status === 'PENDING' && (
               <button
                 type="button"
@@ -82,7 +86,20 @@ const InventoryFormModal = ({
                 <span>Confirm Inventory</span>
               </button>
             )}
+
+            {/* ── Item/Qty totals (shown when there are items) ── */}
+            {formData.items.length > 0 && (
+              <div className="flex items-center gap-3 text-sm">
+                <span className="px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-lg font-medium text-gray-700">
+                  📦 {totalItems} product{totalItems !== 1 ? 's' : ''}
+                </span>
+                <span className="px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg font-bold text-blue-700">
+                  Total Qty: {totalQuantity}
+                </span>
+              </div>
+            )}
           </div>
+
           <div className="flex gap-4">
             <button
               type="button"

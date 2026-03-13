@@ -12,6 +12,7 @@ import usePagination from '../../hooks/ui/usePagination';
 import { getCurrentUser, isAdmin } from '../../utils/authUtils';
 import { api } from '../../services/api';
 
+
 // ─── Fixed Delete Error Modal with Collapsible Product Cards ─────────────────────
 const DeleteErrorModal = ({ message, onClose }) => {
   if (!message) return null;
@@ -116,6 +117,7 @@ const DeleteErrorModal = ({ message, onClose }) => {
   const totalDeliveryQty = products.reduce((s, [, v]) => s + v.deliveryReceipts.reduce((a, dr) => a + (parseRef(dr).qty ?? 0), 0), 0);
   const totalSaleQty = products.reduce((s, [, v]) => s + v.saleRefs.reduce((a, r) => a + (parseRef(r).qty ?? 0), 0), 0);
   const grandTotalQty = totalDeliveryQty + totalSaleQty;
+
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">

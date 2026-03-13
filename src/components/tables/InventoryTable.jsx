@@ -14,6 +14,12 @@ const InventoryTable = ({
   indexOfFirstItem,
   indexOfLastItem
 }) => {
+
+  const grandTotalItems = inventories.reduce((sum, inv) => sum + (inv.items?.length || 0), 0);
+  const grandTotalQty = inventories.reduce((sum, inv) =>
+    sum + (inv.items?.reduce((s, item) => s + (item.quantity || 0), 0) || 0), 0);
+
+
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -25,6 +31,7 @@ const InventoryTable = ({
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">From → To</th>
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
+              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Total Qty</th>
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Timestamp</th>
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -97,6 +104,11 @@ const InventoryTable = ({
                         <Package size={16} className="text-gray-400" />
                         <span className="text-sm font-semibold text-gray-900">{inventory.items?.length || 0}</span>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm font-bold text-blue-700">
+                        {(inventory.items?.reduce((s, item) => s + (item.quantity || 0), 0) || 0).toLocaleString()}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-col gap-1">
@@ -175,6 +187,27 @@ const InventoryTable = ({
               })
             )}
           </tbody>
+          <tfoot>
+            <tr className="bg-gray-100 border-t-2 border-gray-300">
+              <td colSpan={4} className="px-6 py-3">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  Page Totals ({inventories.length} record{inventories.length !== 1 ? 's' : ''})
+                </span>
+              </td>
+              <td className="px-6 py-3 whitespace-nowrap">
+                <div className="flex items-center gap-2">
+                  <Package size={16} className="text-gray-500" />
+                  <span className="text-sm font-bold text-gray-800">{grandTotalItems}</span>
+                </div>
+              </td>
+              <td className="px-6 py-3 whitespace-nowrap">
+                <span className="px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-sm font-bold text-blue-700">
+                  {grandTotalQty.toLocaleString()}
+                </span>
+              </td>
+              <td colSpan={3} />
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>
