@@ -324,30 +324,22 @@ const InventoryForm = ({
                             </div>
                         )}
 
+                        
                         {/* Product Selection Row */}
-                        <div className="flex gap-3 items-start mb-4">
-                            <div className="flex-1">
-                                <VariationSearchableDropdown
-                                    options={productOptions}
-                                    value={selectedProductForAdd}
-                                    onChange={(value) => setSelectedProductForAdd(value)}
-                                    placeholder="Select Product to Add..."
-                                    required={false}
-                                    formData={formData}
-                                    index={-1}
-                                    warehouseStocks={warehouseStocks}
-                                    branchStocks={branchStocks}
-                                    loadingStocks={loadingStocks}
-                                />
-                            </div>
-                            <button
-                                type="button"
-                                onClick={onAddProduct}
-                                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm font-medium"
-                            >
-                                <Plus size={18} />
-                                Add Product
-                            </button>
+                        <div className="mb-4">
+                            <VariationSearchableDropdown
+                                options={productOptions}
+                                value={selectedProductForAdd}
+                                onChange={(value) => setSelectedProductForAdd(value)}
+                                placeholder="Select Product to Add..."
+                                required={false}
+                                formData={formData}
+                                index={-1}
+                                warehouseStocks={warehouseStocks}
+                                branchStocks={branchStocks}
+                                loadingStocks={loadingStocks}
+                                onAddProduct={onAddProduct}
+                            />
                         </div>
                     </div>
 

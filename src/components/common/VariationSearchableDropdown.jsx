@@ -12,7 +12,8 @@ const VariationSearchableDropdown = ({
   index,
   warehouseStocks = {},
   branchStocks = {},
-  loadingStocks = {}
+  loadingStocks = {},
+  onAddProduct
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -336,6 +337,20 @@ const VariationSearchableDropdown = ({
                 </span>
               )}
             </div>
+
+            {/* Add Product Button */}
+            {onAddProduct && (
+              <div className="pt-2 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={onAddProduct}
+                  className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition flex items-center justify-center gap-2"
+                >
+                  <Package size={14} />
+                  Add to List
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

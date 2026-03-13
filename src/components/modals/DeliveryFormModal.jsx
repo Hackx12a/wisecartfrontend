@@ -291,7 +291,7 @@ const DeliveryFormModal = ({
     };
 
     // ── Compute running totals from items ─────────────────────────────────
-    const totalPrepared  = formData.items.reduce((s, it) => s + (parseInt(it.preparedQty)  || 0), 0);
+    const totalPrepared = formData.items.reduce((s, it) => s + (parseInt(it.preparedQty) || 0), 0);
     const totalDelivered = formData.items.reduce((s, it) => s + (parseInt(it.deliveredQty) || 0), 0);
     const isDeliveredStatus = formData.status === 'DELIVERED';
 
@@ -426,25 +426,19 @@ const DeliveryFormModal = ({
                         {/* Product add row */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-3">Add Products *</label>
-                            <div className="flex gap-3 items-start">
-                                <div className="flex-1">
-                                    <VariationSearchableDropdown
-                                        options={productOptions}
-                                        value={selectedProductForAdd}
-                                        onChange={(value) => setSelectedProductForAdd(value)}
-                                        placeholder="Select Product to Add..."
-                                        required={false}
-                                        formData={{ ...formData, fromWarehouseId: formData.selectedWarehouseId, selectedWarehouseName: warehouses.find(w => w.id === parseInt(formData.selectedWarehouseId))?.warehouseName }}
-                                        index={-1}
-                                        warehouseStocks={warehouseStocks}
-                                        branchStocks={branchStocks}
-                                        loadingStocks={loadingStocks}
-                                    />
-                                </div>
-                                <button type="button" onClick={handleAddProductToTable} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm font-medium">
-                                    <Plus size={18} />Add Product
-                                </button>
-                            </div>
+                            <VariationSearchableDropdown
+                                options={productOptions}
+                                value={selectedProductForAdd}
+                                onChange={(value) => setSelectedProductForAdd(value)}
+                                placeholder="Select Product to Add..."
+                                required={false}
+                                formData={{ ...formData, fromWarehouseId: formData.selectedWarehouseId, selectedWarehouseName: warehouses.find(w => w.id === parseInt(formData.selectedWarehouseId))?.warehouseName }}
+                                index={-1}
+                                warehouseStocks={warehouseStocks}
+                                branchStocks={branchStocks}
+                                loadingStocks={loadingStocks}
+                                onAddProduct={handleAddProductToTable}
+                            />
                         </div>
 
                         {/* ── Items Table ─────────────────────────────────────────────────────── */}

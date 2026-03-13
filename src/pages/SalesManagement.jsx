@@ -1471,35 +1471,25 @@ const SalesManagement = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-3">Add Products *</label>
 
-                    {/* Product Selector and Add Button */}
-                    <div className="flex gap-3 items-start mb-6">
-                      <div className="flex-1">
-                        <VariationSearchableDropdown
-                          options={productOptions}
-                          value={selectedProductForAdd}
-                          onChange={(value) => setSelectedProductForAdd(value)}
-                          placeholder="Select Product to Add..."
-                          required={false}
-                          formData={{
-                            ...formData,
-                            fromBranchId: formData.branchId,
-                            items: formData.items
-                          }}
-                          index={-1}
-                          warehouseStocks={{}}
-                          branchStocks={branchStocks}
-                          loadingStocks={loadingStocks}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleAddProductToTable}
-                        className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm font-medium"
-                        disabled={!formData.branchId}
-                      >
-                        <Plus size={18} />
-                        Add Product
-                      </button>
+                    {/* Product Selector */}
+                    <div className="mb-6">
+                      <VariationSearchableDropdown
+                        options={productOptions}
+                        value={selectedProductForAdd}
+                        onChange={(value) => setSelectedProductForAdd(value)}
+                        placeholder="Select Product to Add..."
+                        required={false}
+                        formData={{
+                          ...formData,
+                          fromBranchId: formData.branchId,
+                          items: formData.items
+                        }}
+                        index={-1}
+                        warehouseStocks={{}}
+                        branchStocks={branchStocks}
+                        loadingStocks={loadingStocks}
+                        onAddProduct={formData.branchId ? handleAddProductToTable : undefined}
+                      />
                     </div>
 
                     {/* Products Table */}
